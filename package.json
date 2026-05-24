@@ -4,16 +4,31 @@
     "private": true,
     "type": "module",
     "scripts": {
-        "start": "tsx src/fetchTrades.ts",
         "build": "tsc",
-        "typecheck": "tsc --noEmit"
+        "typecheck": "tsc --noEmit",
+        "dev:app": "vite --config app/vite.config.ts",
+        "build:app": "vite build --config app/vite.config.ts",
+        "preview:app": "vite preview --config app/vite.config.ts"
     },
     "engines": {
         "node": ">=18"
     },
     "devDependencies": {
-        "@types/node": "^22.19.19",
-        "tsx": "^4.19.0",
-        "typescript": "^5.6.0"
+        "@types/node": "22.19.19",
+        "@types/react": "19.2.15",
+        "@types/react-dom": "19.2.3",
+        "@types/react-router-dom": "5.3.3",
+        "@vitejs/plugin-react": "6.0.2",
+        "postcss": "8.5.15",
+        "tsx": "4.19.0",
+        "typescript": "5.6.0",
+        "vite": "8.0.14"
+    },
+    "dependencies": {
+        "bootstrap": "5.3.8",
+        "react": "19.2.6",
+        "react-dom": "19.2.6",
+        "react-router-dom": "7.15.1",
+        "recharts": "2.15.4"
     }
 }
