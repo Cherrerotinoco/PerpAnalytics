@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import WalletForm from './components/walletForm';
 import MainLayout from './layout/MainLayout';
-import RecentWallets from './components/recentWallets';
+import RecentWallets from './components/RecentWallets';
 import { ThemeProvider } from './context/ThemeContext';
 
 export default function App() {
