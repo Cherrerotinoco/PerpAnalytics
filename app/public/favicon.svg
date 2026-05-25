@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Background -->
+  <rect width="32" height="32" rx="6" fill="#141414"/>
+
+  <!-- Terminal frame -->
+  <rect x="2.5" y="2.5" width="27" height="27" rx="4" stroke="#f59e0b" stroke-width="1.5" fill="none"/>
+
+  <!-- Title-bar separator -->
+  <line x1="2.5" y1="9" x2="29.5" y2="9" stroke="#f59e0b" stroke-width="1" opacity="0.35"/>
+
+  <!-- Three window-control dots -->
+  <circle cx="6"  cy="5.75" r="1.15" fill="#f59e0b"/>
+  <circle cx="9.6" cy="5.75" r="1.15" fill="#f59e0b" opacity="0.5"/>
+  <circle cx="13.2" cy="5.75" r="1.15" fill="#f59e0b" opacity="0.25"/>
+
+  <!-- Rising chart line -->
+  <polyline
+    points="5,25 10,19.5 16.5,21.5 27,13"
+    stroke="#f59e0b"
+    stroke-width="1.8"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    fill="none"
+  />
+
+  <!-- Start & end node dots -->
+  <circle cx="5"  cy="25"  r="1.8" fill="#f59e0b"/>
+  <circle cx="27" cy="13"  r="1.8" fill="#f59e0b"/>
+</svg>

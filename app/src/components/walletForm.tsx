@@ -14,6 +14,12 @@ import EquityCurveChart from './equityCurveChart';
 const SOLANA_ADDRESS_REGEX = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 const MAX_CACHE_ENTRIES = 10;
 const STORAGE_PREFIX = 'tc:';
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+interface CacheEntry {
+  cachedAt: number;
+  data: Array<Omit<Trade, 'opened' | 'closed'> & { opened: string; closed: string }>;
+}
 
 function loadCachedTrades(key: string): Trade[] | null {
   try {
@@ -21,11 +27,12 @@ function loadCachedTrades(key: string): Trade[] | null {
     if (!raw) {
       return null;
     }
-    return (
-      JSON.parse(raw) as Array<
-        Omit<Trade, 'opened' | 'closed'> & { opened: string; closed: string }
-      >
-    ).map((t) => ({
+    const entry = JSON.parse(raw) as CacheEntry;
+    if (Date.now() - entry.cachedAt > CACHE_TTL_MS) {
+      localStorage.removeItem(STORAGE_PREFIX + key);
+      return null;
+    }
+    return entry.data.map((t) => ({
       ...t,
       opened: new Date(t.opened),
       closed: new Date(t.closed),
@@ -37,7 +44,7 @@ function loadCachedTrades(key: string): Trade[] | null {
 
 function saveCachedTrades(key: string, trades: Trade[]): void {
   try {
-    localStorage.setItem(STORAGE_PREFIX + key, JSON.stringify(trades));
+    localStorage.setItem(STORAGE_PREFIX + key, JSON.stringify({ cachedAt: Date.now(), data: trades }));
   } catch {
     // Storage quota exceeded, silently skip
   }
@@ -61,6 +68,7 @@ export default function WalletForm({ wallet, setWallet, addRecentWallet }: Walle
   const [hasQueried, setHasQueried] = useState(false);
   const [platforms, setPlatforms] = useState<Platform[]>(['jupiter', 'pacifica']);
   const cacheRef = useRef<{ [key: string]: Trade[] }>({});
+  const cacheTsRef = useRef<{ [key: string]: number }>({});
   const resultsRef = useRef<HTMLDivElement>(null);
   const shouldScrollRef = useRef(false);
 
@@ -76,8 +84,10 @@ export default function WalletForm({ wallet, setWallet, addRecentWallet }: Walle
     }
   }, [filteredTrades]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e: React.FormEvent | null, forceRefresh = false) => {
+    if (e) {
+      e.preventDefault();
+    }
 
     if (!wallet || !SOLANA_ADDRESS_REGEX.test(wallet)) {
       setError('Enter a valid Solana wallet address (32–44 Base58 characters).');
@@ -92,15 +102,23 @@ export default function WalletForm({ wallet, setWallet, addRecentWallet }: Walle
       return;
     }
 
+    const cacheKey = JSON.stringify({ wallet, platforms: [...platforms].sort() });
+
+    if (forceRefresh) {
+      delete cacheRef.current[cacheKey];
+      delete cacheTsRef.current[cacheKey];
+      localStorage.removeItem(STORAGE_PREFIX + cacheKey);
+    }
+
     setLoading(true);
     setError('');
     setTrades([]);
     setHasQueried(false);
 
-    const cacheKey = JSON.stringify({ wallet, platforms: [...platforms].sort() });
-
-    if (cacheRef.current[cacheKey]) {
-      setTrades(cacheRef.current[cacheKey]);
+    const cachedTrades = cacheRef.current[cacheKey];
+    const cachedAt = cacheTsRef.current[cacheKey] ?? 0;
+    if (cachedTrades && Date.now() - cachedAt <= CACHE_TTL_MS) {
+      setTrades(cachedTrades);
       setHasQueried(true);
       setLoading(false);
       shouldScrollRef.current = true;
@@ -110,6 +128,7 @@ export default function WalletForm({ wallet, setWallet, addRecentWallet }: Walle
     const stored = loadCachedTrades(cacheKey);
     if (stored) {
       cacheRef.current[cacheKey] = stored;
+      cacheTsRef.current[cacheKey] = Date.now();
       setTrades(stored);
       setHasQueried(true);
       setLoading(false);
@@ -165,6 +184,7 @@ export default function WalletForm({ wallet, setWallet, addRecentWallet }: Walle
         delete cacheRef.current[cacheKeys[0]];
       }
       cacheRef.current[cacheKey] = allTrades;
+      cacheTsRef.current[cacheKey] = Date.now();
       saveCachedTrades(cacheKey, allTrades);
       setTrades(allTrades);
       setHasQueried(true);
@@ -349,21 +369,31 @@ export default function WalletForm({ wallet, setWallet, addRecentWallet }: Walle
               )}
               {loading ? 'Loading…' : 'Search'}
             </button>
-            <button
-              type="button"
-              onClick={handleClear}
-              style={{
-                background: 'transparent',
-                border: '1px solid var(--tc-border)',
-                borderRadius: 4,
-                color: 'var(--tc-muted)',
-                fontSize: '0.8rem',
-                padding: '0.3rem 0.75rem',
-                cursor: 'pointer',
-              }}
-            >
-              X
-            </button>
+            {hasQueried && !loading && (
+              <button
+                type="button"
+                title="Refresh — fetch latest trades bypassing cache"
+                onClick={() => handleSubmit(null, true)}
+                style={{
+                  background: 'transparent',
+                  border: '1px solid var(--tc-border)',
+                  borderRadius: 4,
+                  color: 'var(--tc-muted)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 30,
+                  height: 30,
+                  cursor: 'pointer',
+                  flexShrink: 0,
+                }}
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="23 4 23 10 17 10" />
+                  <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+                </svg>
+              </button>
+            )}
           </div>
 
           {/* Error */}
