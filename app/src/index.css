@@ -223,6 +223,80 @@ body {
   color: var(--tc-text);
 }
 
+/* ─── Metric tooltip ────────────────────────────────────────────────────────── */
+.tc-tip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: 1px solid var(--tc-border);
+  color: var(--tc-muted);
+  font-size: 0.55rem;
+  font-style: normal;
+  font-weight: 700;
+  cursor: default;
+  line-height: 1;
+  flex-shrink: 0;
+  transition: border-color 0.1s, color 0.1s;
+}
+
+.tc-tip:hover {
+  border-color: var(--tc-accent);
+  color: var(--tc-accent);
+}
+
+.tc-tip-box {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--tc-surface);
+  border: 1px solid var(--tc-border);
+  color: var(--tc-text);
+  font-size: 0.66rem;
+  line-height: 1.5;
+  padding: 0.45rem 0.6rem;
+  border-radius: 5px;
+  width: 175px;
+  z-index: 300;
+  pointer-events: none;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  white-space: normal;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+}
+
+/* arrow border */
+.tc-tip-box::before {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: var(--tc-border);
+}
+
+/* arrow fill */
+.tc-tip-box::after {
+  content: '';
+  position: absolute;
+  top: calc(100% - 1px);
+  left: 50%;
+  transform: translateX(-50%);
+  border: 4px solid transparent;
+  border-top-color: var(--tc-surface);
+}
+
+.tc-tip:hover .tc-tip-box {
+  display: block;
+}
+
 /* ─── Progress bar ──────────────────────────────────────────────────────────── */
 .tc-progress {
   height: 4px;

@@ -2,18 +2,13 @@ import { useState } from 'react';
 import { Trade } from '../types/tradeTypes';
 
 // ─── Formatters ───────────────────────────────────────────────────────────────
-function fmtDate(d: Date | null | undefined): string {
+function fmtDateTime(d: Date | null | undefined): string {
   if (!d) {
     return '—';
   }
-  return d.toLocaleDateString('en-US', { year: '2-digit', month: '2-digit', day: '2-digit' });
-}
-
-function fmtTime(d: Date | null | undefined): string {
-  if (!d) {
-    return '—';
-  }
-  return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const date = d.toLocaleDateString('en-US', { year: '2-digit', month: '2-digit', day: '2-digit' });
+  const time = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+  return `${date} ${time}`;
 }
 
 function fmtNum(n: number | null | undefined): string {
@@ -137,7 +132,6 @@ export default function TradeList({ trades }: { trades: Trade[] }) {
         <table className="tc-table w-100">
           <thead>
             <tr>
-              <Th label="Date" col="opened" />
               <Th label="Open" col="opened" />
               <Th label="Close" col="closed" />
               <Th label="Symbol" col="symbol" />
@@ -154,9 +148,8 @@ export default function TradeList({ trades }: { trades: Trade[] }) {
               <tr
                 key={`${t.source}-${t.symbol}-${t.side}-${t.opened?.getTime()}-${t.closed?.getTime()}`}
               >
-                <td style={{ color: 'var(--tc-muted)' }}>{fmtDate(t.opened)}</td>
-                <td style={{ color: 'var(--tc-muted)' }}>{fmtTime(t.opened)}</td>
-                <td style={{ color: 'var(--tc-muted)' }}>{fmtTime(t.closed)}</td>
+                <td style={{ color: 'var(--tc-muted)', whiteSpace: 'nowrap' }}>{fmtDateTime(t.opened)}</td>
+                <td style={{ color: 'var(--tc-muted)', whiteSpace: 'nowrap' }}>{fmtDateTime(t.closed)}</td>
                 <td style={{ fontFamily: 'monospace' }}>{t.symbol}</td>
                 <td>
                   <span

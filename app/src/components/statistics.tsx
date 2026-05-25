@@ -23,6 +23,7 @@ export interface TradeStats {
   maxConsecLosses: number;
   calmarRatio: number;
   recoveryFactor: number;
+  var95: number;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -135,6 +136,9 @@ export function computeTradeStats(trades: Trade[]): TradeStats {
   const sortino = dStd > 0 ? meanPnl / dStd : meanPnl > 0 ? Infinity : 0;
   const calmarRatio = maxDrawdown > 0 ? totalPnl / maxDrawdown : totalPnl > 0 ? Infinity : 0;
   const recoveryFactor = maxDrawdown > 0 ? totalPnl / maxDrawdown : totalPnl > 0 ? Infinity : 0;
+  const sortedPnl = [...pnlList].sort((a, b) => a - b);
+  const var95Index = Math.max(0, Math.ceil(0.05 * sortedPnl.length) - 1);
+  const var95 = sortedPnl.length > 0 ? (sortedPnl[var95Index] ?? 0) : 0;
 
   return {
     totalPnl,
@@ -158,6 +162,7 @@ export function computeTradeStats(trades: Trade[]): TradeStats {
     maxConsecLosses,
     calmarRatio,
     recoveryFactor,
+    var95,
   };
 }
 
@@ -205,20 +210,37 @@ function ratioClass(v: number): string {
 }
 
 // ─── Shared UI primitives ─────────────────────────────────────────────────────
+function TipIcon({ text }: { text: string }) {
+  return (
+    <span className="tc-tip">
+      ?<span className="tc-tip-box">{text}</span>
+    </span>
+  );
+}
+
 function Metric({
   label,
   value,
   sub,
   colorClass,
+  tooltip,
 }: {
   label: string;
   value: string;
   sub?: string;
   colorClass?: string;
+  tooltip?: string;
 }) {
   return (
     <div className="tc-card" style={{ padding: '0.5rem 0.65rem' }}>
-      <p className="tc-label mb-1">{label}</p>
+      <div
+        className='d-flex align-items-start gap-1 justify-content-between mb-1'
+      >
+        <p className="tc-label mb-0">
+          {label}
+        </p>
+        {tooltip && <TipIcon text={tooltip} />}
+      </div>
       <p className={`tc-value mb-0 ${colorClass ?? ''}`}>{value}</p>
       {sub && (
         <p style={{ fontSize: '0.65rem', color: 'var(--tc-muted)', margin: 0, lineHeight: 1.3 }}>
@@ -246,26 +268,40 @@ export function PerformanceSection({ stats: st }: { stats: TradeStats }) {
           label="Total PnL"
           value={`${sign(st.totalPnl)}${fmtNum(st.totalPnl)} $`}
           colorClass={posNegClass(st.totalPnl)}
+          tooltip="Sum of PnL across all closed trades."
         />
         <Metric
           label="Profit Factor"
           value={isFinite(st.profitFactor) ? fmtNum(st.profitFactor) : '∞'}
           sub={st.profitFactor >= 1 ? 'Profitable' : 'Unprofitable'}
           colorClass={st.profitFactor >= 1 ? 'tc-green' : 'tc-red'}
+          tooltip="Gross profit ÷ gross loss. A value above 1.0 means the strategy is net-profitable."
         />
-        <Metric label="Max Profit" value={`+${fmtNum(st.maxWin)} $`} colorClass="tc-green" />
-        <Metric label="Max Loss" value={`-${fmtNum(st.maxLoss)} $`} colorClass="tc-red" />
+        <Metric
+          label="Max Profit"
+          value={`+${fmtNum(st.maxWin)} $`}
+          colorClass="tc-green"
+          tooltip="PnL of the single largest winning trade."
+        />
+        <Metric
+          label="Max Loss"
+          value={`-${fmtNum(st.maxLoss)} $`}
+          colorClass="tc-red"
+          tooltip="Absolute PnL of the single largest losing trade."
+        />
         <Metric
           label="Expectancy"
           value={`${sign(st.expectancy)}${fmtNum(st.expectancy)} $`}
           sub="per trade"
           colorClass={posNegClass(st.expectancy)}
+          tooltip="Total PnL ÷ total trades. Average dollars earned (or lost) per trade."
         />
         <Metric
           label="Risk / Reward"
           value={isFinite(st.riskReward) ? fmtNum(st.riskReward) : '∞'}
           sub="avg win / avg loss"
           colorClass={st.riskReward >= 1 ? 'tc-green' : ''}
+          tooltip="Average winning trade ÷ average losing trade. A value > 1 means wins are larger than losses on average."
         />
       </MetricGrid>
     </div>
@@ -282,30 +318,42 @@ export function RiskSection({ stats: st }: { stats: TradeStats }) {
           value={`-${fmtNum(st.maxDrawdown)} $`}
           sub={`${fmtNum(st.maxDrawdownPct, 1)}% from peak`}
           colorClass="tc-red"
+          tooltip="Largest peak-to-trough decline in the running equity curve."
         />
         <Metric
           label="Calmar Ratio"
           value={isFinite(st.calmarRatio) ? fmtNum(st.calmarRatio) : '∞'}
           sub="PnL / max drawdown"
           colorClass={ratioClass(st.calmarRatio)}
+          tooltip="Total PnL ÷ max drawdown. Higher values mean better return relative to the worst drawdown."
         />
         <Metric
           label="Sharpe Ratio"
           value={fmtNum(st.sharpeRatio)}
           sub={sharpeLabel(st.sharpeRatio)}
           colorClass={ratioClass(st.sharpeRatio)}
+          tooltip="Mean PnL ÷ std deviation of all trade PnLs. Measures return per unit of total volatility."
         />
         <Metric
           label="Sortino Ratio"
           value={isFinite(st.sortino) ? fmtNum(st.sortino) : '∞'}
           sub="downside vol. only"
           colorClass={ratioClass(st.sortino)}
+          tooltip="Mean PnL ÷ std deviation of losing trades only. Penalises downside volatility exclusively."
         />
         <Metric
           label="Recovery Factor"
           value={isFinite(st.recoveryFactor) ? fmtNum(st.recoveryFactor) : '∞'}
           sub="profit vs risk"
           colorClass={st.recoveryFactor >= 1 ? 'tc-green' : 'tc-red'}
+          tooltip="Total PnL ÷ max drawdown. Indicates how well total profit covers the worst drawdown experienced."
+        />
+        <Metric
+          label="VaR 95%"
+          value={`${st.var95 >= 0 ? '+' : ''}${fmtNum(st.var95)} $`}
+          sub="worst loss in 95% of trades"
+          colorClass={st.var95 >= 0 ? 'tc-green' : 'tc-red'}
+          tooltip="5th-percentile trade PnL (sorted ascending). In 95% of trades, the loss will not exceed this value."
         />
       </MetricGrid>
     </div>
@@ -323,22 +371,37 @@ export function TradesSection({ stats: st }: { stats: TradeStats }) {
           label="Total"
           value={String(st.totalTrades)}
           sub={breakeven > 0 ? `${breakeven} breakeven` : undefined}
+          tooltip="Total number of closed trades in the selected period and platforms."
         />
         <Metric
           label="Win Rate"
           value={fmtPct(st.winRate)}
           sub={`${st.winTrades} wins`}
           colorClass={st.winRate >= 50 ? 'tc-green' : 'tc-red'}
+          tooltip="(Winning trades ÷ total trades) × 100. A trade is a win when PnL > 0."
         />
         <Metric
           label="Loss Rate"
           value={fmtPct(st.lossRate)}
           sub={`${st.lossTrades} losses`}
           colorClass="tc-red"
+          tooltip="(Losing trades ÷ total trades) × 100. A trade is a loss when PnL < 0."
         />
         {/* Streaks card */}
         <div className="tc-card" style={{ padding: '0.5rem 0.65rem' }}>
-          <p className="tc-label mb-2">Max Streaks</p>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.3rem',
+              marginBottom: '0.5rem',
+            }}
+          >
+            <p className="tc-label mb-0" style={{ margin: 0 }}>
+              Max Streaks
+            </p>
+            <TipIcon text="Longest uninterrupted run of consecutive wins and consecutive losses." />
+          </div>
           <div
             style={{
               display: 'flex',
