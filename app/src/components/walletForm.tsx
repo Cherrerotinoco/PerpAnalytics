@@ -95,8 +95,6 @@ export default function WalletForm({ wallet, setWallet, addRecentWallet }: Walle
 
     const cacheKey = JSON.stringify({
       wallet,
-      startDate,
-      endDate,
       platforms: [...platforms].sort(),
     });
 
@@ -297,9 +295,8 @@ export default function WalletForm({ wallet, setWallet, addRecentWallet }: Walle
                   <label
                     key={p}
                     htmlFor={p}
-                    className={`d-flex align-items-start gap-3 p-3 rounded-3 mb-2 cursor-pointer border ${
-                      isActive ? 'border-primary bg-primary bg-opacity-10' : 'border-light bg-light'
-                    }`}
+                    className={`d-flex align-items-start gap-3 p-3 rounded-3 mb-2 cursor-pointer border ${isActive ? 'border-primary bg-primary bg-opacity-10' : 'border-light bg-light'
+                      }`}
                     style={{ cursor: 'pointer' }}
                   >
                     <input
