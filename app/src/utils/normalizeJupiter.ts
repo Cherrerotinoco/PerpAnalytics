@@ -85,7 +85,7 @@ export function buildJupiterTrades(events: JupiterTrade[]): Trade[] {
         const proportion = liveSize > 0 ? Math.min(1, size / liveSize) : 1;
         const allocatedOpenFee = openFeeAccum * proportion;
         const closedSizeUsd = openSizeUsd > 0 ? openSizeUsd * proportion : size;
-        const netPnl = pnl - fee;
+        const netPnl = pnl; // API already returns PnL net of all fees
 
         let closeType: CloseType;
         if (isLiquidate) {

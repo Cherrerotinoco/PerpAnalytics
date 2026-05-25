@@ -10,6 +10,9 @@ import {
 } from './statistics';
 import TradeList from './tradeList';
 import EquityCurveChart from './equityCurveChart';
+import PnlDistributionChart from './PnlDistributionChart';
+import PnlCalendar from './PnlCalendar';
+import PnlBySymbolChart from './PnlBySymbolChart';
 
 const SOLANA_ADDRESS_REGEX = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 const MAX_CACHE_ENTRIES = 10;
@@ -485,8 +488,7 @@ export default function WalletForm({ wallet, setWallet, addRecentWallet }: Walle
         <div ref={resultsRef}>
           {/* Single flex-wrap row: Equity Curve | Performance | Risk | Trades */}
           <div
-            className="mb-3"
-            style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'flex-start' }}
+            className="mb-3 d-flex align-items-stretch gap-3 flex-wrap"
           >
             {/* Equity Curve */}
             <div className="tc-panel" style={{ flex: '3 1 360px', minWidth: 0 }}>
@@ -520,6 +522,41 @@ export default function WalletForm({ wallet, setWallet, addRecentWallet }: Walle
                 <span className="tc-panel-title">Trades</span>
               </div>
               <TradesSection stats={stats} />
+            </div>
+          </div>
+
+          {/* ── Second row: analytical charts ──────────────────────────── */}
+          <div
+            className="mb-3 d-flex align-items-stretch gap-3 flex-wrap"
+          >
+            {/* PnL Distribution */}
+            <div className="tc-panel" style={{ flex: '1 1 260px', minWidth: 0 }}>
+              <div className="tc-panel-header">
+                <span className="tc-panel-title">PnL Distribution</span>
+              </div>
+              <div style={{ padding: '0.75rem' }}>
+                <PnlDistributionChart pnlList={stats.pnlList} />
+              </div>
+            </div>
+
+            {/* PnL Calendar */}
+            <div className="tc-panel" style={{ flex: '2 1 420px', minWidth: 0 }}>
+              <div className="tc-panel-header">
+                <span className="tc-panel-title">PnL Calendar</span>
+              </div>
+              <div style={{ padding: '0.75rem' }}>
+                <PnlCalendar trades={filteredTrades} />
+              </div>
+            </div>
+
+            {/* PnL by Symbol */}
+            <div className="tc-panel" style={{ flex: '1 1 260px', minWidth: 0 }}>
+              <div className="tc-panel-header">
+                <span className="tc-panel-title">PnL by Symbol</span>
+              </div>
+              <div style={{ padding: '0.75rem' }}>
+                <PnlBySymbolChart trades={filteredTrades} />
+              </div>
             </div>
           </div>
 

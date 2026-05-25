@@ -24,6 +24,7 @@ export interface TradeStats {
   calmarRatio: number;
   recoveryFactor: number;
   var95: number;
+  pnlList: number[];
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -163,6 +164,7 @@ export function computeTradeStats(trades: Trade[]): TradeStats {
     calmarRatio,
     recoveryFactor,
     var95,
+    pnlList,
   };
 }
 
