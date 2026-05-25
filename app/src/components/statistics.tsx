@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { Trade } from '../types/tradeTypes';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -27,15 +28,19 @@ export interface TradeStats {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function stdDev(values: number[]): number {
-  if (values.length < 2) return 0;
+  if (values.length < 2) {
+    return 0;
+  }
   const mean = values.reduce((a, b) => a + b, 0) / values.length;
   const variance = values.reduce((sum, v) => sum + (v - mean) ** 2, 0) / (values.length - 1);
   return Math.sqrt(variance);
 }
 
 function downsideStdDev(values: number[]): number {
-  const negatives = values.filter(v => v < 0);
-  if (negatives.length < 2) return 0;
+  const negatives = values.filter((v) => v < 0);
+  if (negatives.length < 2) {
+    return 0;
+  }
   return stdDev(negatives);
 }
 
@@ -79,7 +84,9 @@ export function computeTradeStats(trades: Trade[]): TradeStats {
     const ts = dateRef instanceof Date && !isNaN(dateRef.getTime()) ? dateRef.getTime() : null;
     equityCurveLabels.push(ts !== null ? String(ts) : '');
 
-    if (totalPnl > peak) peak = totalPnl;
+    if (totalPnl > peak) {
+      peak = totalPnl;
+    }
     const dd = peak - totalPnl;
     if (dd > maxDrawdown) {
       maxDrawdown = dd;
@@ -90,18 +97,26 @@ export function computeTradeStats(trades: Trade[]): TradeStats {
       grossProfit += t.pnl;
       sumWin += t.pnl;
       winTrades++;
-      if (t.pnl > maxWin) maxWin = t.pnl;
+      if (t.pnl > maxWin) {
+        maxWin = t.pnl;
+      }
       consecWins++;
       consecLosses = 0;
-      if (consecWins > maxConsecWins) maxConsecWins = consecWins;
+      if (consecWins > maxConsecWins) {
+        maxConsecWins = consecWins;
+      }
     } else if (t.pnl < 0) {
       grossLoss += Math.abs(t.pnl);
       sumLoss += Math.abs(t.pnl);
       lossTrades++;
-      if (Math.abs(t.pnl) > maxLoss) maxLoss = Math.abs(t.pnl);
+      if (Math.abs(t.pnl) > maxLoss) {
+        maxLoss = Math.abs(t.pnl);
+      }
       consecLosses++;
       consecWins = 0;
-      if (consecLosses > maxConsecLosses) maxConsecLosses = consecLosses;
+      if (consecLosses > maxConsecLosses) {
+        maxConsecLosses = consecLosses;
+      }
     } else {
       consecWins = 0;
       consecLosses = 0;
@@ -125,32 +140,57 @@ export function computeTradeStats(trades: Trade[]): TradeStats {
   const recoveryFactor = maxDrawdown > 0 ? totalPnl / maxDrawdown : totalPnl > 0 ? Infinity : 0;
 
   return {
-    totalPnl, equityCurve, equityCurveLabels,
-    maxLoss, maxWin, profitFactor,
-    totalTrades, winTrades, lossTrades,
-    winRate, lossRate, riskReward, expectancy,
-    maxDrawdown, maxDrawdownPct,
-    sharpeRatio, sortino,
-    maxConsecWins, maxConsecLosses,
-    calmarRatio, recoveryFactor,
+    totalPnl,
+    equityCurve,
+    equityCurveLabels,
+    maxLoss,
+    maxWin,
+    profitFactor,
+    totalTrades,
+    winTrades,
+    lossTrades,
+    winRate,
+    lossRate,
+    riskReward,
+    expectancy,
+    maxDrawdown,
+    maxDrawdownPct,
+    sharpeRatio,
+    sortino,
+    maxConsecWins,
+    maxConsecLosses,
+    calmarRatio,
+    recoveryFactor,
   };
 }
 
 // ─── Formatters ───────────────────────────────────────────────────────────────
 function fmtNum(n: number, decimals = 2): string {
-  if (!isFinite(n)) return '∞';
+  if (!isFinite(n)) {
+    return '∞';
+  }
   return n.toLocaleString('es-ES', {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   });
 }
-function fmtPct(n: number): string { return `${n.toFixed(0)}%`; }
-function sign(n: number): string { return n >= 0 ? '+' : ''; }
+function fmtPct(n: number): string {
+  return `${n.toFixed(0)}%`;
+}
+function sign(n: number): string {
+  return n >= 0 ? '+' : '';
+}
 function sharpeLabel(v: number): string {
-  if (v >= 2) return 'Excelente';
-  if (v >= 1) return 'Bueno';
-  if (v >= 0) return 'Aceptable';
-  return 'Negativo';
+  if (v >= 2) {
+    return 'Excellent';
+  }
+  if (v >= 1) {
+    return 'Good';
+  }
+  if (v >= 0) {
+    return 'Acceptable';
+  }
+  return 'Negative';
 }
 
 // ─── Metric color helpers → Bootstrap text classes ───────────────────────────
@@ -158,13 +198,22 @@ function posNegClass(v: number): string {
   return v >= 0 ? 'text-success' : 'text-danger';
 }
 function ratioClass(v: number): string {
-  if (v >= 1) return 'text-success';
-  if (v >= 0) return 'text-warning';
+  if (v >= 1) {
+    return 'text-success';
+  }
+  if (v >= 0) {
+    return 'text-warning';
+  }
   return 'text-danger';
 }
 
 // ─── Metric card sub-component ────────────────────────────────────────────────
-function Metric({ label, value, sub, colorClass }: {
+function Metric({
+  label,
+  value,
+  sub,
+  colorClass,
+}: {
   label: string;
   value: string;
   sub?: string;
@@ -173,11 +222,18 @@ function Metric({ label, value, sub, colorClass }: {
   return (
     <div className="card h-100 border-0 bg-light">
       <div className="card-body p-3">
-        <p className="text-uppercase text-secondary fw-semibold mb-1" style={{ fontSize: '0.65rem', letterSpacing: '0.06em' }}>
+        <p
+          className="text-uppercase text-secondary fw-semibold mb-1"
+          style={{ fontSize: '0.65rem', letterSpacing: '0.06em' }}
+        >
           {label}
         </p>
         <p className={`fs-5 fw-bold mb-0 ${colorClass ?? ''}`}>{value}</p>
-        {sub && <p className="text-secondary mb-0" style={{ fontSize: '0.7rem' }}>{sub}</p>}
+        {sub && (
+          <p className="text-secondary mb-0" style={{ fontSize: '0.7rem' }}>
+            {sub}
+          </p>
+        )}
       </div>
     </div>
   );
@@ -185,184 +241,190 @@ function Metric({ label, value, sub, colorClass }: {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function TradeStatsTable({ trades }: { trades: Trade[] }) {
-  const st = computeTradeStats(trades);
+  const st = useMemo(() => computeTradeStats(trades), [trades]);
   const breakeven = st.totalTrades - st.winTrades - st.lossTrades;
 
   return (
-    <div className="card border-0 shadow-sm my-4">
-      <div className="card-body p-4">
-
-        <h5 className="card-title fw-bold mb-4">Estadísticas</h5>
-
-        {/* ── Rendimiento ── */}
-        <p className="text-uppercase text-secondary fw-semibold mb-2" style={{ fontSize: '0.7rem', letterSpacing: '0.08em' }}>
-          Rendimiento
-        </p>
-        <div className="row row-cols-2 row-cols-sm-3 row-cols-md-3 g-2 mb-3">
-          <div className="col">
-            <Metric
-              label="Total PnL"
-              value={`${sign(st.totalPnl)}${fmtNum(st.totalPnl)} $`}
-              colorClass={posNegClass(st.totalPnl)}
-            />
-          </div>
-          <div className="col">
-            <Metric label="Máx. Ganado" value={`+${fmtNum(st.maxWin)} $`} colorClass="text-success" />
-          </div>
-          <div className="col">
-            <Metric label="Máx. Perdido" value={`-${fmtNum(st.maxLoss)} $`} colorClass="text-danger" />
-          </div>
-          <div className="col">
-            <Metric
-              label="Profit Factor"
-              value={isFinite(st.profitFactor) ? fmtNum(st.profitFactor) : '∞'}
-              sub={st.profitFactor >= 1 ? 'Rentable' : 'No rentable'}
-              colorClass={st.profitFactor >= 1 ? 'text-success' : 'text-danger'}
-            />
-          </div>
-          <div className="col">
-            <Metric
-              label="Expectancy"
-              value={`${sign(st.expectancy)}${fmtNum(st.expectancy)} $`}
-              sub="por operación"
-              colorClass={posNegClass(st.expectancy)}
-            />
-          </div>
-          <div className="col">
-            <Metric
-              label="Risk / Reward"
-              value={isFinite(st.riskReward) ? fmtNum(st.riskReward) : '∞'}
-              sub="avg win / avg loss"
-              colorClass={st.riskReward >= 1 ? 'text-success' : ''}
-            />
-          </div>
+    <div className="p-4">
+      {/* ── Performance ── */}
+      <p
+        className="text-uppercase text-secondary fw-semibold mb-2"
+        style={{ fontSize: '0.7rem', letterSpacing: '0.08em' }}
+      >
+        Performance
+      </p>
+      <div className="row row-cols-2 row-cols-sm-3 row-cols-md-3 g-2 mb-3">
+        <div className="col">
+          <Metric
+            label="Total PnL"
+            value={`${sign(st.totalPnl)}${fmtNum(st.totalPnl)} $`}
+            colorClass={posNegClass(st.totalPnl)}
+          />
         </div>
-
-        <hr className="text-secondary opacity-25" />
-
-        {/* ── Riesgo y Drawdown ── */}
-        <p className="text-uppercase text-secondary fw-semibold mb-2" style={{ fontSize: '0.7rem', letterSpacing: '0.08em' }}>
-          Riesgo y Drawdown
-        </p>
-        <div className="row row-cols-2 row-cols-sm-3 row-cols-md-5 g-2 mb-3">
-          <div className="col">
-            <Metric
-              label="Max Drawdown"
-              value={`-${fmtNum(st.maxDrawdown)} $`}
-              sub={`${fmtNum(st.maxDrawdownPct, 1)}% sobre pico`}
-              colorClass="text-danger"
-            />
-          </div>
-          <div className="col">
-            <Metric
-              label="Calmar Ratio"
-              value={isFinite(st.calmarRatio) ? fmtNum(st.calmarRatio) : '∞'}
-              sub="PnL / max drawdown"
-              colorClass={ratioClass(st.calmarRatio)}
-            />
-          </div>
-          <div className="col">
-            <Metric
-              label="Recovery Factor"
-              value={isFinite(st.recoveryFactor) ? fmtNum(st.recoveryFactor) : '∞'}
-              sub="ganancia vs riesgo"
-              colorClass={st.recoveryFactor >= 1 ? 'text-success' : 'text-danger'}
-            />
-          </div>
-          <div className="col">
-            <Metric
-              label="Sharpe Ratio"
-              value={fmtNum(st.sharpeRatio)}
-              sub={sharpeLabel(st.sharpeRatio)}
-              colorClass={ratioClass(st.sharpeRatio)}
-            />
-          </div>
-          <div className="col">
-            <Metric
-              label="Sortino Ratio"
-              value={isFinite(st.sortino) ? fmtNum(st.sortino) : '∞'}
-              sub="solo downside vol."
-              colorClass={ratioClass(st.sortino)}
-            />
-          </div>
+        <div className="col">
+          <Metric label="Max Profit" value={`+${fmtNum(st.maxWin)} $`} colorClass="text-success" />
         </div>
+        <div className="col">
+          <Metric label="Max Loss" value={`-${fmtNum(st.maxLoss)} $`} colorClass="text-danger" />
+        </div>
+        <div className="col">
+          <Metric
+            label="Profit Factor"
+            value={isFinite(st.profitFactor) ? fmtNum(st.profitFactor) : '∞'}
+            sub={st.profitFactor >= 1 ? 'Profitable' : 'Unprofitable'}
+            colorClass={st.profitFactor >= 1 ? 'text-success' : 'text-danger'}
+          />
+        </div>
+        <div className="col">
+          <Metric
+            label="Expectancy"
+            value={`${sign(st.expectancy)}${fmtNum(st.expectancy)} $`}
+            sub="per trade"
+            colorClass={posNegClass(st.expectancy)}
+          />
+        </div>
+        <div className="col">
+          <Metric
+            label="Risk / Reward"
+            value={isFinite(st.riskReward) ? fmtNum(st.riskReward) : '∞'}
+            sub="avg win / avg loss"
+            colorClass={st.riskReward >= 1 ? 'text-success' : ''}
+          />
+        </div>
+      </div>
 
-        <hr className="text-secondary opacity-25" />
+      <hr className="text-secondary opacity-25" />
 
-        {/* ── Operaciones ── */}
-        <p className="text-uppercase text-secondary fw-semibold mb-2" style={{ fontSize: '0.7rem', letterSpacing: '0.08em' }}>
-          Operaciones
-        </p>
-        <div className="row row-cols-2 row-cols-sm-4 g-2 mb-3">
-          <div className="col">
-            <Metric
-              label="Total"
-              value={String(st.totalTrades)}
-              sub={breakeven > 0 ? `${breakeven} breakeven` : undefined}
-            />
-          </div>
-          <div className="col">
-            <Metric
-              label="Win Rate"
-              value={fmtPct(st.winRate)}
-              sub={`${st.winTrades} ganadas`}
-              colorClass={st.winRate >= 50 ? 'text-success' : 'text-danger'}
-            />
-          </div>
-          <div className="col">
-            <Metric
-              label="Loss Rate"
-              value={fmtPct(st.lossRate)}
-              sub={`${st.lossTrades} perdidas`}
-              colorClass="text-danger"
-            />
-          </div>
-          {/* Racha card */}
-          <div className="col">
-            <div className="card h-100 border-0 bg-light">
-              <div className="card-body p-3">
-                <p className="text-uppercase text-secondary fw-semibold mb-2" style={{ fontSize: '0.65rem', letterSpacing: '0.06em' }}>
-                  Rachas máximas
-                </p>
-                <div className="d-flex justify-content-between align-items-center mb-1">
-                  <small className="text-secondary">Wins seguidos</small>
-                  <span className="fs-5 fw-bold text-success">{st.maxConsecWins}</span>
-                </div>
-                <div className="d-flex justify-content-between align-items-center">
-                  <small className="text-secondary">Losses seguidos</small>
-                  <span className="fs-5 fw-bold text-danger">{st.maxConsecLosses}</span>
-                </div>
+      {/* ── Risk & Drawdown ── */}
+      <p
+        className="text-uppercase text-secondary fw-semibold mb-2"
+        style={{ fontSize: '0.7rem', letterSpacing: '0.08em' }}
+      >
+        Risk & Drawdown
+      </p>
+      <div className="row row-cols-2 row-cols-sm-3 row-cols-md-5 g-2 mb-3">
+        <div className="col">
+          <Metric
+            label="Max Drawdown"
+            value={`-${fmtNum(st.maxDrawdown)} $`}
+            sub={`${fmtNum(st.maxDrawdownPct, 1)}% from peak`}
+            colorClass="text-danger"
+          />
+        </div>
+        <div className="col">
+          <Metric
+            label="Calmar Ratio"
+            value={isFinite(st.calmarRatio) ? fmtNum(st.calmarRatio) : '∞'}
+            sub="PnL / max drawdown"
+            colorClass={ratioClass(st.calmarRatio)}
+          />
+        </div>
+        <div className="col">
+          <Metric
+            label="Recovery Factor"
+            value={isFinite(st.recoveryFactor) ? fmtNum(st.recoveryFactor) : '∞'}
+            sub="profit vs risk"
+            colorClass={st.recoveryFactor >= 1 ? 'text-success' : 'text-danger'}
+          />
+        </div>
+        <div className="col">
+          <Metric
+            label="Sharpe Ratio"
+            value={fmtNum(st.sharpeRatio)}
+            sub={sharpeLabel(st.sharpeRatio)}
+            colorClass={ratioClass(st.sharpeRatio)}
+          />
+        </div>
+        <div className="col">
+          <Metric
+            label="Sortino Ratio"
+            value={isFinite(st.sortino) ? fmtNum(st.sortino) : '∞'}
+            sub="downside vol. only"
+            colorClass={ratioClass(st.sortino)}
+          />
+        </div>
+      </div>
+
+      <hr className="text-secondary opacity-25" />
+
+      {/* ── Trades ── */}
+      <p
+        className="text-uppercase text-secondary fw-semibold mb-2"
+        style={{ fontSize: '0.7rem', letterSpacing: '0.08em' }}
+      >
+        Trades
+      </p>
+      <div className="row row-cols-2 row-cols-sm-4 g-2 mb-3">
+        <div className="col">
+          <Metric
+            label="Total"
+            value={String(st.totalTrades)}
+            sub={breakeven > 0 ? `${breakeven} breakeven` : undefined}
+          />
+        </div>
+        <div className="col">
+          <Metric
+            label="Win Rate"
+            value={fmtPct(st.winRate)}
+            sub={`${st.winTrades} wins`}
+            colorClass={st.winRate >= 50 ? 'text-success' : 'text-danger'}
+          />
+        </div>
+        <div className="col">
+          <Metric
+            label="Loss Rate"
+            value={fmtPct(st.lossRate)}
+            sub={`${st.lossTrades} losses`}
+            colorClass="text-danger"
+          />
+        </div>
+        {/* Racha card */}
+        <div className="col">
+          <div className="card h-100 border-0 bg-light">
+            <div className="card-body p-3">
+              <p
+                className="text-uppercase text-secondary fw-semibold mb-2"
+                style={{ fontSize: '0.65rem', letterSpacing: '0.06em' }}
+              >
+                Max Streaks
+              </p>
+              <div className="d-flex justify-content-between align-items-center mb-1">
+                <small className="text-secondary">Consec. Wins</small>
+                <span className="fs-5 fw-bold text-success">{st.maxConsecWins}</span>
+              </div>
+              <div className="d-flex justify-content-between align-items-center">
+                <small className="text-secondary">Consec. Losses</small>
+                <span className="fs-5 fw-bold text-danger">{st.maxConsecLosses}</span>
               </div>
             </div>
           </div>
         </div>
+      </div>
 
-        {/* ── Win / loss progress bar ── */}
-        <div className="mt-2">
-          <div className="d-flex justify-content-between mb-1">
-            <small className="fw-semibold text-success">Ganadas {fmtPct(st.winRate)}</small>
-            <small className="fw-semibold text-danger">Perdidas {fmtPct(st.lossRate)}</small>
-          </div>
-          <div className="progress" style={{ height: '8px' }}>
-            <div
-              className="progress-bar bg-success"
-              role="progressbar"
-              style={{ width: `${st.winRate}%` }}
-              aria-valuenow={st.winRate}
-              aria-valuemin={0}
-              aria-valuemax={100}
-            />
-            <div
-              className="progress-bar bg-danger"
-              role="progressbar"
-              style={{ width: `${st.lossRate}%` }}
-              aria-valuenow={st.lossRate}
-              aria-valuemin={0}
-              aria-valuemax={100}
-            />
-          </div>
+      {/* ── Win / loss progress bar ── */}
+      <div className="mt-2">
+        <div className="d-flex justify-content-between mb-1">
+          <small className="fw-semibold text-success">Won {fmtPct(st.winRate)}</small>
+          <small className="fw-semibold text-danger">Lost {fmtPct(st.lossRate)}</small>
         </div>
-
+        <div className="progress" style={{ height: '8px' }}>
+          <div
+            className="progress-bar bg-success"
+            role="progressbar"
+            style={{ width: `${st.winRate}%` }}
+            aria-valuenow={st.winRate}
+            aria-valuemin={0}
+            aria-valuemax={100}
+          />
+          <div
+            className="progress-bar bg-danger"
+            role="progressbar"
+            style={{ width: `${st.lossRate}%` }}
+            aria-valuenow={st.lossRate}
+            aria-valuemin={0}
+            aria-valuemax={100}
+          />
+        </div>
       </div>
     </div>
   );

@@ -1,75 +1,89 @@
 import { Trade, CloseType, Side } from '../types/tradeTypes';
 
 // Tipos de la API Pacifica
-interface PacificaFill {
-    history_id: number;
-    order_id: number;
-    symbol: string;
-    amount: string;
-    price: string;
-    entry_price: string;
-    fee: string;
-    pnl: string;
-    event_type: string;
-    side: 'open_long' | 'open_short' | 'close_long' | 'close_short';
-    created_at: number;
-    cause: string;
-}
+export type PacificaFill = {
+  history_id: number;
+  order_id: number;
+  client_order_id: number | null;
+  symbol: string;
+  amount: string;
+  price: string;
+  entry_price: string;
+  fee: string;
+  spot_fee: string | null;
+  pnl: string;
+  event_type: string;
+  side: 'open_long' | 'open_short' | 'close_long' | 'close_short';
+  created_at: number;
+  cause: string | null;
+};
 
 export function buildPacificaTrades(fills: PacificaFill[]): Trade[] {
-    fills.sort((a, b) => a.created_at - b.created_at);
-    const openedAt = new Map<string, Date>();
-    const closeGroups = new Map<string, { fills: PacificaFill[]; openedAt: Date }>();
+  fills.sort((a, b) => a.created_at - b.created_at);
 
-    for (const fill of fills) {
-        const isOpen = fill.side.startsWith('open_');
-        const isClose = fill.side.startsWith('close_');
-        const baseSymbol = fill.symbol;
-        const direction = fill.side.endsWith('_long') ? 'long' : 'short';
-        const posKey = `${baseSymbol}|${direction}`;
+  const positions = new Map<string, { openedAt: Date; netSize: number }>();
+  const closeGroups = new Map<string, { fills: PacificaFill[]; openedAt: Date }>();
 
-        if (isOpen) {
-            if (!openedAt.has(posKey)) {
-                openedAt.set(posKey, new Date(fill.created_at));
-            }
-        } else if (isClose) {
-            const openTime = openedAt.get(posKey) ?? new Date(fill.created_at);
-            const groupKey = `${posKey}|${fill.created_at}`;
-            if (!closeGroups.has(groupKey)) {
-                closeGroups.set(groupKey, { fills: [], openedAt: openTime });
-            }
-            closeGroups.get(groupKey)!.fills.push(fill);
-            openedAt.delete(posKey);
+  for (const fill of fills) {
+    const direction = fill.side.endsWith('_long') ? 'long' : 'short';
+    const posKey = `${fill.symbol}|${direction}`;
+    const amount = parseFloat(fill.amount);
+
+    if (fill.side.startsWith('open_')) {
+      const existing = positions.get(posKey);
+      if (!existing || existing.netSize <= 0) {
+        positions.set(posKey, { openedAt: new Date(fill.created_at), netSize: amount });
+      } else {
+        existing.netSize += amount;
+      }
+    } else if (fill.side.startsWith('close_')) {
+      const pos = positions.get(posKey);
+      const openedAt = pos?.openedAt ?? new Date(fill.created_at);
+
+      const groupKey = `${posKey}|${fill.created_at}`;
+      if (!closeGroups.has(groupKey)) {
+        closeGroups.set(groupKey, { fills: [], openedAt });
+      }
+      closeGroups.get(groupKey)!.fills.push(fill);
+
+      if (pos) {
+        pos.netSize = Math.max(0, pos.netSize - amount);
+        if (pos.netSize < 1e-8) {
+          positions.delete(posKey);
         }
+      }
     }
+  }
 
-    const trades: Trade[] = [];
+  const trades: Trade[] = [];
 
-    for (const [, group] of closeGroups) {
-        const { fills: closeFills, openedAt: opened } = group;
-        const first = closeFills[0];
-        const direction = first.side.endsWith('_long') ? 'long' : 'short';
-        const closed = new Date(first.created_at);
-        const totalPnl = closeFills.reduce((s, f) => s + parseFloat(f.pnl), 0);
-        const totalFee = closeFills.reduce((s, f) => s + parseFloat(f.fee), 0);
-        const totalSize = closeFills.reduce((s, f) => s + parseFloat(f.amount) * parseFloat(f.price), 0);
-        const cause = (first.cause ?? 'normal').toLowerCase();
-        let closeType: CloseType;
-        if (cause.includes('liquidation')) closeType = 'Liquidation';
-        else closeType = totalPnl > 0 ? 'TP' : 'SL';
+  for (const [, group] of closeGroups) {
+    const { fills: closeFills, openedAt: opened } = group;
+    const first = closeFills[0];
+    const direction = first.side.endsWith('_long') ? 'long' : 'short';
+    const closed = new Date(first.created_at);
+    const totalPnl = closeFills.reduce((s, f) => s + parseFloat(f.pnl), 0);
+    const totalFee = closeFills.reduce((s, f) => s + parseFloat(f.fee), 0);
+    const totalSize = closeFills.reduce(
+      (s, f) => s + parseFloat(f.amount) * parseFloat(f.entry_price),
+      0
+    );
 
-        trades.push({
-            symbol: first.symbol,
-            opened,
-            closed,
-            side: direction as Side,
-            pnl: totalPnl,
-            fee: totalFee,
-            sizeUsd: totalSize,
-            closeType,
-            source: 'Pacifica',
-        });
-    }
+    const cause = (first.cause ?? 'normal').toLowerCase();
+    const closeType: CloseType = cause.includes('liquidation') ? 'Liquidation' : 'Manual';
 
-    return trades;
+    trades.push({
+      symbol: first.symbol,
+      opened,
+      closed,
+      side: direction as Side,
+      pnl: totalPnl,
+      fee: totalFee,
+      sizeUsd: totalSize,
+      closeType,
+      source: 'Pacifica',
+    });
+  }
+
+  return trades;
 }

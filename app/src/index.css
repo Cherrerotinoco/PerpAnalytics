@@ -1,0 +1,21 @@
+/* ── Details / Summary accordion ── */
+.panel-summary {
+  list-style: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+}
+
+.panel-summary::-webkit-details-marker {
+  display: none;
+}
+
+.panel-summary .panel-chevron {
+  transition: transform 0.2s ease;
+  color: var(--bs-secondary-color);
+}
+
+details[open] > .panel-summary .panel-chevron {
+  transform: rotate(90deg);
+}

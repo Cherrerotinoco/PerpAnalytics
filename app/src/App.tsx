@@ -13,15 +13,17 @@ export default function App() {
     if (stored) {
       try {
         setRecentWallets(JSON.parse(stored));
-      } catch { }
+      } catch {}
     }
   }, []);
 
   // Añadir wallet a recientes y guardar en localStorage
   const addRecentWallet = (w: string) => {
-    if (!w) return;
-    setRecentWallets(prev => {
-      const next = [w, ...prev.filter(x => x !== w)].slice(0, 3);
+    if (!w) {
+      return;
+    }
+    setRecentWallets((prev) => {
+      const next = [w, ...prev.filter((x) => x !== w)].slice(0, 3);
       localStorage.setItem('recentWallets', JSON.stringify(next));
       return next;
     });
@@ -32,20 +34,16 @@ export default function App() {
       <div className="row justify-content-center mb-4">
         <div className="col-12 col-md-8 text-center">
           <h1 className="display-5 fw-bold mb-2">Trades Terminal</h1>
-          <p className="lead">Visualiza y analiza tus operaciones de <span className="text-primary fw-bold">Jupiter</span> y <span className="text-info fw-bold">Pacifica</span> en un solo lugar.</p>
+          <p className="lead">
+            Visualize and analyze your <span className="text-primary fw-bold">Jupiter</span> and{' '}
+            <span className="text-info fw-bold">Pacifica</span> trades in one place.
+          </p>
         </div>
       </div>
       <div className="row justify-content-center">
         <div className="col-12 col-md-8">
-          <RecentWallets
-            wallets={recentWallets}
-            onSelect={w => setWallet(w)}
-          />
-          <WalletForm
-            wallet={wallet}
-            setWallet={setWallet}
-            addRecentWallet={addRecentWallet}
-          />
+          <RecentWallets wallets={recentWallets} onSelect={(w) => setWallet(w)} />
+          <WalletForm wallet={wallet} setWallet={setWallet} addRecentWallet={addRecentWallet} />
         </div>
       </div>
     </MainLayout>

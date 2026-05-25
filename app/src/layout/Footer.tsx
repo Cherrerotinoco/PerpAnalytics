@@ -5,7 +5,10 @@ export default function Footer() {
         <div>
           <div>
             <span>TradesConverter</span>
-            <p>Proyecto de ejemplo con integración de Tailwind CSS y layout moderno. Puedes personalizar este footer según tus necesidades.</p>
+            <p>
+              Proyecto de ejemplo con integración de Tailwind CSS y layout moderno. Puedes
+              personalizar este footer según tus necesidades.
+            </p>
             <div>
               <a href="#">Twitter</a>
               <a href="#">GitHub</a>
