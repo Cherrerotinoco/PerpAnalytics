@@ -1,8 +1,13 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Trade } from '../types/tradeTypes';
 import { buildJupiterTrades, JupiterTrade } from '../utils/normalizeJupiter';
 import { buildPacificaTrades, PacificaFill } from '../utils/normalizePacifica';
-import StatisticsTable from './statistics';
+import {
+  computeTradeStats,
+  PerformanceSection,
+  RiskSection,
+  TradesSection,
+} from './statistics';
 import TradeList from './tradeList';
 import EquityCurveChart from './equityCurveChart';
 
@@ -54,19 +59,19 @@ export default function WalletForm({ wallet, setWallet, addRecentWallet }: Walle
   const [trades, setTrades] = useState<Trade[]>([]);
   const [filteredTrades, setFilteredTrades] = useState<Trade[]>([]);
   const [hasQueried, setHasQueried] = useState(false);
-  const [platforms, setPlatforms] = useState<Platform[]>(['jupiter']);
+  const [platforms, setPlatforms] = useState<Platform[]>(['jupiter', 'pacifica']);
   const cacheRef = useRef<{ [key: string]: Trade[] }>({});
-  const resultsRef = useRef<HTMLDetailsElement>(null);
+  const resultsRef = useRef<HTMLDivElement>(null);
+  const shouldScrollRef = useRef(false);
+
+  const stats = useMemo(() => computeTradeStats(filteredTrades), [filteredTrades]);
 
   const toTimestamp = (date: string): string | undefined =>
     date ? String(Math.floor(new Date(date).getTime() / 1000)) : undefined;
 
-  const shouldScrollRef = useRef(false);
-
   useEffect(() => {
     if (shouldScrollRef.current && filteredTrades.length > 0 && resultsRef.current) {
       shouldScrollRef.current = false;
-      resultsRef.current.open = true;
       resultsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   }, [filteredTrades]);
@@ -78,7 +83,6 @@ export default function WalletForm({ wallet, setWallet, addRecentWallet }: Walle
       setError('Enter a valid Solana wallet address (32–44 Base58 characters).');
       return;
     }
-
     if (!startDate) {
       setError('Start date is required.');
       return;
@@ -93,10 +97,7 @@ export default function WalletForm({ wallet, setWallet, addRecentWallet }: Walle
     setTrades([]);
     setHasQueried(false);
 
-    const cacheKey = JSON.stringify({
-      wallet,
-      platforms: [...platforms].sort(),
-    });
+    const cacheKey = JSON.stringify({ wallet, platforms: [...platforms].sort() });
 
     if (cacheRef.current[cacheKey]) {
       setTrades(cacheRef.current[cacheKey]);
@@ -181,7 +182,7 @@ export default function WalletForm({ wallet, setWallet, addRecentWallet }: Walle
     setWallet('');
     setStartDate('');
     setEndDate('');
-    setPlatforms(['jupiter']);
+    setPlatforms(['jupiter', 'pacifica']);
     setError('');
     setTrades([]);
     setHasQueried(false);
@@ -190,306 +191,318 @@ export default function WalletForm({ wallet, setWallet, addRecentWallet }: Walle
   useEffect(() => {
     const startTs = toTimestamp(startDate);
     const endTs = toTimestamp(endDate);
-    const filteredTrades = trades.filter((trade) => {
-      const tradeTime = new Date(trade.closed).getTime();
-      return (
-        (!startTs || tradeTime >= parseInt(startTs) * 1000) &&
-        (!endTs || tradeTime <= parseInt(endTs) * 1000)
-      );
-    });
-
-    setFilteredTrades(filteredTrades);
+    setFilteredTrades(
+      trades.filter((trade) => {
+        const t = new Date(trade.closed).getTime();
+        return (
+          (!startTs || t >= parseInt(startTs) * 1000) &&
+          (!endTs || t <= parseInt(endTs) * 1000)
+        );
+      })
+    );
   }, [trades, startDate, endDate]);
 
   const isDisabled = loading || !wallet || !startDate || platforms.length === 0;
 
   return (
     <div>
-      {/* ── Form card ── */}
-      <div className="card border-0 shadow-sm mb-4">
-        <div className="card-body p-4">
-          <form onSubmit={handleSubmit} autoComplete="off">
-            {/* Header */}
-            <h2 className="fw-bold mb-1" style={{ fontSize: '1.1rem' }}>
-              Trade Query
-            </h2>
-            <p className="text-secondary mb-4" style={{ fontSize: '0.85rem' }}>
-              Analyze your Jupiter and Pacifica trades on Solana
-            </p>
-
-            {/* Wallet */}
-            <div className="mb-3">
-              <label
-                htmlFor="wallet"
-                className="form-label text-uppercase fw-semibold text-secondary"
-                style={{ fontSize: '0.65rem', letterSpacing: '0.06em' }}
-              >
-                Wallet Address
-              </label>
+      {/* ── Search bar ─────────────────────────────────────────────────────── */}
+      <div className="tc-panel mb-3" style={{ padding: '0.6rem 0.75rem' }}>
+        <form onSubmit={handleSubmit} autoComplete="off">
+          <div className="d-flex align-items-center gap-2 flex-wrap">
+            {/* Wallet address */}
+            <div style={{ flex: '1 1 200px', minWidth: 0 }}>
               <input
                 id="wallet"
                 type="text"
                 name="wallet"
-                className="form-control bg-light border"
-                placeholder="e.g. 4Nd1mWq3C7kE..."
+                className="tc-input form-control form-control-sm"
+                placeholder="Wallet address…"
                 value={wallet}
                 onChange={(e) => setWallet(e.target.value)}
                 autoComplete="off"
                 spellCheck={false}
+                style={{ fontFamily: 'monospace' }}
               />
             </div>
 
             {/* Date range */}
-            <div className="row g-3 mb-3">
-              <div className="col-12 col-sm-6">
-                <label
-                  htmlFor="start-date"
-                  className="form-label text-uppercase fw-semibold text-secondary"
-                  style={{ fontSize: '0.65rem', letterSpacing: '0.06em' }}
-                >
-                  Start Date
-                </label>
-                <input
-                  id="start-date"
-                  type="date"
-                  name="start-date"
-                  className="form-control bg-light border"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                />
-              </div>
-              <div className="col-12 col-sm-6">
-                <label
-                  htmlFor="end-date"
-                  className="form-label text-uppercase fw-semibold text-secondary"
-                  style={{ fontSize: '0.65rem', letterSpacing: '0.06em' }}
-                >
-                  End Date
-                </label>
-                <input
-                  id="end-date"
-                  type="date"
-                  name="end-date"
-                  className="form-control bg-light border"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                />
-              </div>
-            </div>
+            <span className="tc-label">From</span>
+            <input
+              id="start-date"
+              type="date"
+              name="start-date"
+              className="tc-input form-control form-control-sm"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              style={{ width: 130 }}
+            />
+            <span className="tc-label">To</span>
+            <input
+              id="end-date"
+              type="date"
+              name="end-date"
+              className="tc-input form-control form-control-sm"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              style={{ width: 130 }}
+            />
 
-            <hr className="text-secondary opacity-25" />
-
-            {/* Platforms */}
-            <h2 className="fw-semibold mb-1" style={{ fontSize: '0.95rem' }}>
-              Platforms
-            </h2>
-            <p className="text-secondary mb-3" style={{ fontSize: '0.85rem' }}>
-              Select the platforms to query trades from
-            </p>
-
-            <fieldset className="border-0 p-0 m-0">
-              <legend className="visually-hidden">Platforms</legend>
+            {/* Platform checkboxes */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.75rem',
+                paddingLeft: '0.25rem',
+                borderLeft: '1px solid var(--tc-border)',
+              }}
+            >
               {(['jupiter', 'pacifica'] as Platform[]).map((p) => {
                 const isActive = platforms.includes(p);
+                const label = p === 'jupiter' ? 'Jupiter' : 'Pacifica';
                 return (
                   <label
                     key={p}
-                    htmlFor={p}
-                    className={`d-flex align-items-start gap-3 p-3 rounded-3 mb-2 cursor-pointer border ${isActive ? 'border-primary bg-primary bg-opacity-10' : 'border-light bg-light'
-                      }`}
-                    style={{ cursor: 'pointer' }}
+                    htmlFor={`plat-${p}`}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.4rem',
+                      cursor: 'pointer',
+                      userSelect: 'none',
+                      fontSize: '0.8rem',
+                      fontWeight: 500,
+                      color: isActive ? 'var(--tc-text)' : 'var(--tc-muted)',
+                      transition: 'color 0.12s',
+                    }}
                   >
                     <input
-                      id={p}
-                      name={p}
+                      id={`plat-${p}`}
                       type="checkbox"
-                      className="form-check-input mt-1 flex-shrink-0"
                       checked={isActive}
                       onChange={(e) => {
                         setPlatforms((prev) =>
                           e.target.checked ? [...prev, p] : prev.filter((x) => x !== p)
                         );
                       }}
+                      style={{ display: 'none' }}
                     />
-                    <div>
-                      <p className="fw-semibold mb-0" style={{ fontSize: '0.9rem' }}>
-                        {p === 'jupiter' ? 'Jupiter' : 'Pacifica'}
-                      </p>
-                      <p className="text-secondary mb-0" style={{ fontSize: '0.8rem' }}>
-                        {p === 'jupiter'
-                          ? 'Query Jupiter Perpetuals trades'
-                          : 'Query Pacifica Finance trades'}
-                      </p>
-                    </div>
+                    {/* Custom checkbox box */}
+                    <span
+                      style={{
+                        width: 15,
+                        height: 15,
+                        borderRadius: 3,
+                        border: `1.5px solid ${isActive ? 'var(--tc-accent)' : 'var(--tc-border)'}`,
+                        background: isActive ? 'var(--tc-accent)' : 'transparent',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                        transition: 'border-color 0.12s, background 0.12s',
+                      }}
+                    >
+                      {isActive && (
+                        <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
+                          <polyline
+                            points="1,3.5 3.2,5.8 8,1"
+                            stroke="#111"
+                            strokeWidth="1.6"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      )}
+                    </span>
+                    {label}
                   </label>
                 );
               })}
-            </fieldset>
-
-            {/* Error */}
-            {error && (
-              <div
-                className="alert alert-danger d-flex align-items-center gap-2 mt-3 py-2 px-3"
-                role="alert"
-              >
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                  aria-hidden="true"
-                  className="flex-shrink-0"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-                <span style={{ fontSize: '0.85rem' }}>{error}</span>
-                <button
-                  type="button"
-                  className="btn-close btn-close-sm ms-auto"
-                  onClick={() => setError('')}
-                  aria-label="Close"
-                />
-              </div>
-            )}
+            </div>
 
             {/* Actions */}
-            <div className="d-flex justify-content-end align-items-center gap-3 mt-4">
+            <button
+              type="submit"
+              disabled={isDisabled}
+              style={{
+                background: 'var(--tc-accent)',
+                border: 'none',
+                borderRadius: 4,
+                color: '#fff',
+                fontSize: '0.8rem',
+                fontWeight: 600,
+                padding: '0.3rem 1rem',
+                cursor: isDisabled ? 'not-allowed' : 'pointer',
+                opacity: isDisabled ? 0.5 : 1,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+              }}
+            >
+              {loading && (
+                <span
+                  className="spinner-border spinner-border-sm"
+                  role="status"
+                  aria-hidden="true"
+                />
+              )}
+              {loading ? 'Loading…' : 'Search'}
+            </button>
+            <button
+              type="button"
+              onClick={handleClear}
+              style={{
+                background: 'transparent',
+                border: '1px solid var(--tc-border)',
+                borderRadius: 4,
+                color: 'var(--tc-muted)',
+                fontSize: '0.8rem',
+                padding: '0.3rem 0.75rem',
+                cursor: 'pointer',
+              }}
+            >
+              X
+            </button>
+          </div>
+
+          {/* Error */}
+          {error && (
+            <div
+              style={{
+                marginTop: '0.5rem',
+                padding: '0.4rem 0.75rem',
+                background: 'rgba(220,38,38,0.08)',
+                border: '1px solid rgba(220,38,38,0.25)',
+                borderRadius: 4,
+                fontSize: '0.78rem',
+                color: 'var(--tc-red)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+              }}
+            >
+              <span style={{ flex: 1 }}>{error}</span>
               <button
                 type="button"
-                className="btn btn-link text-secondary text-decoration-none"
-                onClick={handleClear}
+                onClick={() => setError('')}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--tc-red)',
+                  cursor: 'pointer',
+                  fontSize: '1rem',
+                  lineHeight: 1,
+                  padding: 0,
+                }}
               >
-                Clear
-              </button>
-              <button type="submit" disabled={isDisabled} className="btn btn-primary px-4">
-                {loading ? (
-                  <>
-                    <span
-                      className="spinner-border spinner-border-sm me-2"
-                      role="status"
-                      aria-hidden="true"
-                    />
-                    Loading...
-                  </>
-                ) : (
-                  'Search'
-                )}
+                ×
               </button>
             </div>
-          </form>
-        </div>
+          )}
+        </form>
       </div>
 
-      {/* ── Loading ── */}
+      {/* ── Loading ────────────────────────────────────────────────────────── */}
       {loading && (
-        <div className="d-flex justify-content-center align-items-center gap-3 py-5 text-secondary">
-          <div
-            className="spinner-border spinner-border-sm text-primary"
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 10,
+            padding: '3rem 0',
+            color: 'var(--tc-muted)',
+            fontSize: '0.85rem',
+          }}
+        >
+          <span
+            className="spinner-border spinner-border-sm"
+            style={{ color: 'var(--tc-accent)' }}
             role="status"
             aria-hidden="true"
           />
-          <span style={{ fontSize: '0.9rem' }}>Fetching trades...</span>
+          Fetching trades…
         </div>
       )}
 
-      {/* ── Empty state ── */}
+      {/* ── Empty state ────────────────────────────────────────────────────── */}
       {!loading && hasQueried && trades.length === 0 && (
-        <div className="card border-0 shadow-sm text-center py-5">
-          <div className="card-body">
-            <svg
-              width="40"
-              height="40"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="#adb5bd"
-              strokeWidth="1.5"
-              className="mb-3"
-              aria-hidden="true"
-            >
-              <circle cx="11" cy="11" r="8" />
-              <path d="M21 21l-4.35-4.35" />
-            </svg>
-            <p className="text-secondary mb-0" style={{ fontSize: '0.9rem' }}>
-              No trades found for this period and selected platforms.
-            </p>
-          </div>
+        <div
+          className="tc-panel"
+          style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--tc-muted)' }}
+        >
+          <svg
+            width="36"
+            height="36"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            style={{ marginBottom: 12, display: 'block', margin: '0 auto 12px' }}
+          >
+            <circle cx="11" cy="11" r="8" />
+            <path d="M21 21l-4.35-4.35" />
+          </svg>
+          <p style={{ margin: 0, fontSize: '0.85rem' }}>
+            No trades found for this period and selected platforms.
+          </p>
         </div>
       )}
 
-      {/* ── Results ── */}
+      {/* ── Dashboard ──────────────────────────────────────────────────────── */}
       {!loading && filteredTrades.length > 0 && (
-        <div className="card border-0 shadow-sm mt-2 overflow-hidden">
-          <details open ref={resultsRef}>
-            <summary
-              className="panel-summary px-4 py-3 border-bottom fw-semibold"
-              style={{ fontSize: '0.9rem' }}
-            >
-              Statistics
-              <svg
-                className="panel-chevron"
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                fill="currentColor"
-                viewBox="0 0 16 16"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"
-                />
-              </svg>
-            </summary>
-            <StatisticsTable trades={filteredTrades} />
-          </details>
-
-          <details>
-            <summary
-              className="panel-summary px-4 py-3 border-bottom fw-semibold"
-              style={{ fontSize: '0.9rem' }}
-            >
-              Equity Curve
-              <svg
-                className="panel-chevron"
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                fill="currentColor"
-                viewBox="0 0 16 16"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"
-                />
-              </svg>
-            </summary>
-            <div className="p-4">
-              <EquityCurveChart trades={filteredTrades} />
+        <div ref={resultsRef}>
+          {/* Single flex-wrap row: Equity Curve | Performance | Risk | Trades */}
+          <div
+            className="mb-3"
+            style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'flex-start' }}
+          >
+            {/* Equity Curve */}
+            <div className="tc-panel" style={{ flex: '3 1 360px', minWidth: 0 }}>
+              <div className="tc-panel-header">
+                <span className="tc-panel-title">Equity Curve</span>
+              </div>
+              <div style={{ padding: '0.75rem' }}>
+                <EquityCurveChart trades={filteredTrades} />
+              </div>
             </div>
-          </details>
 
-          <details>
-            <summary className="panel-summary px-4 py-3 fw-semibold" style={{ fontSize: '0.9rem' }}>
-              Trade History
-              <svg
-                className="panel-chevron"
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                fill="currentColor"
-                viewBox="0 0 16 16"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"
-                />
-              </svg>
-            </summary>
+            {/* Performance */}
+            <div className="tc-panel" style={{ flex: '1 1 260px' }}>
+              <div className="tc-panel-header">
+                <span className="tc-panel-title">Performance</span>
+              </div>
+              <PerformanceSection stats={stats} />
+            </div>
+
+            {/* Risk & Drawdown */}
+            <div className="tc-panel" style={{ flex: '1 1 260px' }}>
+              <div className="tc-panel-header">
+                <span className="tc-panel-title">Risk &amp; Drawdown</span>
+              </div>
+              <RiskSection stats={stats} />
+            </div>
+
+            {/* Trades */}
+            <div className="tc-panel" style={{ flex: '1 1 260px' }}>
+              <div className="tc-panel-header">
+                <span className="tc-panel-title">Trades</span>
+              </div>
+              <TradesSection stats={stats} />
+            </div>
+          </div>
+
+          {/* Trade History */}
+          <div className="tc-panel" style={{ overflow: 'hidden' }}>
+            <div className="tc-panel-header">
+              <span className="tc-panel-title">Trade History</span>
+              <span style={{ fontSize: '0.72rem', color: 'var(--tc-muted)' }}>
+                {filteredTrades.length} trades
+              </span>
+            </div>
             <TradeList trades={filteredTrades} />
-          </details>
+          </div>
         </div>
       )}
     </div>

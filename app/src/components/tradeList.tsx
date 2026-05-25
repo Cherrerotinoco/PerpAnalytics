@@ -111,14 +111,10 @@ export default function TradeList({ trades }: { trades: Trade[] }) {
   const Th = ({ label, col }: { label: string; col: SortCol }) => {
     const isActive = sort.col === col;
     return (
-      <th
-        className={`text-uppercase fw-semibold cursor-pointer user-select-none ${isActive ? 'text-primary' : 'text-secondary'}`}
-        style={{ fontSize: '0.65rem', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}
-        onClick={() => handleSort(col)}
-      >
+      <th onClick={() => handleSort(col)}>
         {label}
         {isActive && (
-          <span className="ms-1" style={{ fontSize: '0.6rem' }}>
+          <span style={{ marginLeft: 4, fontSize: '0.6rem' }}>
             {sort.dir === 'asc' ? '▲' : '▼'}
           </span>
         )}
@@ -129,12 +125,17 @@ export default function TradeList({ trades }: { trades: Trade[] }) {
   const startRow = (page - 1) * PAGE_SIZE + 1;
   const endRow = Math.min(page * PAGE_SIZE, sorted.length);
 
+  // Pagination window: up to 5 pages centred on current
+  let winStart = Math.max(1, page - 2);
+  const winEnd = Math.min(totalPages, winStart + 4);
+  winStart = Math.max(1, winEnd - 4);
+
   return (
-    <div className="overflow-hidden">
+    <div>
       {/* ── Table ── */}
       <div className="table-responsive">
-        <table className="table table-hover table-sm align-middle mb-0">
-          <thead className="table-light">
+        <table className="tc-table w-100">
+          <thead>
             <tr>
               <Th label="Date" col="opened" />
               <Th label="Open" col="opened" />
@@ -149,44 +150,48 @@ export default function TradeList({ trades }: { trades: Trade[] }) {
             </tr>
           </thead>
           <tbody>
-            {paginated.map((t, i) => (
+            {paginated.map((t) => (
               <tr
                 key={`${t.source}-${t.symbol}-${t.side}-${t.opened?.getTime()}-${t.closed?.getTime()}`}
               >
-                <td className="text-secondary" style={{ fontSize: '0.8rem' }}>
-                  {fmtDate(t.opened)}
-                </td>
-                <td className="text-secondary" style={{ fontSize: '0.8rem' }}>
-                  {fmtTime(t.opened)}
-                </td>
-                <td className="text-secondary" style={{ fontSize: '0.8rem' }}>
-                  {fmtTime(t.closed)}
-                </td>
-                <td className="font-monospace" style={{ fontSize: '0.8rem' }}>
-                  {t.symbol}
-                </td>
+                <td style={{ color: 'var(--tc-muted)' }}>{fmtDate(t.opened)}</td>
+                <td style={{ color: 'var(--tc-muted)' }}>{fmtTime(t.opened)}</td>
+                <td style={{ color: 'var(--tc-muted)' }}>{fmtTime(t.closed)}</td>
+                <td style={{ fontFamily: 'monospace' }}>{t.symbol}</td>
                 <td>
                   <span
-                    className={`badge fw-semibold ${t.side?.toLowerCase() === 'long' ? 'text-success bg-success-subtle' : 'text-danger bg-danger-subtle'}`}
-                    style={{ fontSize: '0.65rem', letterSpacing: '0.04em' }}
+                    style={{
+                      fontSize: '0.65rem',
+                      fontWeight: 600,
+                      letterSpacing: '0.04em',
+                      padding: '0.15rem 0.5rem',
+                      borderRadius: 3,
+                      color:
+                        t.side?.toLowerCase() === 'long'
+                          ? 'var(--tc-green)'
+                          : 'var(--tc-red)',
+                      background:
+                        t.side?.toLowerCase() === 'long'
+                          ? 'rgba(34,197,94,0.1)'
+                          : 'rgba(220,38,38,0.1)',
+                    }}
                   >
                     {t.side}
                   </span>
                 </td>
-                <td className="text-secondary" style={{ fontSize: '0.8rem' }}>
-                  {t.closeType ?? '—'}
-                </td>
-                <td className={`fw-semibold ${t.pnl >= 0 ? 'text-success' : 'text-danger'}`}>
+                <td style={{ color: 'var(--tc-muted)' }}>{t.closeType ?? '—'}</td>
+                <td
+                  style={{
+                    fontWeight: 600,
+                    color: t.pnl >= 0 ? 'var(--tc-green)' : 'var(--tc-red)',
+                  }}
+                >
                   {t.pnl >= 0 ? '+' : ''}
                   {fmtNum(t.pnl)}
                 </td>
-                <td className="text-secondary" style={{ fontSize: '0.8rem' }}>
-                  {fmtNum(t.fee)}
-                </td>
+                <td style={{ color: 'var(--tc-muted)' }}>{fmtNum(t.fee)}</td>
                 <td>{fmtNum(t.sizeUsd)}</td>
-                <td className="text-secondary" style={{ fontSize: '0.8rem' }}>
-                  {t.source ?? '—'}
-                </td>
+                <td style={{ color: 'var(--tc-muted)' }}>{t.source ?? '—'}</td>
               </tr>
             ))}
           </tbody>
@@ -195,45 +200,78 @@ export default function TradeList({ trades }: { trades: Trade[] }) {
 
       {/* ── Pagination ── */}
       {totalPages > 1 && (
-        <div className="d-flex align-items-center justify-content-between px-4 py-3 border-top">
-          <small className="text-secondary">
-            Showing {startRow}–{endRow} of {sorted.length} trades
-          </small>
-          <nav aria-label="Trade pagination">
-            <ul className="pagination pagination-sm mb-0">
-              <li className={`page-item ${page === 1 ? 'disabled' : ''}`}>
-                <button className="page-link" onClick={() => setPage((p) => Math.max(1, p - 1))}>
-                  ← Prev
-                </button>
-              </li>
-              {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-                let start = Math.max(1, page - 2);
-                const end = Math.min(totalPages, start + 4);
-                start = Math.max(1, end - 4);
-                const pageNum = start + i;
-                if (pageNum > totalPages) {
-                  return null;
-                }
-                return (
-                  <li key={pageNum} className={`page-item ${pageNum === page ? 'active' : ''}`}>
-                    <button className="page-link" onClick={() => setPage(pageNum)}>
-                      {pageNum}
-                    </button>
-                  </li>
-                );
-              })}
-              <li className={`page-item ${page === totalPages ? 'disabled' : ''}`}>
-                <button
-                  className="page-link"
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '0.6rem 0.75rem',
+            borderTop: '1px solid var(--tc-border)',
+          }}
+        >
+          <span style={{ fontSize: '0.72rem', color: 'var(--tc-muted)' }}>
+            {startRow}–{endRow} of {sorted.length}
+          </span>
+          <div style={{ display: 'flex', gap: 4 }}>
+            <PagBtn onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}>
+              ←
+            </PagBtn>
+            {Array.from({ length: winEnd - winStart + 1 }, (_, i) => {
+              const pageNum = winStart + i;
+              return (
+                <PagBtn
+                  key={pageNum}
+                  onClick={() => setPage(pageNum)}
+                  active={pageNum === page}
                 >
-                  Next →
-                </button>
-              </li>
-            </ul>
-          </nav>
+                  {pageNum}
+                </PagBtn>
+              );
+            })}
+            <PagBtn
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+            >
+              →
+            </PagBtn>
+          </div>
         </div>
       )}
     </div>
+  );
+}
+
+// ─── Pagination button ────────────────────────────────────────────────────────
+function PagBtn({
+  children,
+  onClick,
+  disabled,
+  active,
+}: {
+  children: React.ReactNode;
+  onClick: () => void;
+  disabled?: boolean;
+  active?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      style={{
+        minWidth: 28,
+        height: 28,
+        padding: '0 0.4rem',
+        background: active ? 'var(--tc-accent)' : 'transparent',
+        border: `1px solid ${active ? 'var(--tc-accent)' : 'var(--tc-border)'}`,
+        borderRadius: 4,
+        color: active ? '#fff' : disabled ? 'var(--tc-border)' : 'var(--tc-muted)',
+        fontSize: '0.75rem',
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        transition: 'border-color 0.1s, color 0.1s',
+      }}
+    >
+      {children}
+    </button>
   );
 }

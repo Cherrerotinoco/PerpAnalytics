@@ -10,6 +10,7 @@ import {
 } from 'recharts';
 import { Trade } from '../types/tradeTypes';
 import { computeTradeStats } from './statistics';
+import { useTheme } from '../context/ThemeContext';
 
 function fmtMoney(v: number): string {
   return v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -30,11 +31,16 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   const val: number = payload[0].value;
   return (
     <div
-      className="card border shadow-sm px-3 py-2"
-      style={{ fontSize: '0.8rem', minWidth: '150px' }}
+      style={{
+        background: 'var(--tc-surface-2)',
+        border: '1px solid var(--tc-border)',
+        borderRadius: 4,
+        padding: '0.4rem 0.75rem',
+        fontSize: '0.78rem',
+      }}
     >
-      <p className="text-secondary mb-1">{fmtDate(label)}</p>
-      <p className={`fw-semibold mb-0 ${val >= 0 ? 'text-success' : 'text-danger'}`}>
+      <p style={{ color: 'var(--tc-muted)', margin: '0 0 0.2rem' }}>{fmtDate(label)}</p>
+      <p style={{ color: val >= 0 ? 'var(--tc-green)' : 'var(--tc-red)', fontWeight: 600, margin: 0 }}>
         {val >= 0 ? '+' : ''}
         {fmtMoney(val)} $
       </p>
@@ -43,6 +49,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 export default function EquityCurveChart({ trades }: { trades: Trade[] }) {
+  const { theme } = useTheme();
   const stats = computeTradeStats(trades);
 
   const data = stats.equityCurve
@@ -54,7 +61,14 @@ export default function EquityCurveChart({ trades }: { trades: Trade[] }) {
   }
 
   const isPositive = stats.totalPnl >= 0;
-  const lineColor = isPositive ? '#198754' : '#dc3545';
+
+  // Recharts props cannot read CSS variables — resolve colours per theme
+  const lineColor = isPositive
+    ? (theme === 'dark' ? '#22c55e' : '#16a34a')
+    : (theme === 'dark' ? '#ef4444' : '#dc2626');
+  const gridColor = theme === 'dark' ? '#2a2a2a' : '#e5e7eb';
+  const axisColor = theme === 'dark' ? '#6b7280' : '#9ca3af';
+  const refLineColor = theme === 'dark' ? '#374151' : '#d1d5db';
 
   const xMin = data[0].x;
   const xMax = data[data.length - 1].x;
@@ -66,14 +80,28 @@ export default function EquityCurveChart({ trades }: { trades: Trade[] }) {
 
   return (
     <>
-      <div className="d-flex align-items-center justify-content-between mb-3">
-        <div>
-          <small className="text-secondary">
-            {fmtDate(xMin)} — {fmtDate(xMax)}
-          </small>
-        </div>
+      {/* Header: date range + total PnL badge */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: '0.75rem',
+        }}
+      >
+        <span style={{ fontSize: '0.72rem', color: 'var(--tc-muted)' }}>
+          {fmtDate(xMin)} — {fmtDate(xMax)}
+        </span>
         <span
-          className={`badge fw-semibold ${isPositive ? 'text-success bg-success-subtle' : 'text-danger bg-danger-subtle'}`}
+          style={{
+            fontSize: '0.78rem',
+            fontWeight: 700,
+            color: lineColor,
+            background: isPositive ? 'rgba(34,197,94,0.1)' : 'rgba(220,38,38,0.1)',
+            border: `1px solid ${isPositive ? 'rgba(34,197,94,0.2)' : 'rgba(220,38,38,0.2)'}`,
+            padding: '0.15rem 0.6rem',
+            borderRadius: 4,
+          }}
         >
           {isPositive ? '+' : ''}
           {fmtMoney(stats.totalPnl)} $
@@ -82,7 +110,7 @@ export default function EquityCurveChart({ trades }: { trades: Trade[] }) {
 
       <ResponsiveContainer width="100%" height={280}>
         <LineChart data={data} margin={{ top: 8, right: 16, left: 8, bottom: 24 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#dee2e6" />
+          <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
           <XAxis
             dataKey="x"
             type="number"
@@ -90,15 +118,15 @@ export default function EquityCurveChart({ trades }: { trades: Trade[] }) {
             domain={[xMin, xMax]}
             ticks={ticks}
             tickFormatter={fmtDate}
-            tick={{ fill: '#6c757d', fontSize: 11 }}
+            tick={{ fill: axisColor, fontSize: 11 }}
             tickLine={false}
-            axisLine={{ stroke: '#dee2e6' }}
+            axisLine={{ stroke: gridColor }}
             angle={-30}
             textAnchor="end"
             height={48}
           />
           <YAxis
-            tick={{ fill: '#6c757d', fontSize: 11 }}
+            tick={{ fill: axisColor, fontSize: 11 }}
             tickLine={false}
             axisLine={false}
             domain={['auto', 'auto']}
@@ -108,7 +136,7 @@ export default function EquityCurveChart({ trades }: { trades: Trade[] }) {
             width={72}
           />
           <Tooltip content={<CustomTooltip />} />
-          <ReferenceLine y={0} stroke="#adb5bd" strokeDasharray="4 4" />
+          <ReferenceLine y={0} stroke={refLineColor} strokeDasharray="4 4" />
           <Line
             type="monotone"
             dataKey="y"

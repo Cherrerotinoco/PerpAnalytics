@@ -1,21 +1,244 @@
-/* ── Details / Summary accordion ── */
-.panel-summary {
-  list-style: none;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  cursor: pointer;
+/* ─── Base ─────────────────────────────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
 }
 
-.panel-summary::-webkit-details-marker {
+body {
+  background-color: var(--tc-bg);
+  color: var(--tc-text);
+  font-family:
+    'Inter',
+    system-ui,
+    -apple-system,
+    sans-serif;
+}
+
+/* ─── Design tokens — dark (default) ────────────────────────────────────────── */
+:root {
+  --tc-bg: #0d0d0d;
+  --tc-surface: #141414;
+  --tc-surface-2: #1e1e1e;
+  --tc-surface-3: #1a1a1a; /* input / subtle bg */
+  --tc-border: #2a2a2a;
+  --tc-text: #e0e0e0;
+  --tc-muted: #6b7280;
+  --tc-green: #22c55e;
+  --tc-red: #ef4444;
+  --tc-amber: #f59e0b;
+  --tc-accent: #f59e0b; /* primary brand colour */
+  --tc-radius: 6px;
+}
+
+/* ─── Design tokens — light ──────────────────────────────────────────────────── */
+[data-theme='light'] {
+  --tc-bg: #f3f4f6;
+  --tc-surface: #ffffff;
+  --tc-surface-2: #f3f4f6;
+  --tc-surface-3: #ffffff;
+  --tc-border: #e5e7eb;
+  --tc-text: #111827;
+  --tc-muted: #6b7280;
+  --tc-green: #16a34a;
+  --tc-red: #dc2626;
+  --tc-amber: #d97706;
+  --tc-accent: #d97706; /* slightly darker for contrast on white */
+}
+
+/* Bootstrap dark token overrides */
+[data-bs-theme='dark'] {
+  --bs-body-bg: var(--tc-bg);
+  --bs-body-color: var(--tc-text);
+  --bs-success-text-emphasis: #22c55e;
+  --bs-danger-text-emphasis: #ef4444;
+  --bs-warning-text-emphasis: #f59e0b;
+  --bs-border-color: var(--tc-border);
+}
+
+/* Bootstrap light token overrides */
+[data-bs-theme='light'] {
+  --bs-body-bg: var(--tc-bg);
+  --bs-body-color: var(--tc-text);
+  --bs-success-text-emphasis: #16a34a;
+  --bs-danger-text-emphasis: #dc2626;
+  --bs-warning-text-emphasis: #d97706;
+  --bs-border-color: var(--tc-border);
+}
+
+/* ─── Panels ────────────────────────────────────────────────────────────────── */
+.tc-panel {
+  background-color: var(--tc-surface) !important;
+  border: 1px solid var(--tc-border) !important;
+  border-radius: var(--tc-radius) !important;
+}
+
+.tc-card {
+  background-color: var(--tc-surface-2) !important;
+  border: 1px solid var(--tc-border) !important;
+  border-radius: var(--tc-radius) !important;
+}
+
+/* ─── Typography ────────────────────────────────────────────────────────────── */
+.tc-label {
+  font-size: 0.62rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--tc-muted);
+}
+
+.tc-value {
+  font-size: 1.05rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+.tc-green { color: var(--tc-green) !important; }
+.tc-red   { color: var(--tc-red)   !important; }
+.tc-amber { color: var(--tc-amber) !important; }
+.tc-muted-text { color: var(--tc-muted) !important; }
+
+/* ─── Panel header ──────────────────────────────────────────────────────────── */
+.tc-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 1rem;
+  border-bottom: 1px solid var(--tc-border);
+}
+
+.tc-panel-title {
+  font-size: 0.65rem !important;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--tc-muted);
+  margin: 0;
+}
+
+/* ─── Dividers ──────────────────────────────────────────────────────────────── */
+.tc-divider-v {
+  width: 1px;
+  background: var(--tc-border);
+  flex-shrink: 0;
+  align-self: stretch;
+}
+
+.tc-divider-h {
+  height: 1px;
+  background: var(--tc-border);
+}
+
+/* ─── Platform toggle pills ─────────────────────────────────────────────────── */
+.tc-toggle {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.7rem;
+  border-radius: 4px;
+  border: 1px solid var(--tc-border);
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--tc-muted);
+  background: transparent;
+  user-select: none;
+  transition: border-color 0.12s, color 0.12s, background 0.12s;
+  white-space: nowrap;
+}
+
+.tc-toggle:hover {
+  border-color: var(--tc-muted);
+  color: var(--tc-text);
+}
+
+.tc-toggle.active {
+  border-color: var(--tc-accent);
+  color: var(--tc-accent);
+  background: rgba(245, 158, 11, 0.08);
+}
+
+.tc-toggle input[type='checkbox'] {
   display: none;
 }
 
-.panel-summary .panel-chevron {
-  transition: transform 0.2s ease;
-  color: var(--bs-secondary-color);
+/* ─── Inputs ────────────────────────────────────────────────────────────────── */
+.tc-input {
+  background-color: var(--tc-surface-3) !important;
+  border: 1px solid var(--tc-border) !important;
+  border-radius: var(--tc-radius) !important;
+  color: var(--tc-text) !important;
+  font-size: 0.82rem !important;
 }
 
-details[open] > .panel-summary .panel-chevron {
-  transform: rotate(90deg);
+.tc-input::placeholder {
+  color: var(--tc-muted) !important;
+}
+
+.tc-input:focus {
+  background-color: var(--tc-surface-3) !important;
+  border-color: var(--tc-muted) !important;
+  box-shadow: none !important;
+  color: var(--tc-text) !important;
+}
+
+/* ─── Table ─────────────────────────────────────────────────────────────────── */
+.tc-table {
+  font-size: 0.8rem;
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.tc-table thead th {
+  font-size: 0.62rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--tc-muted);
+  border-bottom: 1px solid var(--tc-border) !important;
+  background: transparent !important;
+  padding: 0.5rem 0.75rem;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+}
+
+.tc-table thead th:hover {
+  color: var(--tc-text);
+}
+
+.tc-table tbody tr {
+  border-bottom: 1px solid var(--tc-surface-2) !important;
+}
+
+.tc-table tbody tr:hover {
+  background-color: var(--tc-surface-2) !important;
+}
+
+.tc-table tbody td {
+  padding: 0.45rem 0.75rem;
+  border: none !important;
+  vertical-align: middle;
+  color: var(--tc-text);
+}
+
+/* ─── Progress bar ──────────────────────────────────────────────────────────── */
+.tc-progress {
+  height: 4px;
+  background-color: var(--tc-surface-2);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.tc-progress-green {
+  height: 100%;
+  background-color: var(--tc-green);
+  border-radius: 2px 0 0 2px;
+}
+
+.tc-progress-red {
+  height: 100%;
+  background-color: var(--tc-red);
+  border-radius: 0 2px 2px 0;
 }

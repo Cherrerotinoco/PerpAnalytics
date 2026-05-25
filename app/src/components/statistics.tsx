@@ -1,4 +1,3 @@
-import { useMemo } from 'react';
 import { Trade } from '../types/tradeTypes';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -46,7 +45,6 @@ function downsideStdDev(values: number[]): number {
 
 // ─── Stats computation ────────────────────────────────────────────────────────
 export function computeTradeStats(trades: Trade[]): TradeStats {
-  // Ordenar por fecha de cierre ascendente (timestamp de la API) para curva cronológica
   const sortedTrades = [...trades].sort((a, b) => {
     const tA = a.closed?.getTime() ?? a.opened?.getTime() ?? 0;
     const tB = b.closed?.getTime() ?? b.opened?.getTime() ?? 0;
@@ -79,7 +77,6 @@ export function computeTradeStats(trades: Trade[]): TradeStats {
     equityCurve.push(Number(totalPnl.toFixed(2)));
     pnlList.push(t.pnl);
 
-    // Label: timestamp en ms para eje X continuo. Solo fechas válidas (> 0)
     const dateRef = t.closed ?? t.opened;
     const ts = dateRef instanceof Date && !isNaN(dateRef.getTime()) ? dateRef.getTime() : null;
     equityCurveLabels.push(ts !== null ? String(ts) : '');
@@ -169,7 +166,7 @@ function fmtNum(n: number, decimals = 2): string {
   if (!isFinite(n)) {
     return '∞';
   }
-  return n.toLocaleString('es-ES', {
+  return n.toLocaleString('en-US', {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   });
@@ -193,21 +190,21 @@ function sharpeLabel(v: number): string {
   return 'Negative';
 }
 
-// ─── Metric color helpers → Bootstrap text classes ───────────────────────────
+// ─── Color helpers ────────────────────────────────────────────────────────────
 function posNegClass(v: number): string {
-  return v >= 0 ? 'text-success' : 'text-danger';
+  return v >= 0 ? 'tc-green' : 'tc-red';
 }
 function ratioClass(v: number): string {
   if (v >= 1) {
-    return 'text-success';
+    return 'tc-green';
   }
   if (v >= 0) {
-    return 'text-warning';
+    return 'tc-amber';
   }
-  return 'text-danger';
+  return 'tc-red';
 }
 
-// ─── Metric card sub-component ────────────────────────────────────────────────
+// ─── Shared UI primitives ─────────────────────────────────────────────────────
 function Metric({
   label,
   value,
@@ -220,210 +217,167 @@ function Metric({
   colorClass?: string;
 }) {
   return (
-    <div className="card h-100 border-0 bg-light">
-      <div className="card-body p-3">
-        <p
-          className="text-uppercase text-secondary fw-semibold mb-1"
-          style={{ fontSize: '0.65rem', letterSpacing: '0.06em' }}
-        >
-          {label}
+    <div className="tc-card" style={{ padding: '0.5rem 0.65rem' }}>
+      <p className="tc-label mb-1">{label}</p>
+      <p className={`tc-value mb-0 ${colorClass ?? ''}`}>{value}</p>
+      {sub && (
+        <p style={{ fontSize: '0.65rem', color: 'var(--tc-muted)', margin: 0, lineHeight: 1.3 }}>
+          {sub}
         </p>
-        <p className={`fs-5 fw-bold mb-0 ${colorClass ?? ''}`}>{value}</p>
-        {sub && (
-          <p className="text-secondary mb-0" style={{ fontSize: '0.7rem' }}>
-            {sub}
-          </p>
-        )}
-      </div>
+      )}
     </div>
   );
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
-export default function TradeStatsTable({ trades }: { trades: Trade[] }) {
-  const st = useMemo(() => computeTradeStats(trades), [trades]);
+function MetricGrid({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.4rem' }}>
+      {children}
+    </div>
+  );
+}
+
+// ─── Performance section ──────────────────────────────────────────────────────
+export function PerformanceSection({ stats: st }: { stats: TradeStats }) {
+  return (
+    <div style={{ padding: '0.75rem' }}>
+      <MetricGrid>
+        <Metric
+          label="Total PnL"
+          value={`${sign(st.totalPnl)}${fmtNum(st.totalPnl)} $`}
+          colorClass={posNegClass(st.totalPnl)}
+        />
+        <Metric
+          label="Profit Factor"
+          value={isFinite(st.profitFactor) ? fmtNum(st.profitFactor) : '∞'}
+          sub={st.profitFactor >= 1 ? 'Profitable' : 'Unprofitable'}
+          colorClass={st.profitFactor >= 1 ? 'tc-green' : 'tc-red'}
+        />
+        <Metric label="Max Profit" value={`+${fmtNum(st.maxWin)} $`} colorClass="tc-green" />
+        <Metric label="Max Loss" value={`-${fmtNum(st.maxLoss)} $`} colorClass="tc-red" />
+        <Metric
+          label="Expectancy"
+          value={`${sign(st.expectancy)}${fmtNum(st.expectancy)} $`}
+          sub="per trade"
+          colorClass={posNegClass(st.expectancy)}
+        />
+        <Metric
+          label="Risk / Reward"
+          value={isFinite(st.riskReward) ? fmtNum(st.riskReward) : '∞'}
+          sub="avg win / avg loss"
+          colorClass={st.riskReward >= 1 ? 'tc-green' : ''}
+        />
+      </MetricGrid>
+    </div>
+  );
+}
+
+// ─── Risk & Drawdown section ──────────────────────────────────────────────────
+export function RiskSection({ stats: st }: { stats: TradeStats }) {
+  return (
+    <div style={{ padding: '0.75rem' }}>
+      <MetricGrid>
+        <Metric
+          label="Max Drawdown"
+          value={`-${fmtNum(st.maxDrawdown)} $`}
+          sub={`${fmtNum(st.maxDrawdownPct, 1)}% from peak`}
+          colorClass="tc-red"
+        />
+        <Metric
+          label="Calmar Ratio"
+          value={isFinite(st.calmarRatio) ? fmtNum(st.calmarRatio) : '∞'}
+          sub="PnL / max drawdown"
+          colorClass={ratioClass(st.calmarRatio)}
+        />
+        <Metric
+          label="Sharpe Ratio"
+          value={fmtNum(st.sharpeRatio)}
+          sub={sharpeLabel(st.sharpeRatio)}
+          colorClass={ratioClass(st.sharpeRatio)}
+        />
+        <Metric
+          label="Sortino Ratio"
+          value={isFinite(st.sortino) ? fmtNum(st.sortino) : '∞'}
+          sub="downside vol. only"
+          colorClass={ratioClass(st.sortino)}
+        />
+        <Metric
+          label="Recovery Factor"
+          value={isFinite(st.recoveryFactor) ? fmtNum(st.recoveryFactor) : '∞'}
+          sub="profit vs risk"
+          colorClass={st.recoveryFactor >= 1 ? 'tc-green' : 'tc-red'}
+        />
+      </MetricGrid>
+    </div>
+  );
+}
+
+// ─── Trades section ───────────────────────────────────────────────────────────
+export function TradesSection({ stats: st }: { stats: TradeStats }) {
   const breakeven = st.totalTrades - st.winTrades - st.lossTrades;
 
   return (
-    <div className="p-4">
-      {/* ── Performance ── */}
-      <p
-        className="text-uppercase text-secondary fw-semibold mb-2"
-        style={{ fontSize: '0.7rem', letterSpacing: '0.08em' }}
-      >
-        Performance
-      </p>
-      <div className="row row-cols-2 row-cols-sm-3 row-cols-md-3 g-2 mb-3">
-        <div className="col">
-          <Metric
-            label="Total PnL"
-            value={`${sign(st.totalPnl)}${fmtNum(st.totalPnl)} $`}
-            colorClass={posNegClass(st.totalPnl)}
-          />
-        </div>
-        <div className="col">
-          <Metric label="Max Profit" value={`+${fmtNum(st.maxWin)} $`} colorClass="text-success" />
-        </div>
-        <div className="col">
-          <Metric label="Max Loss" value={`-${fmtNum(st.maxLoss)} $`} colorClass="text-danger" />
-        </div>
-        <div className="col">
-          <Metric
-            label="Profit Factor"
-            value={isFinite(st.profitFactor) ? fmtNum(st.profitFactor) : '∞'}
-            sub={st.profitFactor >= 1 ? 'Profitable' : 'Unprofitable'}
-            colorClass={st.profitFactor >= 1 ? 'text-success' : 'text-danger'}
-          />
-        </div>
-        <div className="col">
-          <Metric
-            label="Expectancy"
-            value={`${sign(st.expectancy)}${fmtNum(st.expectancy)} $`}
-            sub="per trade"
-            colorClass={posNegClass(st.expectancy)}
-          />
-        </div>
-        <div className="col">
-          <Metric
-            label="Risk / Reward"
-            value={isFinite(st.riskReward) ? fmtNum(st.riskReward) : '∞'}
-            sub="avg win / avg loss"
-            colorClass={st.riskReward >= 1 ? 'text-success' : ''}
-          />
-        </div>
-      </div>
-
-      <hr className="text-secondary opacity-25" />
-
-      {/* ── Risk & Drawdown ── */}
-      <p
-        className="text-uppercase text-secondary fw-semibold mb-2"
-        style={{ fontSize: '0.7rem', letterSpacing: '0.08em' }}
-      >
-        Risk & Drawdown
-      </p>
-      <div className="row row-cols-2 row-cols-sm-3 row-cols-md-5 g-2 mb-3">
-        <div className="col">
-          <Metric
-            label="Max Drawdown"
-            value={`-${fmtNum(st.maxDrawdown)} $`}
-            sub={`${fmtNum(st.maxDrawdownPct, 1)}% from peak`}
-            colorClass="text-danger"
-          />
-        </div>
-        <div className="col">
-          <Metric
-            label="Calmar Ratio"
-            value={isFinite(st.calmarRatio) ? fmtNum(st.calmarRatio) : '∞'}
-            sub="PnL / max drawdown"
-            colorClass={ratioClass(st.calmarRatio)}
-          />
-        </div>
-        <div className="col">
-          <Metric
-            label="Recovery Factor"
-            value={isFinite(st.recoveryFactor) ? fmtNum(st.recoveryFactor) : '∞'}
-            sub="profit vs risk"
-            colorClass={st.recoveryFactor >= 1 ? 'text-success' : 'text-danger'}
-          />
-        </div>
-        <div className="col">
-          <Metric
-            label="Sharpe Ratio"
-            value={fmtNum(st.sharpeRatio)}
-            sub={sharpeLabel(st.sharpeRatio)}
-            colorClass={ratioClass(st.sharpeRatio)}
-          />
-        </div>
-        <div className="col">
-          <Metric
-            label="Sortino Ratio"
-            value={isFinite(st.sortino) ? fmtNum(st.sortino) : '∞'}
-            sub="downside vol. only"
-            colorClass={ratioClass(st.sortino)}
-          />
-        </div>
-      </div>
-
-      <hr className="text-secondary opacity-25" />
-
-      {/* ── Trades ── */}
-      <p
-        className="text-uppercase text-secondary fw-semibold mb-2"
-        style={{ fontSize: '0.7rem', letterSpacing: '0.08em' }}
-      >
-        Trades
-      </p>
-      <div className="row row-cols-2 row-cols-sm-4 g-2 mb-3">
-        <div className="col">
-          <Metric
-            label="Total"
-            value={String(st.totalTrades)}
-            sub={breakeven > 0 ? `${breakeven} breakeven` : undefined}
-          />
-        </div>
-        <div className="col">
-          <Metric
-            label="Win Rate"
-            value={fmtPct(st.winRate)}
-            sub={`${st.winTrades} wins`}
-            colorClass={st.winRate >= 50 ? 'text-success' : 'text-danger'}
-          />
-        </div>
-        <div className="col">
-          <Metric
-            label="Loss Rate"
-            value={fmtPct(st.lossRate)}
-            sub={`${st.lossTrades} losses`}
-            colorClass="text-danger"
-          />
-        </div>
-        {/* Racha card */}
-        <div className="col">
-          <div className="card h-100 border-0 bg-light">
-            <div className="card-body p-3">
-              <p
-                className="text-uppercase text-secondary fw-semibold mb-2"
-                style={{ fontSize: '0.65rem', letterSpacing: '0.06em' }}
-              >
-                Max Streaks
-              </p>
-              <div className="d-flex justify-content-between align-items-center mb-1">
-                <small className="text-secondary">Consec. Wins</small>
-                <span className="fs-5 fw-bold text-success">{st.maxConsecWins}</span>
-              </div>
-              <div className="d-flex justify-content-between align-items-center">
-                <small className="text-secondary">Consec. Losses</small>
-                <span className="fs-5 fw-bold text-danger">{st.maxConsecLosses}</span>
-              </div>
-            </div>
+    <div style={{ padding: '0.75rem' }}>
+      <MetricGrid>
+        <Metric
+          label="Total"
+          value={String(st.totalTrades)}
+          sub={breakeven > 0 ? `${breakeven} breakeven` : undefined}
+        />
+        <Metric
+          label="Win Rate"
+          value={fmtPct(st.winRate)}
+          sub={`${st.winTrades} wins`}
+          colorClass={st.winRate >= 50 ? 'tc-green' : 'tc-red'}
+        />
+        <Metric
+          label="Loss Rate"
+          value={fmtPct(st.lossRate)}
+          sub={`${st.lossTrades} losses`}
+          colorClass="tc-red"
+        />
+        {/* Streaks card */}
+        <div className="tc-card" style={{ padding: '0.5rem 0.65rem' }}>
+          <p className="tc-label mb-2">Max Streaks</p>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '0.3rem',
+            }}
+          >
+            <span style={{ fontSize: '0.65rem', color: 'var(--tc-muted)' }}>Consec. Wins</span>
+            <span className="tc-value tc-green" style={{ fontSize: '0.95rem' }}>
+              {st.maxConsecWins}
+            </span>
+          </div>
+          <div
+            style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+          >
+            <span style={{ fontSize: '0.65rem', color: 'var(--tc-muted)' }}>Consec. Losses</span>
+            <span className="tc-value tc-red" style={{ fontSize: '0.95rem' }}>
+              {st.maxConsecLosses}
+            </span>
           </div>
         </div>
-      </div>
+      </MetricGrid>
 
-      {/* ── Win / loss progress bar ── */}
-      <div className="mt-2">
-        <div className="d-flex justify-content-between mb-1">
-          <small className="fw-semibold text-success">Won {fmtPct(st.winRate)}</small>
-          <small className="fw-semibold text-danger">Lost {fmtPct(st.lossRate)}</small>
+      {/* Win / loss bar */}
+      <div style={{ marginTop: '0.75rem' }}>
+        <div
+          style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.3rem' }}
+        >
+          <span style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--tc-green)' }}>
+            Won {fmtPct(st.winRate)}
+          </span>
+          <span style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--tc-red)' }}>
+            Lost {fmtPct(st.lossRate)}
+          </span>
         </div>
-        <div className="progress" style={{ height: '8px' }}>
-          <div
-            className="progress-bar bg-success"
-            role="progressbar"
-            style={{ width: `${st.winRate}%` }}
-            aria-valuenow={st.winRate}
-            aria-valuemin={0}
-            aria-valuemax={100}
-          />
-          <div
-            className="progress-bar bg-danger"
-            role="progressbar"
-            style={{ width: `${st.lossRate}%` }}
-            aria-valuenow={st.lossRate}
-            aria-valuemin={0}
-            aria-valuemax={100}
-          />
+        <div className="tc-progress" style={{ display: 'flex' }}>
+          <div className="tc-progress-green" style={{ width: `${st.winRate}%` }} />
+          <div className="tc-progress-red" style={{ width: `${st.lossRate}%` }} />
         </div>
       </div>
     </div>

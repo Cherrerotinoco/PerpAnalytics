@@ -1,0 +1,41 @@
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+
+export type Theme = 'dark' | 'light';
+
+interface ThemeContextType {
+  theme: Theme;
+  toggleTheme: () => void;
+}
+
+const ThemeContext = createContext<ThemeContextType>({
+  theme: 'dark',
+  toggleTheme: () => {},
+});
+
+export const useTheme = () => useContext(ThemeContext);
+
+export function ThemeProvider({ children }: { children: ReactNode }) {
+  const [theme, setTheme] = useState<Theme>(() => {
+    const stored = localStorage.getItem('tc-theme') as Theme | null;
+    const initial = stored ?? 'dark';
+    // Set eagerly to avoid a flash of the wrong theme on first paint
+    document.documentElement.setAttribute('data-theme', initial);
+    document.documentElement.setAttribute('data-bs-theme', initial);
+    return initial;
+  });
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    document.documentElement.setAttribute('data-bs-theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme((prev) => {
+      const next: Theme = prev === 'dark' ? 'light' : 'dark';
+      localStorage.setItem('tc-theme', next);
+      return next;
+    });
+  };
+
+  return <ThemeContext.Provider value={{ theme, toggleTheme }}>{children}</ThemeContext.Provider>;
+}
