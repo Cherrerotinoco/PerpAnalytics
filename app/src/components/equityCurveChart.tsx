@@ -2,7 +2,7 @@ import {
   LineChart, Line, XAxis, YAxis, Tooltip,
   ResponsiveContainer, CartesianGrid, ReferenceLine,
 } from 'recharts';
-import { Trade } from '../../types/tradeTypes';
+import { Trade } from '../types/tradeTypes';
 import { computeTradeStats } from './statistics';
 
 function fmtMoney(v: number): string {

@@ -1,5 +1,4 @@
-import React from 'react';
-import { Trade } from '../../types/tradeTypes';
+import { Trade } from '../types/tradeTypes';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 export interface TradeStats {

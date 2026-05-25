@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
-import { Trade } from '../../types/tradeTypes';
-import { buildJupiterTrades } from '../../utils/normalizeJupiter';
-import { buildPacificaTrades } from '../../utils/normalizePacifica';
+import { Trade } from '../types/tradeTypes';
+import { buildJupiterTrades } from '../utils/normalizeJupiter';
+import { buildPacificaTrades } from '../utils/normalizePacifica';
 import StatisticsTable from './statistics';
 import TradeList from './tradeList';
 import EquityCurveChart from './equityCurveChart';
@@ -30,23 +30,7 @@ export default function WalletForm({ wallet, setWallet, addRecentWallet }: Walle
   const toTimestamp = (date: string): string | undefined =>
     date ? String(Math.floor(new Date(date).getTime() / 1000)) : undefined;
 
-  const buildUrl = (source: Platform): string => {
-    const params: Record<string, string> = {};
-    const startTs = toTimestamp(startDate);
-    const endTs = toTimestamp(endDate);
 
-    console.log('buildUrl', { wallet, startTs, endTs, source });
-
-    if (startTs) params.startTime = startTs;
-    if (endTs) params.endTime = endTs;
-    if (source === 'jupiter') {
-      params.walletAddress = wallet;
-      return `https://perps-api.jup.ag/v1/trades?` + new URLSearchParams(params).toString();
-    } else {
-      params.account = wallet;
-      return `https://api.pacifica.fi/api/v1/positions/history?` + new URLSearchParams(params).toString();
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,11 +67,37 @@ export default function WalletForm({ wallet, setWallet, addRecentWallet }: Walle
     try {
       const results = await Promise.all(
         platforms.map(async (platform) => {
-          const res = await fetch(buildUrl(platform));
-          const data = await res.json();
-          return platform === 'jupiter'
-            ? buildJupiterTrades(data.dataList || [])
-            : buildPacificaTrades(data.data || []);
+          if (platform === 'jupiter') {
+            let allTrades: Trade[] = [];
+            const fetchJupiter = async (start: number, end: number): Promise<Trade[]> => {
+              const url = `https://perps-api.jup.ag/v1/trades?walletAddress=${wallet}&start=${start}&end=${end}`;
+              const res = await fetch(url);
+              if (!res.ok) {
+                throw new Error(`Error fetching Jupiter data: ${res.statusText}`);
+              }
+              const data = await res.json();
+
+              const totalWalletTrades = data.count;
+              const newTrades = buildJupiterTrades(data.trades);
+              allTrades = [...allTrades, ...newTrades];
+
+              console.log(`Fetched Jupiter trades ${start}–${end}`);
+              if (totalWalletTrades > end) {
+                return fetchJupiter(totalWalletTrades, end + 1000);
+              } else {
+                return allTrades;
+              }
+            }
+            return fetchJupiter(0, 1000);
+          }
+          if (platform === 'pacifica') {
+            const url = `https://api.pacificafinance.io/v1/fills?wallet=${wallet}&start_time=${toTimestamp(startDate)}&end_time=${toTimestamp(endDate)}`;
+            const res = await fetch(url);
+            if (!res.ok) throw new Error(`Error fetching Pacifica data: ${res.statusText}`);
+            const data = await res.json();
+            return buildPacificaTrades(data.fills);
+          }
+          return [];
         })
       );
 

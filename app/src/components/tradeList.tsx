@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Trade } from '../../types/tradeTypes';
+import { useState } from 'react';
+import { Trade } from '../types/tradeTypes';
 
 // ─── Formatters ───────────────────────────────────────────────────────────────
 function fmtDate(d: Date | null | undefined): string {
@@ -33,16 +33,16 @@ export default function TradeList({ trades }: { trades: Trade[] }) {
   // ── Sort ──
   const getValue = (t: Trade, col: SortCol) => {
     switch (col) {
-      case 'opened':    return t.opened;
-      case 'closed':    return t.closed;
-      case 'symbol':    return t.symbol;
-      case 'side':      return t.side;
+      case 'opened': return t.opened;
+      case 'closed': return t.closed;
+      case 'symbol': return t.symbol;
+      case 'side': return t.side;
       case 'closeType': return t.closeType;
-      case 'pnl':       return t.pnl;
-      case 'fee':       return t.fee;
-      case 'sizeUsd':   return t.sizeUsd;
-      case 'source':    return t.source;
-      default:          return '';
+      case 'pnl': return t.pnl;
+      case 'fee': return t.fee;
+      case 'sizeUsd': return t.sizeUsd;
+      case 'source': return t.source;
+      default: return '';
     }
   };
 
@@ -112,16 +112,16 @@ export default function TradeList({ trades }: { trades: Trade[] }) {
         <table className="table table-hover table-sm align-middle mb-0">
           <thead className="table-light">
             <tr>
-              <Th label="Fecha"       col="opened"    />
-              <Th label="Apertura"    col="opened"    />
-              <Th label="Cierre"      col="closed"    />
-              <Th label="Símbolo"     col="symbol"    />
-              <Th label="Lado"        col="side"      />
+              <Th label="Fecha" col="opened" />
+              <Th label="Apertura" col="opened" />
+              <Th label="Cierre" col="closed" />
+              <Th label="Símbolo" col="symbol" />
+              <Th label="Lado" col="side" />
               <Th label="Tipo cierre" col="closeType" />
-              <Th label="PnL"         col="pnl"       />
-              <Th label="Fee"         col="fee"       />
-              <Th label="Tamaño"      col="sizeUsd"   />
-              <Th label="Fuente"      col="source"    />
+              <Th label="PnL" col="pnl" />
+              <Th label="Fee" col="fee" />
+              <Th label="Tamaño" col="sizeUsd" />
+              <Th label="Fuente" col="source" />
             </tr>
           </thead>
           <tbody>
