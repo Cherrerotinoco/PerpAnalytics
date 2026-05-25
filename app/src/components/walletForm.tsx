@@ -10,7 +10,6 @@ import {
 } from './statistics';
 import TradeList from './tradeList';
 import EquityCurveChart from './equityCurveChart';
-import PnlDistributionChart from './PnlDistributionChart';
 import PnlCalendar from './PnlCalendar';
 import PnlBySymbolChart from './PnlBySymbolChart';
 
@@ -230,22 +229,21 @@ export default function WalletForm({ wallet, setWallet, addRecentWallet }: Walle
   return (
     <div>
       {/* ── Search bar ─────────────────────────────────────────────────────── */}
-      <div className="tc-panel mb-3" style={{ padding: '0.6rem 0.75rem' }}>
+      <div className="tc-panel tc-search-pad mb-3">
         <form onSubmit={handleSubmit} autoComplete="off">
           <div className="d-flex align-items-center gap-2 flex-wrap">
             {/* Wallet address */}
-            <div style={{ flex: '1 1 200px', minWidth: 0 }}>
+            <div className="tc-wallet-input-wrap">
               <input
                 id="wallet"
                 type="text"
                 name="wallet"
-                className="tc-input form-control form-control-sm"
+                className="tc-input form-control form-control-sm font-monospace"
                 placeholder="Wallet address…"
                 value={wallet}
                 onChange={(e) => setWallet(e.target.value)}
                 autoComplete="off"
                 spellCheck={false}
-                style={{ fontFamily: 'monospace' }}
               />
             </div>
 
@@ -255,32 +253,22 @@ export default function WalletForm({ wallet, setWallet, addRecentWallet }: Walle
               id="start-date"
               type="date"
               name="start-date"
-              className="tc-input form-control form-control-sm"
+              className="tc-input form-control form-control-sm tc-date-input"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              style={{ width: 130 }}
             />
             <span className="tc-label">To</span>
             <input
               id="end-date"
               type="date"
               name="end-date"
-              className="tc-input form-control form-control-sm"
+              className="tc-input form-control form-control-sm tc-date-input"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              style={{ width: 130 }}
             />
 
             {/* Platform checkboxes */}
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.75rem',
-                paddingLeft: '0.25rem',
-                borderLeft: '1px solid var(--tc-border)',
-              }}
-            >
+            <div className="tc-platform-group">
               {(['jupiter', 'pacifica'] as Platform[]).map((p) => {
                 const isActive = platforms.includes(p);
                 const label = p === 'jupiter' ? 'Jupiter' : 'Pacifica';
@@ -288,17 +276,8 @@ export default function WalletForm({ wallet, setWallet, addRecentWallet }: Walle
                   <label
                     key={p}
                     htmlFor={`plat-${p}`}
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '0.4rem',
-                      cursor: 'pointer',
-                      userSelect: 'none',
-                      fontSize: '0.8rem',
-                      fontWeight: 500,
-                      color: isActive ? 'var(--tc-text)' : 'var(--tc-muted)',
-                      transition: 'color 0.12s',
-                    }}
+                    className="tc-platform-label"
+                    style={{ color: isActive ? 'var(--tc-text)' : 'var(--tc-muted)' }}
                   >
                     <input
                       id={`plat-${p}`}
@@ -309,21 +288,13 @@ export default function WalletForm({ wallet, setWallet, addRecentWallet }: Walle
                           e.target.checked ? [...prev, p] : prev.filter((x) => x !== p)
                         );
                       }}
-                      style={{ display: 'none' }}
                     />
                     {/* Custom checkbox box */}
                     <span
+                      className="tc-checkbox-box"
                       style={{
-                        width: 15,
-                        height: 15,
-                        borderRadius: 3,
                         border: `1.5px solid ${isActive ? 'var(--tc-accent)' : 'var(--tc-border)'}`,
                         background: isActive ? 'var(--tc-accent)' : 'transparent',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        flexShrink: 0,
-                        transition: 'border-color 0.12s, background 0.12s',
                       }}
                     >
                       {isActive && (
@@ -345,24 +316,7 @@ export default function WalletForm({ wallet, setWallet, addRecentWallet }: Walle
             </div>
 
             {/* Actions */}
-            <button
-              type="submit"
-              disabled={isDisabled}
-              style={{
-                background: 'var(--tc-accent)',
-                border: 'none',
-                borderRadius: 4,
-                color: '#fff',
-                fontSize: '0.8rem',
-                fontWeight: 600,
-                padding: '0.3rem 1rem',
-                cursor: isDisabled ? 'not-allowed' : 'pointer',
-                opacity: isDisabled ? 0.5 : 1,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-              }}
-            >
+            <button type="submit" disabled={isDisabled} className="tc-btn-primary">
               {loading && (
                 <span
                   className="spinner-border spinner-border-sm"
@@ -377,19 +331,7 @@ export default function WalletForm({ wallet, setWallet, addRecentWallet }: Walle
                 type="button"
                 title="Refresh — fetch latest trades bypassing cache"
                 onClick={() => handleSubmit(null, true)}
-                style={{
-                  background: 'transparent',
-                  border: '1px solid var(--tc-border)',
-                  borderRadius: 4,
-                  color: 'var(--tc-muted)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: 30,
-                  height: 30,
-                  cursor: 'pointer',
-                  flexShrink: 0,
-                }}
+                className="tc-btn-icon"
               >
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="23 4 23 10 17 10" />
@@ -401,34 +343,9 @@ export default function WalletForm({ wallet, setWallet, addRecentWallet }: Walle
 
           {/* Error */}
           {error && (
-            <div
-              style={{
-                marginTop: '0.5rem',
-                padding: '0.4rem 0.75rem',
-                background: 'rgba(220,38,38,0.08)',
-                border: '1px solid rgba(220,38,38,0.25)',
-                borderRadius: 4,
-                fontSize: '0.78rem',
-                color: 'var(--tc-red)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-              }}
-            >
-              <span style={{ flex: 1 }}>{error}</span>
-              <button
-                type="button"
-                onClick={() => setError('')}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: 'var(--tc-red)',
-                  cursor: 'pointer',
-                  fontSize: '1rem',
-                  lineHeight: 1,
-                  padding: 0,
-                }}
-              >
+            <div className="tc-error-msg">
+              <span className="flex-fill">{error}</span>
+              <button type="button" onClick={() => setError('')} className="tc-error-dismiss">
                 ×
               </button>
             </div>
@@ -438,33 +355,15 @@ export default function WalletForm({ wallet, setWallet, addRecentWallet }: Walle
 
       {/* ── Loading ────────────────────────────────────────────────────────── */}
       {loading && (
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 10,
-            padding: '3rem 0',
-            color: 'var(--tc-muted)',
-            fontSize: '0.85rem',
-          }}
-        >
-          <span
-            className="spinner-border spinner-border-sm"
-            style={{ color: 'var(--tc-accent)' }}
-            role="status"
-            aria-hidden="true"
-          />
+        <div className="tc-loading-state">
+          <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true" />
           Fetching trades…
         </div>
       )}
 
       {/* ── Empty state ────────────────────────────────────────────────────── */}
       {!loading && hasQueried && trades.length === 0 && (
-        <div
-          className="tc-panel"
-          style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--tc-muted)' }}
-        >
+        <div className="tc-panel tc-empty-state">
           <svg
             width="36"
             height="36"
@@ -472,36 +371,32 @@ export default function WalletForm({ wallet, setWallet, addRecentWallet }: Walle
             fill="none"
             stroke="currentColor"
             strokeWidth="1.5"
-            style={{ marginBottom: 12, display: 'block', margin: '0 auto 12px' }}
+            className="tc-empty-icon"
           >
             <circle cx="11" cy="11" r="8" />
             <path d="M21 21l-4.35-4.35" />
           </svg>
-          <p style={{ margin: 0, fontSize: '0.85rem' }}>
-            No trades found for this period and selected platforms.
-          </p>
+          <p>No trades found for this period and selected platforms.</p>
         </div>
       )}
 
       {/* ── Dashboard ──────────────────────────────────────────────────────── */}
       {!loading && filteredTrades.length > 0 && (
         <div ref={resultsRef}>
-          {/* Single flex-wrap row: Equity Curve | Performance | Risk | Trades */}
-          <div
-            className="mb-3 d-flex align-items-stretch gap-3 flex-wrap"
-          >
+          {/* Row 1: Equity Curve | Performance | Risk & Drawdown */}
+          <div className="mb-3 d-flex align-items-stretch gap-3 flex-wrap">
             {/* Equity Curve */}
-            <div className="tc-panel" style={{ flex: '3 1 360px', minWidth: 0 }}>
+            <div className="tc-panel tc-panel-equity">
               <div className="tc-panel-header">
                 <span className="tc-panel-title">Equity Curve</span>
               </div>
-              <div style={{ padding: '0.75rem' }}>
+              <div className="tc-panel-body">
                 <EquityCurveChart trades={filteredTrades} />
               </div>
             </div>
 
             {/* Performance */}
-            <div className="tc-panel" style={{ flex: '1 1 260px' }}>
+            <div className="tc-panel tc-panel-stat">
               <div className="tc-panel-header">
                 <span className="tc-panel-title">Performance</span>
               </div>
@@ -509,64 +404,50 @@ export default function WalletForm({ wallet, setWallet, addRecentWallet }: Walle
             </div>
 
             {/* Risk & Drawdown */}
-            <div className="tc-panel" style={{ flex: '1 1 260px' }}>
+            <div className="tc-panel tc-panel-stat">
               <div className="tc-panel-header">
                 <span className="tc-panel-title">Risk &amp; Drawdown</span>
               </div>
               <RiskSection stats={stats} />
             </div>
+          </div>
 
+          {/* Row 2: Trades | PnL Calendar | PnL by Symbol */}
+          <div className="mb-3 d-flex align-items-stretch gap-3 flex-wrap">
             {/* Trades */}
-            <div className="tc-panel" style={{ flex: '1 1 260px' }}>
+            <div className="tc-panel tc-panel-stat">
               <div className="tc-panel-header">
                 <span className="tc-panel-title">Trades</span>
               </div>
               <TradesSection stats={stats} />
             </div>
-          </div>
-
-          {/* ── Second row: analytical charts ──────────────────────────── */}
-          <div
-            className="mb-3 d-flex align-items-stretch gap-3 flex-wrap"
-          >
-            {/* PnL Distribution */}
-            <div className="tc-panel" style={{ flex: '1 1 260px', minWidth: 0 }}>
-              <div className="tc-panel-header">
-                <span className="tc-panel-title">PnL Distribution</span>
-              </div>
-              <div style={{ padding: '0.75rem' }}>
-                <PnlDistributionChart pnlList={stats.pnlList} />
-              </div>
-            </div>
 
             {/* PnL Calendar */}
-            <div className="tc-panel" style={{ flex: '2 1 420px', minWidth: 0 }}>
+            <div className="tc-panel tc-panel-calendar">
               <div className="tc-panel-header">
                 <span className="tc-panel-title">PnL Calendar</span>
               </div>
-              <div style={{ padding: '0.75rem' }}>
+              <div className="tc-panel-body">
                 <PnlCalendar trades={filteredTrades} />
               </div>
             </div>
 
             {/* PnL by Symbol */}
-            <div className="tc-panel" style={{ flex: '1 1 260px', minWidth: 0 }}>
+            <div className="tc-panel tc-panel-symbol">
               <div className="tc-panel-header">
                 <span className="tc-panel-title">PnL by Symbol</span>
               </div>
-              <div style={{ padding: '0.75rem' }}>
+              <div className="tc-panel-body">
                 <PnlBySymbolChart trades={filteredTrades} />
               </div>
             </div>
           </div>
 
           {/* Trade History */}
-          <div className="tc-panel" style={{ overflow: 'hidden' }}>
+          <div className="tc-panel tc-panel-overflow">
             <div className="tc-panel-header">
               <span className="tc-panel-title">Trade History</span>
-              <span style={{ fontSize: '0.72rem', color: 'var(--tc-muted)' }}>
-                {filteredTrades.length} trades
-              </span>
+              <span className="tc-small-muted">{filteredTrades.length} trades</span>
             </div>
             <TradeList trades={filteredTrades} />
           </div>

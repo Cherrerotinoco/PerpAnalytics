@@ -109,7 +109,7 @@ export default function TradeList({ trades }: { trades: Trade[] }) {
       <th onClick={() => handleSort(col)}>
         {label}
         {isActive && (
-          <span style={{ marginLeft: 4, fontSize: '0.6rem' }}>
+          <span className="tc-sort-arrow">
             {sort.dir === 'asc' ? '▲' : '▼'}
           </span>
         )}
@@ -136,7 +136,6 @@ export default function TradeList({ trades }: { trades: Trade[] }) {
               <Th label="Close" col="closed" />
               <Th label="Symbol" col="symbol" />
               <Th label="Side" col="side" />
-              <Th label="Close Type" col="closeType" />
               <Th label="PnL" col="pnl" />
               <Th label="Fee" col="fee" />
               <Th label="Size" col="sizeUsd" />
@@ -148,43 +147,27 @@ export default function TradeList({ trades }: { trades: Trade[] }) {
               <tr
                 key={`${t.source}-${t.symbol}-${t.side}-${t.opened?.getTime()}-${t.closed?.getTime()}`}
               >
-                <td style={{ color: 'var(--tc-muted)', whiteSpace: 'nowrap' }}>{fmtDateTime(t.opened)}</td>
-                <td style={{ color: 'var(--tc-muted)', whiteSpace: 'nowrap' }}>{fmtDateTime(t.closed)}</td>
-                <td style={{ fontFamily: 'monospace' }}>{t.symbol}</td>
+                <td className="tc-muted-text text-nowrap">{fmtDateTime(t.opened)}</td>
+                <td className="tc-muted-text text-nowrap">{fmtDateTime(t.closed)}</td>
+                <td className="font-monospace">{t.symbol}</td>
                 <td>
                   <span
+                    className="tc-side-badge"
                     style={{
-                      fontSize: '0.65rem',
-                      fontWeight: 600,
-                      letterSpacing: '0.04em',
-                      padding: '0.15rem 0.5rem',
-                      borderRadius: 3,
-                      color:
-                        t.side?.toLowerCase() === 'long'
-                          ? 'var(--tc-green)'
-                          : 'var(--tc-red)',
-                      background:
-                        t.side?.toLowerCase() === 'long'
-                          ? 'rgba(34,197,94,0.1)'
-                          : 'rgba(220,38,38,0.1)',
+                      color: t.side?.toLowerCase() === 'long' ? 'var(--tc-green)' : 'var(--tc-red)',
+                      background: t.side?.toLowerCase() === 'long' ? 'rgba(34,197,94,0.1)' : 'rgba(220,38,38,0.1)',
                     }}
                   >
                     {t.side}
                   </span>
                 </td>
-                <td style={{ color: 'var(--tc-muted)' }}>{t.closeType ?? '—'}</td>
-                <td
-                  style={{
-                    fontWeight: 600,
-                    color: t.pnl >= 0 ? 'var(--tc-green)' : 'var(--tc-red)',
-                  }}
-                >
+                <td className="fw-semibold" style={{ color: t.pnl >= 0 ? 'var(--tc-green)' : 'var(--tc-red)' }}>
                   {t.pnl >= 0 ? '+' : ''}
                   {fmtNum(t.pnl)}
                 </td>
-                <td style={{ color: 'var(--tc-muted)' }}>{fmtNum(t.fee)}</td>
+                <td className="tc-muted-text">{fmtNum(t.fee)}</td>
                 <td>{fmtNum(t.sizeUsd)}</td>
-                <td style={{ color: 'var(--tc-muted)' }}>{t.source ?? '—'}</td>
+                <td className="tc-muted-text">{t.source ?? '—'}</td>
               </tr>
             ))}
           </tbody>
@@ -193,19 +176,11 @@ export default function TradeList({ trades }: { trades: Trade[] }) {
 
       {/* ── Pagination ── */}
       {totalPages > 1 && (
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '0.6rem 0.75rem',
-            borderTop: '1px solid var(--tc-border)',
-          }}
-        >
-          <span style={{ fontSize: '0.72rem', color: 'var(--tc-muted)' }}>
+        <div className="tc-pagination">
+          <span className="tc-small-muted">
             {startRow}–{endRow} of {sorted.length}
           </span>
-          <div style={{ display: 'flex', gap: 4 }}>
+          <div className="d-flex gap-1">
             <PagBtn onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}>
               ←
             </PagBtn>
@@ -251,18 +226,7 @@ function PagBtn({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      style={{
-        minWidth: 28,
-        height: 28,
-        padding: '0 0.4rem',
-        background: active ? 'var(--tc-accent)' : 'transparent',
-        border: `1px solid ${active ? 'var(--tc-accent)' : 'var(--tc-border)'}`,
-        borderRadius: 4,
-        color: active ? '#fff' : disabled ? 'var(--tc-border)' : 'var(--tc-muted)',
-        fontSize: '0.75rem',
-        cursor: disabled ? 'not-allowed' : 'pointer',
-        transition: 'border-color 0.1s, color 0.1s',
-      }}
+      className={`tc-page-btn${active ? ' active' : ''}`}
     >
       {children}
     </button>

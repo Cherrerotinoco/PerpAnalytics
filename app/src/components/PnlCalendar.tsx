@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { Trade } from '../types/tradeTypes';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -32,10 +33,8 @@ function getMonthRange(trades: Trade[]): Array<{ year: number; month: number }> 
   const result: Array<{ year: number; month: number }> = [];
   let y = minDate.getFullYear();
   let m = minDate.getMonth();
-  const ey = maxDate.getFullYear();
-  const em = maxDate.getMonth();
 
-  while (y < ey || (y === ey && m <= em)) {
+  while (y < maxDate.getFullYear() || (y === maxDate.getFullYear() && m <= maxDate.getMonth())) {
     result.push({ year: y, month: m });
     m++;
     if (m > 11) { m = 0; y++; }
@@ -64,7 +63,29 @@ function fmtCell(v: number): string {
   return `${s}${v.toFixed(1)}`;
 }
 
-// ─── Single month grid ────────────────────────────────────────────────────────
+function fmtTotal(v: number): string {
+  const s = v >= 0 ? '+' : '';
+  return `${s}${v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} $`;
+}
+
+// ─── Nav button ───────────────────────────────────────────────────────────────
+function NavBtn({
+  onClick,
+  disabled,
+  children,
+}: {
+  onClick: () => void;
+  disabled: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <button type="button" onClick={onClick} disabled={disabled} className="tc-nav-btn">
+      {children}
+    </button>
+  );
+}
+
+// ─── Month grid ───────────────────────────────────────────────────────────────
 function MonthGrid({
   year,
   month,
@@ -76,152 +97,79 @@ function MonthGrid({
   dailyMap: DailyMap;
   maxAbs: number;
 }) {
-  const firstDow = new Date(year, month, 1).getDay(); // 0 = Sun
-  const startOffset = (firstDow + 6) % 7; // shift to Mon = 0
+  const firstDow = new Date(year, month, 1).getDay();
+  const startOffset = (firstDow + 6) % 7; // Mon = 0
   const daysInMonth = new Date(year, month + 1, 0).getDate();
 
-  // Build flat cell array (null = empty padding)
   const cells: (number | null)[] = [
     ...Array<null>(startOffset).fill(null),
     ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
   ];
   while (cells.length % 7 !== 0) cells.push(null);
 
-  // Chunk into weeks
   const weeks: (number | null)[][] = [];
   for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
 
-  // Month total
-  let monthTotal = 0;
-  for (let d = 1; d <= daysInMonth; d++) {
-    monthTotal += dailyMap.get(dayKey(year, month, d)) ?? 0;
-  }
-
-  const CELL_W = 38;
-  const CELL_H = 32;
-
   return (
-    <div style={{ flexShrink: 0, width: CELL_W * 7 + 12 /* borderSpacing × 6 */ }}>
-      {/* Header: month name + total */}
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'baseline',
-          marginBottom: '0.35rem',
-        }}
-      >
-        <span style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--tc-text)' }}>
-          {MONTH_NAMES[month].slice(0, 3)} {year}
-        </span>
-        {monthTotal !== 0 && (
-          <span
-            style={{
-              fontSize: '0.62rem',
-              fontWeight: 700,
-              color: monthTotal >= 0 ? 'var(--tc-green)' : 'var(--tc-red)',
-            }}
-          >
-            {monthTotal >= 0 ? '+' : ''}
-            {monthTotal.toFixed(0)}
-          </span>
-        )}
-      </div>
-
-      {/* Grid */}
-      <table style={{ borderCollapse: 'separate', borderSpacing: '2px' }}>
-        <thead>
-          <tr>
-            {WEEK_DAYS.map((d) => (
-              <th
-                key={d}
-                style={{
-                  width: CELL_W,
-                  fontSize: '0.55rem',
-                  fontWeight: 600,
-                  color: 'var(--tc-muted)',
-                  textAlign: 'center',
-                  padding: '0 0 3px',
-                }}
-              >
-                {d}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {weeks.map((week, wi) => (
-            <tr key={wi}>
-              {week.map((day, di) => {
-                if (!day) {
-                  return <td key={di} style={{ width: CELL_W, height: CELL_H }} />;
-                }
-                const pnl = dailyMap.get(dayKey(year, month, day));
-                const hasTrade = pnl !== undefined;
-                return (
-                  <td
-                    key={di}
-                    title={
-                      hasTrade
-                        ? `${String(day).padStart(2, '0')}/${String(month + 1).padStart(2, '0')}/${year}: ${pnl! >= 0 ? '+' : ''}${pnl!.toFixed(2)} $`
-                        : `${String(day).padStart(2, '0')}/${String(month + 1).padStart(2, '0')}/${year}`
-                    }
-                    style={{
-                      width: CELL_W,
-                      height: CELL_H,
-                      background: cellBg(pnl, maxAbs),
-                      borderRadius: 3,
-                      verticalAlign: 'middle',
-                      cursor: 'default',
-                    }}
-                  >
-                    <div
+    <table className="tc-cal-table">
+      <thead>
+        <tr>
+          {WEEK_DAYS.map((d) => (
+            <th key={d} className="tc-cal-weekday">
+              {d}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {weeks.map((week, wi) => (
+          <tr key={wi}>
+            {week.map((day, di) => {
+              if (!day) {
+                return <td key={di} className="tc-cal-cell" />;
+              }
+              const pnl = dailyMap.get(dayKey(year, month, day));
+              const hasTrade = pnl !== undefined;
+              return (
+                <td
+                  key={di}
+                  title={
+                    hasTrade
+                      ? `${String(day).padStart(2, '0')}/${String(month + 1).padStart(2, '0')}/${year}: ${pnl! >= 0 ? '+' : ''}${pnl!.toFixed(2)} $`
+                      : `${String(day).padStart(2, '0')}/${String(month + 1).padStart(2, '0')}/${year}`
+                  }
+                  className="tc-cal-cell"
+                  style={{ background: cellBg(pnl, maxAbs) }}
+                >
+                  <div className="tc-cal-cell-inner">
+                    <span
+                      className="tc-cal-day-num"
                       style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        height: '100%',
-                        gap: 1,
+                        color: hasTrade
+                          ? pnl! >= 0
+                            ? 'rgba(34,197,94,0.65)'
+                            : 'rgba(239,68,68,0.65)'
+                          : 'var(--tc-muted)',
                       }}
                     >
+                      {day}
+                    </span>
+                    {hasTrade && (
                       <span
-                        style={{
-                          fontSize: '0.5rem',
-                          lineHeight: 1,
-                          color: hasTrade
-                            ? pnl! >= 0
-                              ? 'rgba(34,197,94,0.65)'
-                              : 'rgba(239,68,68,0.65)'
-                            : 'var(--tc-muted)',
-                        }}
+                        className="tc-cal-day-pnl"
+                        style={{ color: pnl! >= 0 ? 'rgba(34,197,94,0.95)' : 'rgba(239,68,68,0.95)' }}
                       >
-                        {day}
+                        {fmtCell(pnl!)}
                       </span>
-                      {hasTrade && (
-                        <span
-                          style={{
-                            fontSize: '0.52rem',
-                            fontWeight: 700,
-                            lineHeight: 1,
-                            color:
-                              pnl! >= 0
-                                ? 'rgba(34,197,94,0.95)'
-                                : 'rgba(239,68,68,0.95)',
-                          }}
-                        >
-                          {fmtCell(pnl!)}
-                        </span>
-                      )}
-                    </div>
-                  </td>
-                );
-              })}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+                    )}
+                  </div>
+                </td>
+              );
+            })}
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }
 
@@ -229,32 +177,60 @@ function MonthGrid({
 export default function PnlCalendar({ trades }: { trades: Trade[] }) {
   const dailyMap = buildDailyMap(trades);
   const months = getMonthRange(trades);
+  const [idx, setIdx] = useState(0);
+
+  // Jump to most recent month whenever the trade set changes
+  useEffect(() => {
+    setIdx(Math.max(0, months.length - 1));
+  }, [months.length]);
 
   if (!months.length) return null;
+
+  const safeIdx = Math.min(idx, months.length - 1);
+  const { year, month } = months[safeIdx];
+
+  // Month total
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  let monthTotal = 0;
+  for (let d = 1; d <= daysInMonth; d++) {
+    monthTotal += dailyMap.get(dayKey(year, month, d)) ?? 0;
+  }
 
   let maxAbs = 0;
   dailyMap.forEach((pnl) => { if (Math.abs(pnl) > maxAbs) maxAbs = Math.abs(pnl); });
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexWrap: 'wrap',
-        gap: '1.25rem 1.5rem',
-        maxHeight: 420,
-        overflowY: 'auto',
-        paddingBottom: 2,
-      }}
-    >
-      {months.map(({ year, month }) => (
-        <MonthGrid
-          key={`${year}-${month}`}
-          year={year}
-          month={month}
-          dailyMap={dailyMap}
-          maxAbs={maxAbs}
-        />
-      ))}
+    <div>
+      {/* ── Navigation header ── */}
+      <div className="tc-cal-nav">
+        <NavBtn onClick={() => setIdx((i) => Math.max(0, i - 1))} disabled={safeIdx === 0}>
+          ◀
+        </NavBtn>
+
+        <div className="text-center flex-fill">
+          <span className="tc-cal-month">
+            {MONTH_NAMES[month]} {year}
+          </span>
+          {monthTotal !== 0 && (
+            <span
+              className="tc-cal-total"
+              style={{ color: monthTotal >= 0 ? 'var(--tc-green)' : 'var(--tc-red)' }}
+            >
+              {fmtTotal(monthTotal)}
+            </span>
+          )}
+        </div>
+
+        <NavBtn
+          onClick={() => setIdx((i) => Math.min(months.length - 1, i + 1))}
+          disabled={safeIdx === months.length - 1}
+        >
+          ▶
+        </NavBtn>
+      </div>
+
+      {/* ── Calendar grid ── */}
+      <MonthGrid year={year} month={month} dailyMap={dailyMap} maxAbs={maxAbs} />
     </div>
   );
 }

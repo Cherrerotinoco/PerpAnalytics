@@ -25,6 +25,8 @@ export interface TradeStats {
   recoveryFactor: number;
   var95: number;
   pnlList: number[];
+  feesBySource: Record<string, number>;
+  totalFees: number;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -65,6 +67,7 @@ export function computeTradeStats(trades: Trade[]): TradeStats {
   let sumWin = 0;
   let sumLoss = 0;
   const pnlList: number[] = [];
+  const feesBySource: Record<string, number> = {};
 
   let peak = 0;
   let maxDrawdown = 0;
@@ -78,6 +81,9 @@ export function computeTradeStats(trades: Trade[]): TradeStats {
     totalPnl += t.pnl;
     equityCurve.push(Number(totalPnl.toFixed(2)));
     pnlList.push(t.pnl);
+    if (t.source) {
+      feesBySource[t.source] = (feesBySource[t.source] ?? 0) + (t.fee ?? 0);
+    }
 
     const dateRef = t.closed ?? t.opened;
     const ts = dateRef instanceof Date && !isNaN(dateRef.getTime()) ? dateRef.getTime() : null;
@@ -140,6 +146,7 @@ export function computeTradeStats(trades: Trade[]): TradeStats {
   const sortedPnl = [...pnlList].sort((a, b) => a - b);
   const var95Index = Math.max(0, Math.ceil(0.05 * sortedPnl.length) - 1);
   const var95 = sortedPnl.length > 0 ? (sortedPnl[var95Index] ?? 0) : 0;
+  const totalFees = Object.values(feesBySource).reduce((a, b) => a + b, 0);
 
   return {
     totalPnl,
@@ -165,6 +172,8 @@ export function computeTradeStats(trades: Trade[]): TradeStats {
     recoveryFactor,
     var95,
     pnlList,
+    feesBySource,
+    totalFees,
   };
 }
 
@@ -234,37 +243,25 @@ function Metric({
   tooltip?: string;
 }) {
   return (
-    <div className="tc-card" style={{ padding: '0.5rem 0.65rem' }}>
-      <div
-        className='d-flex align-items-start gap-1 justify-content-between mb-1'
-      >
-        <p className="tc-label mb-0">
-          {label}
-        </p>
+    <div className="tc-card">
+      <div className="tc-metric-label-row">
+        <p className="tc-label mb-0">{label}</p>
         {tooltip && <TipIcon text={tooltip} />}
       </div>
       <p className={`tc-value mb-0 ${colorClass ?? ''}`}>{value}</p>
-      {sub && (
-        <p style={{ fontSize: '0.65rem', color: 'var(--tc-muted)', margin: 0, lineHeight: 1.3 }}>
-          {sub}
-        </p>
-      )}
+      {sub && <p className="tc-metric-sub">{sub}</p>}
     </div>
   );
 }
 
 function MetricGrid({ children }: { children: React.ReactNode }) {
-  return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.4rem' }}>
-      {children}
-    </div>
-  );
+  return <div className="tc-metric-grid">{children}</div>;
 }
 
 // ─── Performance section ──────────────────────────────────────────────────────
 export function PerformanceSection({ stats: st }: { stats: TradeStats }) {
   return (
-    <div style={{ padding: '0.75rem' }}>
+    <div className="tc-section">
       <MetricGrid>
         <Metric
           label="Total PnL"
@@ -306,6 +303,32 @@ export function PerformanceSection({ stats: st }: { stats: TradeStats }) {
           tooltip="Average winning trade ÷ average losing trade. A value > 1 means wins are larger than losses on average."
         />
       </MetricGrid>
+
+      {/* ── Fees by platform ── */}
+      {Object.keys(st.feesBySource).length > 0 && (
+        <div className="tc-card mt-2">
+          <div className="tc-metric-label-row mb-1">
+            <p className="tc-label mb-0">Fees Paid</p>
+            <TipIcon text="Cumulative trading fees (opening + closing) broken down by platform." />
+          </div>
+
+          {Object.entries(st.feesBySource)
+            .sort((a, b) => b[1] - a[1])
+            .map(([source, fee]) => (
+              <div key={source} className="tc-fees-row">
+                <span className="tc-metric-sub">{source}</span>
+                <span className="tc-fees-amount">-{fmtNum(fee)} $</span>
+              </div>
+            ))}
+
+          {Object.keys(st.feesBySource).length > 1 && (
+            <div className="tc-fees-total">
+              <span className="tc-metric-sub fw-semibold">Total</span>
+              <span className="tc-fees-amount">-{fmtNum(st.totalFees)} $</span>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -313,7 +336,7 @@ export function PerformanceSection({ stats: st }: { stats: TradeStats }) {
 // ─── Risk & Drawdown section ──────────────────────────────────────────────────
 export function RiskSection({ stats: st }: { stats: TradeStats }) {
   return (
-    <div style={{ padding: '0.75rem' }}>
+    <div className="tc-section">
       <MetricGrid>
         <Metric
           label="Max Drawdown"
@@ -367,7 +390,7 @@ export function TradesSection({ stats: st }: { stats: TradeStats }) {
   const breakeven = st.totalTrades - st.winTrades - st.lossTrades;
 
   return (
-    <div style={{ padding: '0.75rem' }}>
+    <div className="tc-section">
       <MetricGrid>
         <Metric
           label="Total"
@@ -390,57 +413,29 @@ export function TradesSection({ stats: st }: { stats: TradeStats }) {
           tooltip="(Losing trades ÷ total trades) × 100. A trade is a loss when PnL < 0."
         />
         {/* Streaks card */}
-        <div className="tc-card" style={{ padding: '0.5rem 0.65rem' }}>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.3rem',
-              marginBottom: '0.5rem',
-            }}
-          >
-            <p className="tc-label mb-0" style={{ margin: 0 }}>
-              Max Streaks
-            </p>
+        <div className="tc-card">
+          <div className="tc-metric-label-row mb-2">
+            <p className="tc-label mb-0">Max Streaks</p>
             <TipIcon text="Longest uninterrupted run of consecutive wins and consecutive losses." />
           </div>
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: '0.3rem',
-            }}
-          >
-            <span style={{ fontSize: '0.65rem', color: 'var(--tc-muted)' }}>Consec. Wins</span>
-            <span className="tc-value tc-green" style={{ fontSize: '0.95rem' }}>
-              {st.maxConsecWins}
-            </span>
+          <div className="tc-streaks-row mb-1">
+            <span className="tc-metric-sub">Consec. Wins</span>
+            <span className="tc-streaks-value tc-green">{st.maxConsecWins}</span>
           </div>
-          <div
-            style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-          >
-            <span style={{ fontSize: '0.65rem', color: 'var(--tc-muted)' }}>Consec. Losses</span>
-            <span className="tc-value tc-red" style={{ fontSize: '0.95rem' }}>
-              {st.maxConsecLosses}
-            </span>
+          <div className="tc-streaks-row">
+            <span className="tc-metric-sub">Consec. Losses</span>
+            <span className="tc-streaks-value tc-red">{st.maxConsecLosses}</span>
           </div>
         </div>
       </MetricGrid>
 
       {/* Win / loss bar */}
-      <div style={{ marginTop: '0.75rem' }}>
-        <div
-          style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.3rem' }}
-        >
-          <span style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--tc-green)' }}>
-            Won {fmtPct(st.winRate)}
-          </span>
-          <span style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--tc-red)' }}>
-            Lost {fmtPct(st.lossRate)}
-          </span>
+      <div className="mt-3">
+        <div className="tc-winloss-labels">
+          <span className="tc-winloss-won">Won {fmtPct(st.winRate)}</span>
+          <span className="tc-winloss-lost">Lost {fmtPct(st.lossRate)}</span>
         </div>
-        <div className="tc-progress" style={{ display: 'flex' }}>
+        <div className="tc-progress d-flex">
           <div className="tc-progress-green" style={{ width: `${st.winRate}%` }} />
           <div className="tc-progress-red" style={{ width: `${st.lossRate}%` }} />
         </div>

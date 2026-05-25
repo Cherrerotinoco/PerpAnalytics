@@ -17,32 +17,17 @@ function fmtMoney(v: number): string {
 }
 
 function fmtDate(ts: number): string {
-  return new Date(ts).toLocaleDateString('en-US', {
-    day: '2-digit',
-    month: '2-digit',
-    year: '2-digit',
-  });
+  return new Date(ts).toLocaleDateString('en-US', { day: '2-digit', month: '2-digit', year: '2-digit' });
 }
 
 const CustomTooltip = ({ active, payload, label }: any) => {
-  if (!active || !payload?.length) {
-    return null;
-  }
+  if (!active || !payload?.length) return null;
   const val: number = payload[0].value;
   return (
-    <div
-      style={{
-        background: 'var(--tc-surface-2)',
-        border: '1px solid var(--tc-border)',
-        borderRadius: 4,
-        padding: '0.4rem 0.75rem',
-        fontSize: '0.78rem',
-      }}
-    >
-      <p style={{ color: 'var(--tc-muted)', margin: '0 0 0.2rem' }}>{fmtDate(label)}</p>
-      <p style={{ color: val >= 0 ? 'var(--tc-green)' : 'var(--tc-red)', fontWeight: 600, margin: 0 }}>
-        {val >= 0 ? '+' : ''}
-        {fmtMoney(val)} $
+    <div className="tc-chart-tooltip">
+      <p className="tc-chart-tooltip-date">{fmtDate(label)}</p>
+      <p className="tc-chart-tooltip-val" style={{ color: val >= 0 ? 'var(--tc-green)' : 'var(--tc-red)' }}>
+        {val >= 0 ? '+' : ''}{fmtMoney(val)} $
       </p>
     </div>
   );
@@ -56,23 +41,16 @@ export default function EquityCurveChart({ trades }: { trades: Trade[] }) {
     .map((y, i) => ({ x: Number(stats.equityCurveLabels[i]), y }))
     .filter((d) => d.x > 0);
 
-  if (!data.length) {
-    return null;
-  }
+  if (!data.length) return null;
 
   const isPositive = stats.totalPnl >= 0;
-
-  // Recharts props cannot read CSS variables — resolve colours per theme
-  const lineColor = isPositive
-    ? (theme === 'dark' ? '#22c55e' : '#16a34a')
-    : (theme === 'dark' ? '#ef4444' : '#dc2626');
-  const gridColor = theme === 'dark' ? '#2a2a2a' : '#e5e7eb';
-  const axisColor = theme === 'dark' ? '#6b7280' : '#9ca3af';
+  const lineColor   = isPositive ? (theme === 'dark' ? '#22c55e' : '#16a34a') : (theme === 'dark' ? '#ef4444' : '#dc2626');
+  const gridColor   = theme === 'dark' ? '#2a2a2a' : '#e5e7eb';
+  const axisColor   = theme === 'dark' ? '#6b7280' : '#9ca3af';
   const refLineColor = theme === 'dark' ? '#374151' : '#d1d5db';
 
   const xMin = data[0].x;
   const xMax = data[data.length - 1].x;
-
   const tickCount = Math.min(data.length, 6);
   const ticks = Array.from({ length: tickCount }, (_, i) =>
     Math.round(xMin + (i / (tickCount - 1)) * (xMax - xMin))
@@ -80,31 +58,17 @@ export default function EquityCurveChart({ trades }: { trades: Trade[] }) {
 
   return (
     <>
-      {/* Header: date range + total PnL badge */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          marginBottom: '0.75rem',
-        }}
-      >
-        <span style={{ fontSize: '0.72rem', color: 'var(--tc-muted)' }}>
-          {fmtDate(xMin)} — {fmtDate(xMax)}
-        </span>
+      <div className="tc-chart-header">
+        <span className="tc-chart-date-range">{fmtDate(xMin)} — {fmtDate(xMax)}</span>
         <span
+          className="tc-pnl-badge"
           style={{
-            fontSize: '0.78rem',
-            fontWeight: 700,
             color: lineColor,
             background: isPositive ? 'rgba(34,197,94,0.1)' : 'rgba(220,38,38,0.1)',
             border: `1px solid ${isPositive ? 'rgba(34,197,94,0.2)' : 'rgba(220,38,38,0.2)'}`,
-            padding: '0.15rem 0.6rem',
-            borderRadius: 4,
           }}
         >
-          {isPositive ? '+' : ''}
-          {fmtMoney(stats.totalPnl)} $
+          {isPositive ? '+' : ''}{fmtMoney(stats.totalPnl)} $
         </span>
       </div>
 

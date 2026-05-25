@@ -77,6 +77,7 @@ body {
   background-color: var(--tc-surface-2) !important;
   border: 1px solid var(--tc-border) !important;
   border-radius: var(--tc-radius) !important;
+  padding: 0.5rem 0.65rem;
 }
 
 /* ─── Typography ────────────────────────────────────────────────────────────── */
@@ -315,4 +316,520 @@ body {
   height: 100%;
   background-color: var(--tc-red);
   border-radius: 0 2px 2px 0;
+}
+
+/* ─── App root ───────────────────────────────────────────────────────────────── */
+.tc-app-root {
+  background-color: var(--tc-bg);
+  color: var(--tc-text);
+}
+
+/* ─── Header ────────────────────────────────────────────────────────────────── */
+.tc-header {
+  background-color: var(--tc-surface);
+  border-bottom: 1px solid var(--tc-border);
+  padding: 0.55rem 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.tc-theme-btn {
+  background: transparent;
+  border: 1px solid var(--tc-border);
+  border-radius: 6px;
+  color: var(--tc-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.tc-theme-btn:hover {
+  border-color: var(--tc-accent);
+  color: var(--tc-accent);
+}
+
+/* ─── Logo ───────────────────────────────────────────────────────────────────── */
+.tc-logo-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.tc-logo-text {
+  font-size: 0.92rem;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  color: var(--tc-text);
+  user-select: none;
+}
+
+.tc-logo-accent {
+  font-weight: 800;
+  color: var(--tc-accent);
+}
+
+/* ─── Footer ─────────────────────────────────────────────────────────────────── */
+.tc-footer {
+  background-color: var(--tc-surface);
+  border-top: 1px solid var(--tc-border);
+  padding: 1.5rem 0;
+  text-align: center;
+}
+
+.tc-footer-brand {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--tc-text);
+}
+
+.tc-footer-sub {
+  font-size: 0.75rem;
+  color: var(--tc-muted);
+}
+
+.tc-footer-address {
+  font-size: 0.7rem;
+  color: var(--tc-amber);
+  word-break: break-all;
+  cursor: pointer;
+}
+
+/* ─── Recent wallets ─────────────────────────────────────────────────────────── */
+.tc-recent-btn {
+  background: var(--tc-surface-2);
+  border: 1px solid var(--tc-border);
+  border-radius: 4px;
+  color: var(--tc-muted);
+  font-size: 0.72rem;
+  padding: 0.15rem 0.6rem;
+  cursor: pointer;
+  font-family: monospace;
+  transition: border-color 0.12s, color 0.12s;
+}
+
+.tc-recent-btn:hover {
+  border-color: var(--tc-muted);
+  color: var(--tc-text);
+}
+
+/* ─── Statistics layout ──────────────────────────────────────────────────────── */
+.tc-section {
+  padding: 0.75rem;
+}
+
+.tc-metric-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.4rem;
+}
+
+.tc-metric-label-row {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-bottom: 0.25rem;
+}
+
+.tc-metric-sub {
+  font-size: 0.65rem;
+  color: var(--tc-muted);
+  margin: 0;
+  line-height: 1.3;
+}
+
+/* ─── Streaks card ───────────────────────────────────────────────────────────── */
+.tc-streaks-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.tc-streaks-value {
+  font-size: 0.95rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ─── Win/loss bar ───────────────────────────────────────────────────────────── */
+.tc-winloss-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.3rem;
+}
+
+.tc-winloss-won {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--tc-green);
+}
+
+.tc-winloss-lost {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--tc-red);
+}
+
+/* ─── Fees breakdown ─────────────────────────────────────────────────────────── */
+.tc-fees-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.2rem;
+}
+
+.tc-fees-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 0.3rem;
+  padding-top: 0.3rem;
+  border-top: 1px solid var(--tc-border);
+}
+
+.tc-fees-amount {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--tc-red);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ─── Dashboard panel flex sizes ─────────────────────────────────────────────── */
+.tc-panel-equity   { flex: 3 1 360px; min-width: 0; }
+.tc-panel-stat     { flex: 1 1 260px; }
+.tc-panel-calendar { flex: 1 1 430px; min-width: 0; }
+.tc-panel-symbol   { flex: 1 1 260px; min-width: 0; }
+
+/* ─── Loading & empty states ─────────────────────────────────────────────────── */
+.tc-loading-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 3rem 0;
+  color: var(--tc-muted);
+  font-size: 0.85rem;
+}
+
+.tc-loading-state .spinner-border {
+  color: var(--tc-accent);
+}
+
+.tc-empty-state {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--tc-muted);
+  font-size: 0.85rem;
+}
+
+.tc-empty-state p {
+  margin: 0;
+}
+
+.tc-empty-icon {
+  display: block;
+  margin: 0 auto 12px;
+}
+
+/* ─── Form controls ──────────────────────────────────────────────────────────── */
+.tc-search-pad {
+  padding: 0.6rem 0.75rem;
+}
+
+.tc-date-input {
+  width: 130px;
+}
+
+.tc-btn-primary {
+  background: var(--tc-accent);
+  border: none;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.3rem 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tc-btn-primary:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.tc-btn-icon {
+  background: transparent;
+  border: 1px solid var(--tc-border);
+  border-radius: 4px;
+  color: var(--tc-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: border-color 0.12s, color 0.12s;
+}
+
+.tc-btn-icon:hover {
+  border-color: var(--tc-muted);
+  color: var(--tc-text);
+}
+
+.tc-error-msg {
+  margin-top: 0.5rem;
+  padding: 0.4rem 0.75rem;
+  background: rgba(220, 38, 38, 0.08);
+  border: 1px solid rgba(220, 38, 38, 0.25);
+  border-radius: 4px;
+  font-size: 0.78rem;
+  color: var(--tc-red);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tc-error-dismiss {
+  background: none;
+  border: none;
+  color: var(--tc-red);
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0;
+}
+
+.tc-platform-group {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding-left: 0.25rem;
+  border-left: 1px solid var(--tc-border);
+}
+
+.tc-platform-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+  user-select: none;
+  font-size: 0.8rem;
+  font-weight: 500;
+  transition: color 0.12s;
+}
+
+.tc-platform-label input[type='checkbox'] {
+  display: none;
+}
+
+.tc-checkbox-box {
+  width: 15px;
+  height: 15px;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: border-color 0.12s, background 0.12s;
+}
+
+.tc-wallet-input-wrap {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+
+/* ─── Panel body & overflow ──────────────────────────────────────────────────── */
+.tc-panel-body {
+  padding: 0.75rem;
+}
+
+.tc-panel-overflow {
+  overflow: hidden;
+}
+
+/* ─── Utility ────────────────────────────────────────────────────────────────── */
+.tc-small-muted {
+  font-size: 0.72rem;
+  color: var(--tc-muted);
+}
+
+/* ─── Sort arrow ─────────────────────────────────────────────────────────────── */
+.tc-sort-arrow {
+  margin-left: 4px;
+  font-size: 0.6rem;
+}
+
+/* ─── Pagination ─────────────────────────────────────────────────────────────── */
+.tc-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 0.75rem;
+  border-top: 1px solid var(--tc-border);
+}
+
+.tc-page-btn {
+  min-width: 28px;
+  height: 28px;
+  padding: 0 0.4rem;
+  background: transparent;
+  border: 1px solid var(--tc-border);
+  border-radius: 4px;
+  color: var(--tc-muted);
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: border-color 0.1s, color 0.1s;
+}
+
+.tc-page-btn:disabled {
+  color: var(--tc-border);
+  cursor: not-allowed;
+}
+
+.tc-page-btn.active {
+  background: var(--tc-accent);
+  border-color: var(--tc-accent);
+  color: #fff;
+}
+
+.tc-side-badge {
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 0.15rem 0.5rem;
+  border-radius: 3px;
+}
+
+/* ─── PnL Calendar ───────────────────────────────────────────────────────────── */
+.tc-cal-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+  gap: 0.5rem;
+}
+
+.tc-cal-month {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--tc-text);
+}
+
+.tc-cal-total {
+  font-size: 0.68rem;
+  font-weight: 700;
+  margin-left: 0.5rem;
+}
+
+.tc-nav-btn {
+  background: transparent;
+  border: 1px solid var(--tc-border);
+  border-radius: 4px;
+  color: var(--tc-muted);
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 0.6rem;
+  flex-shrink: 0;
+  transition: border-color 0.1s, color 0.1s;
+}
+
+.tc-nav-btn:disabled {
+  color: var(--tc-border);
+  cursor: not-allowed;
+}
+
+.tc-cal-table {
+  border-collapse: separate;
+  border-spacing: 3px;
+  margin: 0 auto;
+}
+
+.tc-cal-weekday {
+  width: 56px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--tc-muted);
+  text-align: center;
+  padding: 0 0 5px;
+}
+
+.tc-cal-cell {
+  width: 56px;
+  height: 48px;
+  border-radius: 3px;
+  vertical-align: middle;
+  cursor: default;
+}
+
+.tc-cal-cell-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 1px;
+}
+
+.tc-cal-day-num {
+  font-size: 0.72rem;
+  line-height: 1;
+}
+
+.tc-cal-day-pnl {
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* ─── Equity curve chart ─────────────────────────────────────────────────────── */
+.tc-chart-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.tc-chart-date-range {
+  font-size: 0.72rem;
+  color: var(--tc-muted);
+}
+
+.tc-pnl-badge {
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 0.15rem 0.6rem;
+  border-radius: 4px;
+}
+
+/* ─── Recharts custom tooltip ────────────────────────────────────────────────── */
+.tc-chart-tooltip {
+  background: var(--tc-surface-2);
+  border: 1px solid var(--tc-border);
+  border-radius: 4px;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.78rem;
+}
+
+.tc-chart-tooltip-date {
+  color: var(--tc-muted);
+  margin: 0 0 0.2rem;
+}
+
+.tc-chart-tooltip-val {
+  font-weight: 600;
+  margin: 0;
 }
