@@ -15,7 +15,13 @@ export default function MainLayout({ children }: { children: ReactNode }) {
         <code
           className="tc-footer-address"
           title="Click to copy"
-          onClick={() => navigator.clipboard.writeText('BzPG6Mwpgbh9AGLUuJkqUA2HBmLQhe3mHxR5B4tfv42U')}
+          onClick={() =>
+            navigator.clipboard
+              .writeText('BzPG6Mwpgbh9AGLUuJkqUA2HBmLQhe3mHxR5B4tfv42U')
+              .catch(() => {
+                // Clipboard API unavailable in non-HTTPS contexts or blocked by browser policy
+              })
+          }
         >
           BzPG6Mwpgbh9AGLUuJkqUA2HBmLQhe3mHxR5B4tfv42U
         </code>

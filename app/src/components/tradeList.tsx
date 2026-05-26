@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo, memo } from 'react';
 import { Trade } from '../types/tradeTypes';
 
 // ─── Formatters ───────────────────────────────────────────────────────────────
@@ -33,63 +33,50 @@ type SortCol =
   | 'source';
 type SortDir = 'asc' | 'desc';
 
+// ─── Sort helper (module-level — no closure over component state) ─────────────
+function getValue(t: Trade, col: SortCol) {
+  switch (col) {
+    case 'opened':   return t.opened;
+    case 'closed':   return t.closed;
+    case 'symbol':   return t.symbol;
+    case 'side':     return t.side;
+    case 'closeType': return t.closeType;
+    case 'pnl':      return t.pnl;
+    case 'fee':      return t.fee;
+    case 'sizeUsd':  return t.sizeUsd;
+    case 'source':   return t.source;
+    default:         return '';
+  }
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
-export default function TradeList({ trades }: { trades: Trade[] }) {
+export default memo(function TradeList({ trades }: { trades: Trade[] }) {
   const [sort, setSort] = useState<{ col: SortCol; dir: SortDir }>({ col: 'opened', dir: 'desc' });
   const [page, setPage] = useState(1);
+
+  // ── Sort (memoised — only recomputes when trades array or sort config changes) ──
+  const sorted = useMemo(() =>
+    [...trades].sort((a, b) => {
+      const vA = getValue(a, sort.col);
+      const vB = getValue(b, sort.col);
+      if (vA === vB) return 0;
+      if (vA == null) return 1;
+      if (vB == null) return -1;
+      if (typeof vA === 'number' && typeof vB === 'number') {
+        return sort.dir === 'asc' ? vA - vB : vB - vA;
+      }
+      if (vA instanceof Date && vB instanceof Date) {
+        return sort.dir === 'asc' ? vA.getTime() - vB.getTime() : vB.getTime() - vA.getTime();
+      }
+      return sort.dir === 'asc'
+        ? String(vA).localeCompare(String(vB))
+        : String(vB).localeCompare(String(vA));
+    }),
+  [trades, sort]);
 
   if (!trades.length) {
     return null;
   }
-
-  // ── Sort ──
-  const getValue = (t: Trade, col: SortCol) => {
-    switch (col) {
-      case 'opened':
-        return t.opened;
-      case 'closed':
-        return t.closed;
-      case 'symbol':
-        return t.symbol;
-      case 'side':
-        return t.side;
-      case 'closeType':
-        return t.closeType;
-      case 'pnl':
-        return t.pnl;
-      case 'fee':
-        return t.fee;
-      case 'sizeUsd':
-        return t.sizeUsd;
-      case 'source':
-        return t.source;
-      default:
-        return '';
-    }
-  };
-
-  const sorted = [...trades].sort((a, b) => {
-    const vA = getValue(a, sort.col);
-    const vB = getValue(b, sort.col);
-    if (vA === vB) {
-      return 0;
-    }
-    if (vA == null) {
-      return 1;
-    }
-    if (vB == null) {
-      return -1;
-    }
-    if (typeof vA === 'number' && typeof vB === 'number') {
-      return sort.dir === 'asc' ? vA - vB : vB - vA;
-    }
-    if (vA instanceof Date && vB instanceof Date) {
-      return sort.dir === 'asc' ? vA.getTime() - vB.getTime() : vB.getTime() - vA.getTime();
-    }
-    return sort.dir === 'asc'
-      ? String(vA).localeCompare(String(vB))
-      : String(vB).localeCompare(String(vA));
-  });
 
   // ── Pagination ──
   const totalPages = Math.ceil(sorted.length / PAGE_SIZE);
@@ -207,7 +194,7 @@ export default function TradeList({ trades }: { trades: Trade[] }) {
       )}
     </div>
   );
-}
+});
 
 // ─── Pagination button ────────────────────────────────────────────────────────
 function PagBtn({

@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import {
   LineChart,
   Line,
@@ -33,7 +34,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   );
 };
 
-export default function EquityCurveChart({ trades }: { trades: Trade[] }) {
+export default memo(function EquityCurveChart({ trades }: { trades: Trade[] }) {
   const { theme } = useTheme();
   const stats = computeTradeStats(trades);
 
@@ -113,4 +114,4 @@ export default function EquityCurveChart({ trades }: { trades: Trade[] }) {
       </ResponsiveContainer>
     </>
   );
-}
+});

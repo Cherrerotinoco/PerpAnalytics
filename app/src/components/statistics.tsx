@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Trade } from '../types/tradeTypes';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -259,7 +260,7 @@ function MetricGrid({ children }: { children: React.ReactNode }) {
 }
 
 // ─── Performance section ──────────────────────────────────────────────────────
-export function PerformanceSection({ stats: st }: { stats: TradeStats }) {
+export const PerformanceSection = memo(function PerformanceSection({ stats: st }: { stats: TradeStats }) {
   return (
     <div className="tc-section">
       <MetricGrid>
@@ -331,10 +332,10 @@ export function PerformanceSection({ stats: st }: { stats: TradeStats }) {
       )}
     </div>
   );
-}
+});
 
 // ─── Risk & Drawdown section ──────────────────────────────────────────────────
-export function RiskSection({ stats: st }: { stats: TradeStats }) {
+export const RiskSection = memo(function RiskSection({ stats: st }: { stats: TradeStats }) {
   return (
     <div className="tc-section">
       <MetricGrid>
@@ -383,10 +384,10 @@ export function RiskSection({ stats: st }: { stats: TradeStats }) {
       </MetricGrid>
     </div>
   );
-}
+});
 
 // ─── Trades section ───────────────────────────────────────────────────────────
-export function TradesSection({ stats: st }: { stats: TradeStats }) {
+export const TradesSection = memo(function TradesSection({ stats: st }: { stats: TradeStats }) {
   const breakeven = st.totalTrades - st.winTrades - st.lossTrades;
 
   return (
@@ -442,4 +443,4 @@ export function TradesSection({ stats: st }: { stats: TradeStats }) {
       </div>
     </div>
   );
-}
+});

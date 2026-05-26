@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo } from 'react';
 import { Trade } from '../types/tradeTypes';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -174,7 +174,7 @@ function MonthGrid({
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
-export default function PnlCalendar({ trades }: { trades: Trade[] }) {
+export default memo(function PnlCalendar({ trades }: { trades: Trade[] }) {
   const dailyMap = buildDailyMap(trades);
   const months = getMonthRange(trades);
   const [idx, setIdx] = useState(0);
@@ -233,4 +233,4 @@ export default function PnlCalendar({ trades }: { trades: Trade[] }) {
       <MonthGrid year={year} month={month} dailyMap={dailyMap} maxAbs={maxAbs} />
     </div>
   );
-}
+});

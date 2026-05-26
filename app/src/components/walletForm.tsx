@@ -9,11 +9,10 @@ import {
   TradesSection,
 } from './statistics';
 
-// Lazy-loaded: only needed after a search returns data.
-// Recharts (EquityCurveChart, PnlBySymbolChart) defers ~300 KB from initial load.
-const TradeList        = lazy(() => import('./tradeList'));
+
+const TradeList = lazy(() => import('./tradeList'));
 const EquityCurveChart = lazy(() => import('./equityCurveChart'));
-const PnlCalendar      = lazy(() => import('./PnlCalendar'));
+const PnlCalendar = lazy(() => import('./PnlCalendar'));
 const PnlBySymbolChart = lazy(() => import('./PnlBySymbolChart'));
 
 const SOLANA_ADDRESS_REGEX = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
@@ -74,6 +73,8 @@ function formatDateParam(s: string): string {
   return `${d}.${mo}.${y}`;
 }
 
+const _initParams = new URLSearchParams(window.location.search);
+
 type Platform = 'jupiter' | 'pacifica';
 
 // ─── Panel placeholder ────────────────────────────────────────────────────────
@@ -92,15 +93,15 @@ interface WalletFormProps {
 }
 
 export default function WalletForm({ wallet, setWallet, addRecentWallet }: WalletFormProps) {
-  const [startDate, setStartDate] = useState(() => parseDateParam(new URLSearchParams(window.location.search).get('start_date')));
-  const [endDate, setEndDate] = useState(() => parseDateParam(new URLSearchParams(window.location.search).get('end_date')));
+  const [startDate, setStartDate] = useState(() => parseDateParam(_initParams.get('start_date')));
+  const [endDate, setEndDate] = useState(() => parseDateParam(_initParams.get('end_date')));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [trades, setTrades] = useState<Trade[]>([]);
   const [filteredTrades, setFilteredTrades] = useState<Trade[]>([]);
   const [hasQueried, setHasQueried] = useState(false);
   const [platforms, setPlatforms] = useState<Platform[]>(() => {
-    const p = new URLSearchParams(window.location.search).get('platforms');
+    const p = _initParams.get('platforms');
     if (!p) return ['jupiter', 'pacifica'];
     const valid = p.split(',').filter((x): x is Platform => x === 'jupiter' || x === 'pacifica');
     return valid.length ? valid : ['jupiter', 'pacifica'];
@@ -117,7 +118,7 @@ export default function WalletForm({ wallet, setWallet, addRecentWallet }: Walle
 
   // ── Pre-fill wallet from URL on mount ──
   useEffect(() => {
-    const urlWallet = new URLSearchParams(window.location.search).get('wallet');
+    const urlWallet = _initParams.get('wallet');
     if (urlWallet) setWallet(urlWallet);
   }, []);
 
@@ -179,6 +180,9 @@ export default function WalletForm({ wallet, setWallet, addRecentWallet }: Walle
       return;
     }
 
+    const controller = new AbortController();
+    const fetchTimeout = setTimeout(() => controller.abort(), 30_000);
+
     try {
       const results = await Promise.all(
         platforms.map(async (platform) => {
@@ -186,7 +190,7 @@ export default function WalletForm({ wallet, setWallet, addRecentWallet }: Walle
             const allEvents: JupiterTrade[] = [];
             const fetchPage = async (start: number, end: number): Promise<void> => {
               const url = `https://perps-api.jup.ag/v1/trades?walletAddress=${wallet}&start=${start}&end=${end}`;
-              const res = await fetch(url);
+              const res = await fetch(url, { signal: controller.signal });
               if (!res.ok) {
                 throw new Error(`Error fetching Jupiter data: ${res.statusText}`);
               }
@@ -202,8 +206,10 @@ export default function WalletForm({ wallet, setWallet, addRecentWallet }: Walle
           if (platform === 'pacifica') {
             const allFills: PacificaFill[] = [];
             const fetchPage = async (cursor?: string): Promise<void> => {
+              const cursorParam = cursor ? `&cursor=${encodeURIComponent(cursor)}` : '';
               const res = await fetch(
-                `https://api.pacifica.fi/api/v1/trades/history?account=${wallet}&limit=1000${cursor ? `&cursor=${cursor}` : ''}`
+                `https://api.pacifica.fi/api/v1/trades/history?account=${wallet}&limit=1000${cursorParam}`,
+                { signal: controller.signal }
               );
               if (!res.ok) {
                 throw new Error(`Error fetching Pacifica data: ${res.statusText}`);
@@ -233,30 +239,23 @@ export default function WalletForm({ wallet, setWallet, addRecentWallet }: Walle
       setHasQueried(true);
       addRecentWallet(wallet);
     } catch (err) {
-      console.error('Failed to fetch trades:', err);
-      setError('Failed to fetch trades. Check the console for details.');
+      if (err instanceof Error && err.name === 'AbortError') {
+        setError('Request timed out after 30 s. Please check your connection and try again.');
+      } else {
+        console.error('Failed to fetch trades:', err);
+        setError('Failed to fetch trades. Check the console for details.');
+      }
     } finally {
+      clearTimeout(fetchTimeout);
       setLoading(false);
     }
   };
 
-  const handleClear = () => {
-    setWallet('');
-    setStartDate('');
-    setEndDate('');
-    setPlatforms(['jupiter', 'pacifica']);
-    setError('');
-    setTrades([]);
-    setHasQueried(false);
-    didAutoSubmit.current = false;
-    window.history.replaceState(null, '', window.location.pathname);
-  };
 
-  // ── Auto-submit when URL params pre-filled wallet + start_date ──
+
   useEffect(() => {
     if (didAutoSubmit.current) return;
-    const p = new URLSearchParams(window.location.search);
-    if (!p.get('wallet') || !p.get('start_date')) return;
+    if (!_initParams.get('wallet') || !_initParams.get('start_date')) return;
     if (!wallet || !startDate) return;
     didAutoSubmit.current = true;
     handleSubmit(null);
@@ -277,7 +276,7 @@ export default function WalletForm({ wallet, setWallet, addRecentWallet }: Walle
   }, [trades, startDate, endDate]);
 
   const isDisabled = loading || !wallet || !startDate || platforms.length === 0;
-  const hasData    = !loading && filteredTrades.length > 0;
+  const hasData = !loading && filteredTrades.length > 0;
 
   return (
     <div>

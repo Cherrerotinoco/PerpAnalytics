@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import {
   BarChart,
   Bar,
@@ -43,7 +44,7 @@ function fmtAxis(v: number): string {
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
-export default function PnlBySymbolChart({ trades }: { trades: Trade[] }) {
+export default memo(function PnlBySymbolChart({ trades }: { trades: Trade[] }) {
   const { theme } = useTheme();
   const data = computeBySymbol(trades);
 
@@ -115,4 +116,4 @@ export default function PnlBySymbolChart({ trades }: { trades: Trade[] }) {
       </BarChart>
     </ResponsiveContainer>
   );
-}
+});
