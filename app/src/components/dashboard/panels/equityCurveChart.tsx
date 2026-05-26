@@ -11,7 +11,7 @@ import {
 } from 'recharts';
 import { Trade } from '../../../types/tradeTypes';
 import { useTheme } from '../../../context/ThemeContext';
-import { computeTradeStats } from './Statistics';
+import { computeTradeStats } from './statistics';
 
 function fmtMoney(v: number): string {
   return v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -31,10 +31,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   return (
     <div className="tc-chart-tooltip">
       <p className="tc-chart-tooltip-date">{fmtDate(label)}</p>
-      <p
-        className="tc-chart-tooltip-val"
-        style={{ color: val >= 0 ? 'var(--tc-green)' : 'var(--tc-red)' }}
-      >
+      <p className={`tc-chart-tooltip-val ${val >= 0 ? 'tc-green' : 'tc-red'}`}>
         {val >= 0 ? '+' : ''}
         {fmtMoney(val)} $
       </p>
@@ -77,14 +74,7 @@ export default memo(function EquityCurveChart({ trades }: { trades: Trade[] }) {
         <span className="tc-chart-date-range">
           {fmtDate(xMin)} — {fmtDate(xMax)}
         </span>
-        <span
-          className="tc-pnl-badge"
-          style={{
-            color: lineColor,
-            background: isPositive ? 'rgba(34,197,94,0.1)' : 'rgba(220,38,38,0.1)',
-            border: `1px solid ${isPositive ? 'rgba(34,197,94,0.2)' : 'rgba(220,38,38,0.2)'}`,
-          }}
-        >
+        <span className={`tc-pnl-badge ${isPositive ? 'tc-badge--positive' : 'tc-badge--negative'}`}>
           {isPositive ? '+' : ''}
           {fmtMoney(stats.totalPnl)} $
         </span>

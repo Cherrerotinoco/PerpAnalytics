@@ -156,23 +156,13 @@ function MonthGrid({
                 >
                   <div className="tc-cal-cell-inner">
                     <span
-                      className="tc-cal-day-num"
-                      style={{
-                        color: hasTrade
-                          ? pnl! >= 0
-                            ? 'rgba(34,197,94,0.65)'
-                            : 'rgba(239,68,68,0.65)'
-                          : 'var(--tc-muted)',
-                      }}
+                      className={`tc-cal-day-num ${hasTrade ? (pnl! >= 0 ? 'tc-cal-day-num--win' : 'tc-cal-day-num--loss') : 'tc-cal-day-num--empty'}`}
                     >
                       {day}
                     </span>
                     {hasTrade && (
                       <span
-                        className="tc-cal-day-pnl"
-                        style={{
-                          color: pnl! >= 0 ? 'rgba(34,197,94,0.95)' : 'rgba(239,68,68,0.95)',
-                        }}
+                        className={`tc-cal-day-pnl ${pnl! >= 0 ? 'tc-cal-day-pnl--win' : 'tc-cal-day-pnl--loss'}`}
                       >
                         {fmtCell(pnl!)}
                       </span>
@@ -229,10 +219,7 @@ export default memo(function PnlCalendar({ trades }: { trades: Trade[] }) {
             {MONTH_NAMES[month]} {year}
           </span>
           {monthTotal !== 0 && (
-            <span
-              className="tc-cal-total"
-              style={{ color: monthTotal >= 0 ? 'var(--tc-green)' : 'var(--tc-red)' }}
-            >
+            <span className={`tc-cal-total ${monthTotal >= 0 ? 'tc-green' : 'tc-red'}`}>
               {fmtTotal(monthTotal)}
             </span>
           )}

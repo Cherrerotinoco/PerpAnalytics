@@ -1,9 +1,9 @@
-import React, { useState, useRef, useEffect, useMemo, lazy, Suspense } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Trade } from '../types/tradeTypes';
 import { buildJupiterTrades, JupiterTrade } from '../utils/normalizeJupiter';
 import { buildPacificaTrades, PacificaFill } from '../utils/normalizePacifica';
 import { computeTradeStats } from './dashboard/panels/statistics';
-import { DashboardContainer } from './dashboard';
+import DashboardGrid from './dashboard/DashboardGrid';
 
 const SOLANA_ADDRESS_REGEX = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 const MAX_CACHE_ENTRIES = 10;
@@ -259,165 +259,155 @@ export const WalletForm = ({ wallet, setWallet, addRecentWallet }: WalletFormPro
   const hasData = !loading && filteredTrades.length > 0;
 
   return (
-    <div>
-      {/* ── Search bar ─────────────────────────────────────────────────────── */}
-      <div className="tc-panel tc-search-pad mb-3">
-        <form onSubmit={handleSubmit} autoComplete="off">
-          <div className="d-flex align-items-center gap-2 flex-wrap">
-            {/* Wallet address */}
-            <div className="tc-wallet-input-wrap">
-              <input
-                id="wallet"
-                type="text"
-                name="wallet"
-                className="tc-input font-monospace"
-                placeholder="Wallet address…"
-                value={wallet}
-                onChange={(e) => setWallet(e.target.value)}
-                autoComplete="off"
-                spellCheck={false}
-              />
-            </div>
-
-            {/* Date range */}
-            <span className="tc-label">From</span>
-            <input
-              id="start-date"
-              type="date"
-              name="start-date"
-              className="tc-input tc-date-input"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-            />
-            <span className="tc-label">To</span>
-            <input
-              id="end-date"
-              type="date"
-              name="end-date"
-              className="tc-input tc-date-input"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-            />
-
-            {/* Platform checkboxes */}
-            <div className="tc-platform-group">
-              {(['jupiter', 'pacifica'] as Platform[]).map((p) => {
-                const isActive = platforms.includes(p);
-                const label = p === 'jupiter' ? 'Jupiter' : 'Pacifica';
-                return (
-                  <label
-                    key={p}
-                    htmlFor={`plat-${p}`}
-                    className="tc-platform-label"
-                    style={{ color: isActive ? 'var(--tc-text)' : 'var(--tc-muted)' }}
-                  >
-                    <input
-                      id={`plat-${p}`}
-                      type="checkbox"
-                      checked={isActive}
-                      onChange={(e) => {
-                        setPlatforms((prev) =>
-                          e.target.checked ? [...prev, p] : prev.filter((x) => x !== p)
-                        );
-                      }}
-                    />
-                    {/* Custom checkbox box */}
-                    <span
-                      className="tc-checkbox-box"
-                      style={{
-                        border: `1.5px solid ${isActive ? 'var(--tc-accent)' : 'var(--tc-border)'}`,
-                        background: isActive ? 'var(--tc-accent)' : 'transparent',
-                      }}
-                    >
-                      {isActive && (
-                        <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
-                          <polyline
-                            points="1,3.5 3.2,5.8 8,1"
-                            stroke="#111"
-                            strokeWidth="1.6"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                      )}
-                    </span>
-                    {label}
-                  </label>
-                );
-              })}
-            </div>
-
-            {/* Actions */}
-            <button type="submit" disabled={isDisabled} className="tc-btn-primary">
-              {loading && (
-                <span
-                  className="spinner-border spinner-border-sm"
-                  role="status"
-                  aria-hidden="true"
+    <div className="tc-wallet-root">
+      {/* ── Above-fold: form, status ────────────────────────────────────────── */}
+      <div className="tc-wallet-top">
+        {/* ── Search bar ─────────────────────────────────────────────────────── */}
+        <div className="tc-panel tc-search-pad mb-3">
+          <form onSubmit={handleSubmit} autoComplete="off">
+            <div className="d-flex align-items-center gap-2 flex-wrap">
+              {/* Wallet address */}
+              <div className="tc-wallet-input-wrap">
+                <input
+                  id="wallet"
+                  type="text"
+                  name="wallet"
+                  className="tc-input font-monospace"
+                  placeholder="Wallet address…"
+                  value={wallet}
+                  onChange={(e) => setWallet(e.target.value)}
+                  autoComplete="off"
+                  spellCheck={false}
                 />
-              )}
-              {loading ? 'Loading…' : 'Search'}
-            </button>
-            {hasQueried && !loading && (
-              <button
-                type="button"
-                title="Refresh — fetch latest trades bypassing cache"
-                onClick={() => handleSubmit(null, true)}
-                className="tc-btn-icon"
-              >
-                <svg
-                  width="13"
-                  height="13"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
+              </div>
+
+              {/* Date range */}
+              <span className="tc-label">From</span>
+              <input
+                id="start-date"
+                type="date"
+                name="start-date"
+                className="tc-input tc-date-input"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+              />
+              <span className="tc-label">To</span>
+              <input
+                id="end-date"
+                type="date"
+                name="end-date"
+                className="tc-input tc-date-input"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+              />
+
+              {/* Platform checkboxes */}
+              <div className="tc-platform-group">
+                {(['jupiter', 'pacifica'] as Platform[]).map((p) => {
+                  const isActive = platforms.includes(p);
+                  const label = p === 'jupiter' ? 'Jupiter' : 'Pacifica';
+                  return (
+                    <label
+                      key={p}
+                      htmlFor={`plat-${p}`}
+                      className={`tc-platform-label ${isActive ? 'tc-platform-label--active' : 'tc-platform-label--inactive'}`}
+                    >
+                      <input
+                        id={`plat-${p}`}
+                        type="checkbox"
+                        checked={isActive}
+                        onChange={(e) => {
+                          setPlatforms((prev) =>
+                            e.target.checked ? [...prev, p] : prev.filter((x) => x !== p)
+                          );
+                        }}
+                      />
+                      {/* Custom checkbox box */}
+                      <span
+                        className={`tc-checkbox-box ${isActive ? 'tc-checkbox-box--active' : 'tc-checkbox-box--inactive'}`}
+                      >
+                        {isActive && (
+                          <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
+                            <polyline
+                              points="1,3.5 3.2,5.8 8,1"
+                              stroke="#111"
+                              strokeWidth="1.6"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        )}
+                      </span>
+                      {label}
+                    </label>
+                  );
+                })}
+              </div>
+
+              {/* Actions */}
+              <button type="submit" disabled={isDisabled} className="tc-btn-primary">
+                {loading && (
+                  <span
+                    className="spinner-border spinner-border-sm"
+                    role="status"
+                    aria-hidden="true"
+                  />
+                )}
+                {loading ? 'Loading…' : 'Search'}
+              </button>
+              {hasQueried && !loading && (
+                <button
+                  type="button"
+                  title="Refresh — fetch latest trades bypassing cache"
+                  onClick={() => handleSubmit(null, true)}
+                  className="tc-btn-icon"
                 >
-                  <polyline points="23 4 23 10 17 10" />
-                  <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
-                </svg>
-              </button>
-            )}
-          </div>
-
-          {/* Error */}
-          {error && (
-            <div className="tc-error-msg">
-              <span className="flex-fill">{error}</span>
-              <button type="button" onClick={() => setError('')} className="tc-error-dismiss">
-                ×
-              </button>
+                  <svg
+                    width="13"
+                    height="13"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <polyline points="23 4 23 10 17 10" />
+                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+                  </svg>
+                </button>
+              )}
             </div>
-          )}
-        </form>
-      </div>
 
-      {/* ── Loading ────────────────────────────────────────────────────────── */}
-      {loading && (
-        <div className="tc-loading-state">
-          <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true" />
-          Fetching trades…
+            {/* Error */}
+            {error && (
+              <div className="tc-error-msg">
+                <span className="flex-fill">{error}</span>
+                <button type="button" onClick={() => setError('')} className="tc-error-dismiss">
+                  ×
+                </button>
+              </div>
+            )}
+          </form>
         </div>
-      )}
 
-      {/* ── No-results notice ──────────────────────────────────────────────── */}
-      {!loading && hasQueried && trades.length === 0 && (
-        <p className="tc-notice-empty">
-          No trades found for this wallet and selected platforms in the chosen period.
-        </p>
-      )}
 
-      {/* ── Dashboard (always visible) ─────────────────────────────────────── */}
-      <div>
-        <DashboardContainer
-          trades={filteredTrades}
-          stats={stats}
-          hasData={hasData}
-          hasQueried={hasQueried}
-        />
-      </div>
+        {/* ── No-results notice ──────────────────────────────────────────────── */}
+        {!loading && hasQueried && trades.length === 0 && (
+          <p className="tc-notice-empty">
+            No trades found for this wallet and selected platforms in the chosen period.
+          </p>
+        )}
+      </div>{/* end tc-wallet-top */}
+
+      {/* ── Dashboard ──────────────────────────────────────────────────────── */}
+      <DashboardGrid
+        filteredTrades={filteredTrades}
+        hasData={hasData}
+        hasQueried={hasQueried}
+      />
     </div>
   );
 };
+
+export default WalletForm;

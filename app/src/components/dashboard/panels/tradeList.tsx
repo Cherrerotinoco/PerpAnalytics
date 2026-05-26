@@ -152,22 +152,12 @@ export default memo(function TradeList({ trades }: { trades: Trade[] }) {
                 <td className="font-monospace">{t.symbol}</td>
                 <td>
                   <span
-                    className="tc-side-badge"
-                    style={{
-                      color: t.side?.toLowerCase() === 'long' ? 'var(--tc-green)' : 'var(--tc-red)',
-                      background:
-                        t.side?.toLowerCase() === 'long'
-                          ? 'rgba(34,197,94,0.1)'
-                          : 'rgba(220,38,38,0.1)',
-                    }}
+                    className={`tc-side-badge ${t.side?.toLowerCase() === 'long' ? 'tc-badge--positive' : 'tc-badge--negative'}`}
                   >
                     {t.side}
                   </span>
                 </td>
-                <td
-                  className="fw-semibold"
-                  style={{ color: t.pnl >= 0 ? 'var(--tc-green)' : 'var(--tc-red)' }}
-                >
+                <td className={`fw-semibold ${t.pnl >= 0 ? 'tc-green' : 'tc-red'}`}>
                   {t.pnl >= 0 ? '+' : ''}
                   {fmtNum(t.pnl)}
                 </td>

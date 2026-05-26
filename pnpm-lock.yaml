@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      flexlayout-react:
+        specifier: ^0.9.1
+        version: 0.9.1(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       react:
         specifier: 19.2.6
         version: 19.2.6
@@ -910,6 +913,12 @@ packages:
 
   flatted@3.4.2:
     resolution: {integrity: sha512-PjDse7RzhcPkIJwy5t7KPWQSZ9cAbzQXcafsetQoD7sOJRQlGikNbx7yZp2OotDnJyrDcbyRq3Ttb18iYOqkxA==}
+
+  flexlayout-react@0.9.1:
+    resolution: {integrity: sha512-sB/93gKvDUBcukvxeNsu88ziobdsBfZQCDk9tTaxZOruaefpCpjpkSjhrhgoomWmTrSz8xnpHj8QcUaRf0Begg==}
+    peerDependencies:
+      react: ^18.0.0 || ^19.0.0
+      react-dom: ^18.0.0 || ^19.0.0
 
   fsevents@2.3.3:
     resolution: {integrity: sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw==}
@@ -2063,6 +2072,11 @@ snapshots:
       keyv: 4.5.4
 
   flatted@3.4.2: {}
+
+  flexlayout-react@0.9.1(react-dom@19.2.6(react@19.2.6))(react@19.2.6):
+    dependencies:
+      react: 19.2.6
+      react-dom: 19.2.6(react@19.2.6)
 
   fsevents@2.3.3:
     optional: true

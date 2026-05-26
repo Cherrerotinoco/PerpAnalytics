@@ -31,27 +31,21 @@ export default function App() {
   return (
     <ThemeProvider>
       <MainLayout>
-        {/* ── Page intro ─────────────────────────────────────────────────── */}
-        <div style={{ marginBottom: '1.25rem' }}>
-          <h1
-            style={{
-              fontSize: '1.35rem',
-              fontWeight: 700,
-              letterSpacing: '-0.03em',
-              color: 'var(--tc-text)',
-              margin: '0 0 0.3rem',
-            }}
-          >
-            Analyze your Solana trades
-          </h1>
-          <p style={{ fontSize: '0.82rem', color: 'var(--tc-muted)', margin: 0 }}>
-            Quantitative statistics for your positions on{' '}
-            <span style={{ color: 'var(--tc-text)', fontWeight: 500 }}>Jupiter Perpetuals</span> y{' '}
-            <span style={{ color: 'var(--tc-text)', fontWeight: 500 }}>Pacifica Finance</span>.
-          </p>
+        {/* ── Page intro + recent wallets (shrink-only above dashboard) ─────── */}
+        <div className="tc-page-top">
+          <div className="tc-page-intro">
+            <h1 className="tc-page-title">Analyze your Solana trades</h1>
+            <p className="tc-page-subtitle">
+              Quantitative statistics for your positions on{' '}
+              <span className="tc-page-highlight">Jupiter Perpetuals</span>{' '}
+              and{' '}
+              <span className="tc-page-highlight">Pacifica Finance</span>.
+            </p>
+          </div>
+          <RecentWallets wallets={recentWallets} onSelect={(w) => setWallet(w)} />
         </div>
 
-        <RecentWallets wallets={recentWallets} onSelect={(w) => setWallet(w)} />
+        {/* WalletForm fills remaining height and contains the FlexLayout dashboard */}
         <WalletForm wallet={wallet} setWallet={setWallet} addRecentWallet={addRecentWallet} />
       </MainLayout>
     </ThemeProvider>

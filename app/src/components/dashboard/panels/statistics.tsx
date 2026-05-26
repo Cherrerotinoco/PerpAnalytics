@@ -40,12 +40,13 @@ function stdDev(values: number[]): number {
   return Math.sqrt(variance);
 }
 
+// Downside deviation per Sortino standard: RMS of returns clipped at MAR=0,
+// using the full trade count as denominator (not just the losing-trade count).
+//   σ_d = sqrt( Σ min(rᵢ, 0)² / n )
 function downsideStdDev(values: number[]): number {
-  const negatives = values.filter((v) => v < 0);
-  if (negatives.length < 2) {
-    return 0;
-  }
-  return stdDev(negatives);
+  if (values.length === 0) return 0;
+  const sumSq = values.reduce((acc, v) => acc + Math.min(v, 0) ** 2, 0);
+  return Math.sqrt(sumSq / values.length);
 }
 
 // ─── Stats computation ────────────────────────────────────────────────────────
@@ -137,12 +138,28 @@ export function computeTradeStats(trades: Trade[]): TradeStats {
   const avgLoss = lossTrades > 0 ? sumLoss / lossTrades : 0;
   const riskReward = avgLoss > 0 ? avgWin / avgLoss : avgWin > 0 ? Infinity : 0;
   const expectancy = totalTrades > 0 ? totalPnl / totalTrades : 0;
-  const meanPnl = totalTrades > 0 ? totalPnl / totalTrades : 0;
   const std = stdDev(pnlList);
-  const sharpeRatio = std > 0 ? meanPnl / std : 0;
+  const sharpeRatio = std > 0 ? expectancy / std : 0;
   const dStd = downsideStdDev(pnlList);
-  const sortino = dStd > 0 ? meanPnl / dStd : meanPnl > 0 ? Infinity : 0;
-  const calmarRatio = maxDrawdown > 0 ? totalPnl / maxDrawdown : totalPnl > 0 ? Infinity : 0;
+  const sortino = dStd > 0 ? expectancy / dStd : expectancy > 0 ? Infinity : 0;
+
+  // Calmar: annualised PnL ÷ max drawdown.
+  // Period = time between first and last closed trade; falls back to raw PnL
+  // when the window is < 1 day (avoids division by near-zero).
+  const firstTs = sortedTrades[0]?.closed?.getTime() ?? sortedTrades[0]?.opened?.getTime() ?? 0;
+  const lastTs =
+    sortedTrades[sortedTrades.length - 1]?.closed?.getTime() ??
+    sortedTrades[sortedTrades.length - 1]?.opened?.getTime() ??
+    0;
+  const periodYears =
+    firstTs > 0 && lastTs > firstTs
+      ? (lastTs - firstTs) / (365.25 * 24 * 60 * 60 * 1000)
+      : 0;
+  const annualisedPnl = periodYears >= 1 / 365 ? totalPnl / periodYears : totalPnl;
+  const calmarRatio =
+    maxDrawdown > 0 ? annualisedPnl / maxDrawdown : annualisedPnl > 0 ? Infinity : 0;
+
+  // Recovery Factor: total net profit ÷ max drawdown (not annualised).
   const recoveryFactor = maxDrawdown > 0 ? totalPnl / maxDrawdown : totalPnl > 0 ? Infinity : 0;
   const sortedPnl = [...pnlList].sort((a, b) => a - b);
   const var95Index = Math.max(0, Math.ceil(0.05 * sortedPnl.length) - 1);
@@ -355,28 +372,28 @@ export const RiskSection = memo(function RiskSection({ stats: st }: { stats: Tra
           value={isFinite(st.calmarRatio) ? fmtNum(st.calmarRatio) : '∞'}
           sub="PnL / max drawdown"
           colorClass={ratioClass(st.calmarRatio)}
-          tooltip="Total PnL ÷ max drawdown. Higher values mean better return relative to the worst drawdown."
+          tooltip="Annualised PnL ÷ max drawdown, based on the period spanned by the selected trades. Higher values mean better annualised return relative to the worst drawdown."
         />
         <Metric
           label="Sharpe Ratio"
           value={fmtNum(st.sharpeRatio)}
           sub={sharpeLabel(st.sharpeRatio)}
           colorClass={ratioClass(st.sharpeRatio)}
-          tooltip="Mean PnL ÷ std deviation of all trade PnLs. Measures return per unit of total volatility."
+          tooltip="Mean PnL ÷ std deviation of all trade PnLs (risk-free rate = 0, per-trade, non-annualised). Measures return per unit of total volatility."
         />
         <Metric
           label="Sortino Ratio"
           value={isFinite(st.sortino) ? fmtNum(st.sortino) : '∞'}
           sub="downside vol. only"
           colorClass={ratioClass(st.sortino)}
-          tooltip="Mean PnL ÷ std deviation of losing trades only. Penalises downside volatility exclusively."
+          tooltip="Mean PnL ÷ downside deviation (RMS of all returns clipped at zero, full trade count denominator). Penalises downside risk exclusively."
         />
         <Metric
           label="Recovery Factor"
           value={isFinite(st.recoveryFactor) ? fmtNum(st.recoveryFactor) : '∞'}
           sub="profit vs risk"
           colorClass={st.recoveryFactor >= 1 ? 'tc-green' : 'tc-red'}
-          tooltip="Total PnL ÷ max drawdown. Indicates how well total profit covers the worst drawdown experienced."
+          tooltip="Total net PnL ÷ max drawdown (non-annualised). Indicates how well total profit covers the worst drawdown experienced."
         />
         <Metric
           label="VaR 95%"

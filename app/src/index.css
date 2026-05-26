@@ -89,70 +89,28 @@ body {
   color: var(--tc-muted) !important;
 }
 
-/* ─── Panel header ──────────────────────────────────────────────────────────── */
-.tc-panel-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.6rem 1rem;
-  border-bottom: 1px solid var(--tc-border);
+/* ─── Page intro ────────────────────────────────────────────────────────────── */
+.tc-page-intro {
+  margin-bottom: 0.75rem;
 }
 
-.tc-panel-title {
-  font-size: 0.65rem;
+.tc-page-title {
+  font-size: 1.35rem;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: -0.03em;
+  color: var(--tc-text);
+  margin: 0 0 0.25rem;
+}
+
+.tc-page-subtitle {
+  font-size: 0.82rem;
   color: var(--tc-muted);
   margin: 0;
 }
 
-/* ─── Dividers ──────────────────────────────────────────────────────────────── */
-.tc-divider-v {
-  width: 1px;
-  background: var(--tc-border);
-  flex-shrink: 0;
-  align-self: stretch;
-}
-
-.tc-divider-h {
-  height: 1px;
-  background: var(--tc-border);
-}
-
-/* ─── Platform toggle pills ─────────────────────────────────────────────────── */
-.tc-toggle {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.25rem 0.7rem;
-  border-radius: 4px;
-  border: 1px solid var(--tc-border);
-  cursor: pointer;
-  font-size: 0.78rem;
-  font-weight: 500;
-  color: var(--tc-muted);
-  background: transparent;
-  user-select: none;
-  transition:
-    border-color 0.12s,
-    color 0.12s,
-    background 0.12s;
-  white-space: nowrap;
-}
-
-.tc-toggle:hover {
-  border-color: var(--tc-muted);
+.tc-page-highlight {
   color: var(--tc-text);
-}
-
-.tc-toggle.active {
-  border-color: var(--tc-accent);
-  color: var(--tc-accent);
-  background: rgba(245, 158, 11, 0.08);
-}
-
-.tc-toggle input[type='checkbox'] {
-  display: none;
+  font-weight: 500;
 }
 
 /* ─── Inputs ────────────────────────────────────────────────────────────────── */
@@ -189,6 +147,7 @@ body {
   font-size: 0.8rem;
   border-collapse: collapse;
   width: 100%;
+  text-align: center;
 }
 
 .tc-table thead th {
@@ -507,54 +466,6 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-/* ─── Dashboard panel flex sizes ─────────────────────────────────────────────── */
-.tc-panel-equity {
-  flex: 3 1 360px;
-  min-width: 0;
-}
-.tc-panel-stat {
-  flex: 1 1 260px;
-}
-.tc-panel-calendar {
-  flex: 1 1 430px;
-  min-width: 0;
-}
-.tc-panel-symbol {
-  flex: 1 1 260px;
-  min-width: 0;
-}
-
-/* ─── Loading & empty states ─────────────────────────────────────────────────── */
-.tc-loading-state {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 3rem 0;
-  color: var(--tc-muted);
-  font-size: 0.85rem;
-}
-
-.tc-loading-state .spinner-border {
-  color: var(--tc-accent);
-}
-
-.tc-empty-state {
-  text-align: center;
-  padding: 3rem 1rem;
-  color: var(--tc-muted);
-  font-size: 0.85rem;
-}
-
-.tc-empty-state p {
-  margin: 0;
-}
-
-.tc-empty-icon {
-  display: block;
-  margin: 0 auto 12px;
-}
-
 /* ─── Form controls ──────────────────────────────────────────────────────────── */
 .tc-search-pad {
   padding: 0.6rem 0.75rem;
@@ -647,6 +558,9 @@ body {
   transition: color 0.12s;
 }
 
+.tc-platform-label--active  { color: var(--tc-text); }
+.tc-platform-label--inactive { color: var(--tc-muted); }
+
 .tc-platform-label input[type='checkbox'] {
   display: none;
 }
@@ -663,6 +577,9 @@ body {
     border-color 0.12s,
     background 0.12s;
 }
+
+.tc-checkbox-box--active  { border: 1.5px solid var(--tc-accent); background: var(--tc-accent); }
+.tc-checkbox-box--inactive { border: 1.5px solid var(--tc-border); background: transparent; }
 
 .tc-wallet-input-wrap {
   flex: 1 1 200px;
@@ -691,15 +608,6 @@ body {
   text-align: center;
   padding: 0.25rem 0 0.75rem;
   margin: 0;
-}
-
-/* ─── Panel body & overflow ──────────────────────────────────────────────────── */
-.tc-panel-body {
-  padding: 0.75rem;
-}
-
-.tc-panel-overflow {
-  overflow: hidden;
 }
 
 /* ─── Utility ────────────────────────────────────────────────────────────────── */
@@ -838,11 +746,18 @@ body {
   line-height: 1;
 }
 
+.tc-cal-day-num--win   { color: rgba(34,  197, 94,  0.65); }
+.tc-cal-day-num--loss  { color: rgba(239, 68,  68,  0.65); }
+.tc-cal-day-num--empty { color: var(--tc-muted); }
+
 .tc-cal-day-pnl {
   font-size: 0.7rem;
   font-weight: 700;
   line-height: 1;
 }
+
+.tc-cal-day-pnl--win  { color: rgba(34,  197, 94,  0.95); }
+.tc-cal-day-pnl--loss { color: rgba(239, 68,  68,  0.95); }
 
 /* ─── Equity curve chart ─────────────────────────────────────────────────────── */
 .tc-chart-header {
@@ -862,6 +777,18 @@ body {
   font-weight: 700;
   padding: 0.15rem 0.6rem;
   border-radius: 4px;
+}
+
+/* Color modifier — shared by .tc-pnl-badge and .tc-side-badge */
+.tc-badge--positive {
+  color: var(--tc-green);
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+}
+.tc-badge--negative {
+  color: var(--tc-red);
+  background: rgba(220, 38, 38, 0.1);
+  border: 1px solid rgba(220, 38, 38, 0.2);
 }
 
 /* ─── Recharts custom tooltip ────────────────────────────────────────────────── */
@@ -997,4 +924,144 @@ body {
   width: 1rem;
   height: 1rem;
   border-width: 0.2em;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   FlexLayout dashboard
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* ─── Height chain ──────────────────────────────────────────────────────────── */
+/* Root fills the viewport exactly; overflow:hidden prevents body scroll         */
+.tc-app-height {
+  height: 100dvh;
+  overflow: hidden;
+}
+
+/* main becomes a flex column so its children can flex-grow into it             */
+.tc-main-col {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* Title + recent wallets row — never grows */
+.tc-page-top {
+  padding: 1.25rem;
+}
+
+/* WalletForm outer wrapper — grows to fill everything below the page-top */
+.tc-wallet-root {
+  padding: 0 1.25rem 1.25rem;
+}
+
+/* DashboardGrid outer wrapper */
+.tc-dashboard-grid {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Toolbar row (Reset layout button) */
+.tc-dashboard-toolbar {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: flex-end;
+  padding: 6px 0 6px;
+}
+
+/* Ghost button used by toolbar */
+.tc-btn-ghost {
+  background: transparent;
+  border: 1px solid var(--tc-border);
+  color: var(--tc-muted);
+  font-size: 0.72rem;
+  font-family: inherit;
+  padding: 0.2rem 0.65rem;
+  border-radius: var(--tc-radius);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.tc-btn-ghost:hover {
+  color: var(--tc-text);
+  border-color: var(--tc-muted);
+}
+
+/* FlexLayout container — position:relative required; min-height floors the     */
+/* layout at 75 vh so panels always have meaningful space to render into.        */
+.tc-fl-wrap {
+  flex: 1;
+  min-height: 100vh;
+  position: relative;
+}
+
+/* ─── Panel content shells ──────────────────────────────────────────────────── */
+/* FlexLayout already absolutely positions flexlayout__tab_content;              */
+/* panels just fill that space with height:100%.                                 */
+.tc-fl-panel {
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--tc-surface);
+}
+
+/* Scroll variant: let content overflow vertically inside the fixed container    */
+.tc-fl-panel--scroll {
+  overflow-y: auto;
+  padding: 0.75rem;
+}
+
+/* ─── FlexLayout CSS variable overrides (dark theme — default) ─────────────── */
+.flexlayout__layout {
+  --color-text:                       var(--tc-text);
+  --color-background:                 var(--tc-bg);
+  --color-base:                       var(--tc-bg);
+  --color-1:                          var(--tc-surface);
+  --color-2:                          var(--tc-surface-2);
+  --color-3:                          #252525;
+  --color-4:                          var(--tc-border);
+  --color-5:                          #3a3a3a;
+  --color-6:                          #4a4a4a;
+  --font-family:                      'Inter Tight', system-ui, -apple-system, sans-serif;
+  --font-size:                        small;
+  --font-weight:                      500;
+  --splitter-size:                    4px;
+  --splitter-active-size:             6px;
+  --color-splitter:                   var(--tc-border);
+  --color-splitter-hover:             var(--tc-muted);
+  --color-splitter-drag:              var(--tc-accent);
+  --color-tab-selected:               var(--tc-text);
+  --color-tab-selected-background:    var(--tc-surface-2);
+  --color-tab-unselected:             var(--tc-muted);
+  --color-tab-unselected-background:  transparent;
+  --color-tabset-background:          var(--tc-surface);
+  --color-tabset-background-selected: var(--tc-surface);
+  --color-tabset-divider-line:        var(--tc-border);
+  --color-tab-content:                var(--tc-bg);
+  --color-drag-rect-border:           var(--tc-accent);
+  --color-drag-rect-background:       rgba(245,158,11,0.08);
+  --color-drag-rect:                  var(--tc-text);
+  --color-edge-marker:                var(--tc-muted);
+}
+
+/* ─── Light theme overrides ─────────────────────────────────────────────────── */
+[data-theme='light'] .flexlayout__layout {
+  --color-text:                       var(--tc-text);
+  --color-background:                 var(--tc-bg);
+  --color-base:                       var(--tc-bg);
+  --color-1:                          var(--tc-surface);
+  --color-2:                          var(--tc-surface-2);
+  --color-3:                          #e9eaec;
+  --color-4:                          var(--tc-border);
+  --color-5:                          #d1d5db;
+  --color-6:                          #c1c5cb;
+  --color-tab-selected:               var(--tc-text);
+  --color-tab-selected-background:    var(--tc-surface);
+  --color-tab-unselected:             var(--tc-muted);
+  --color-tabset-background:          var(--tc-surface-2);
+  --color-tabset-background-selected: var(--tc-surface);
+  --color-tabset-divider-line:        var(--tc-border);
+  --color-tab-content:                var(--tc-bg);
+  --color-splitter:                   var(--tc-border);
+  --color-splitter-hover:             var(--tc-muted);
 }
