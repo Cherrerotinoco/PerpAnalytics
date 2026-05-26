@@ -29,6 +29,9 @@ body {
   --tc-amber: #f59e0b;
   --tc-accent: #f59e0b; /* primary brand colour */
   --tc-radius: 6px;
+  /* Tell the browser to render its own UI controls (scrollbars, form widgets,
+     date-picker icon) using dark variants so they contrast with dark backgrounds. */
+  color-scheme: dark;
 }
 
 /* ─── Design tokens — light ──────────────────────────────────────────────────── */
@@ -44,6 +47,7 @@ body {
   --tc-red: #dc2626;
   --tc-amber: #d97706;
   --tc-accent: #d97706; /* slightly darker for contrast on white */
+  color-scheme: light;
 }
 
 /* ─── Panels ────────────────────────────────────────────────────────────────── */
@@ -475,6 +479,21 @@ body {
   width: 130px;
 }
 
+/* Calendar picker icon contrast — inherits color-scheme but belt-and-braces
+   for older WebKit that doesn't honour color-scheme on shadow-DOM widgets. */
+.tc-date-input::-webkit-calendar-picker-indicator {
+  /* Dark theme (default): icon must be light on a dark input background */
+  filter: invert(1) opacity(0.65);
+  cursor: pointer;
+}
+
+[data-theme='light'] .tc-date-input::-webkit-calendar-picker-indicator {
+  /* Light theme: browser default is already a dark icon — just tune opacity */
+  filter: none;
+  opacity: 0.55;
+  cursor: pointer;
+}
+
 .tc-btn-primary {
   background: var(--tc-accent);
   border: none;
@@ -745,6 +764,14 @@ body {
   font-size: 0.72rem;
   line-height: 1;
 }
+
+/* Cell background — flat colours, no gradient */
+.tc-cal-cell--win  { background: rgba(34,  197, 94,  0.14); }
+.tc-cal-cell--loss { background: rgba(239, 68,  68,  0.14); }
+.tc-cal-cell--zero { background: var(--tc-surface-2); }
+
+[data-theme='light'] .tc-cal-cell--win  { background: rgba(22,  163, 74,  0.12); }
+[data-theme='light'] .tc-cal-cell--loss { background: rgba(220, 38,  38,  0.10); }
 
 .tc-cal-day-num--win   { color: rgba(34,  197, 94,  0.65); }
 .tc-cal-day-num--loss  { color: rgba(239, 68,  68,  0.65); }

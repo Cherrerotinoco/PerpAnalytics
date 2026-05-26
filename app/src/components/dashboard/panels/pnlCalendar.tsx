@@ -58,14 +58,6 @@ const getMonthRange = (trades: Trade[]): Array<{ year: number; month: number }> 
 const dayKey = (year: number, month: number, day: number): string =>
   `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
-const cellBg = (pnl: number | undefined, maxAbs: number): string => {
-  if (pnl === undefined) return 'transparent';
-  if (pnl === 0) return 'var(--tc-surface-2)';
-  const opacity = Math.min(0.88, 0.15 + 0.73 * (Math.abs(pnl) / (maxAbs || 1)));
-  return pnl > 0
-    ? `rgba(34,197,94,${opacity.toFixed(2)})`
-    : `rgba(239,68,68,${opacity.toFixed(2)})`;
-};
 
 const fmtCell = (v: number): string => {
   const abs = Math.abs(v);
@@ -100,12 +92,10 @@ const MonthGrid = ({
   year,
   month,
   dailyMap,
-  maxAbs,
 }: {
   year: number;
   month: number;
   dailyMap: DailyMap;
-  maxAbs: number;
 }) => {
   const firstDow = new Date(year, month, 1).getDay();
   const startOffset = (firstDow + 6) % 7; // Mon = 0
@@ -148,8 +138,7 @@ const MonthGrid = ({
                       ? `${String(day).padStart(2, '0')}/${String(month + 1).padStart(2, '0')}/${year}: ${pnl! >= 0 ? '+' : ''}${pnl!.toFixed(2)} $`
                       : `${String(day).padStart(2, '0')}/${String(month + 1).padStart(2, '0')}/${year}`
                   }
-                  className="tc-cal-cell"
-                  style={{ background: cellBg(pnl, maxAbs) }}
+                  className={`tc-cal-cell ${hasTrade ? (pnl! > 0 ? 'tc-cal-cell--win' : pnl! < 0 ? 'tc-cal-cell--loss' : 'tc-cal-cell--zero') : ''}`}
                 >
                   <div className="tc-cal-cell-inner">
                     <span
@@ -198,11 +187,6 @@ const PnlCalendar = memo(({ trades }: { trades: Trade[] }) => {
     monthTotal += dailyMap.get(dayKey(year, month, d)) ?? 0;
   }
 
-  let maxAbs = 0;
-  dailyMap.forEach((pnl) => {
-    if (Math.abs(pnl) > maxAbs) maxAbs = Math.abs(pnl);
-  });
-
   return (
     <div>
       {/* ── Navigation header ── */}
@@ -231,7 +215,7 @@ const PnlCalendar = memo(({ trades }: { trades: Trade[] }) => {
       </div>
 
       {/* ── Calendar grid ── */}
-      <MonthGrid year={year} month={month} dailyMap={dailyMap} maxAbs={maxAbs} />
+      <MonthGrid year={year} month={month} dailyMap={dailyMap} />
     </div>
   );
 });

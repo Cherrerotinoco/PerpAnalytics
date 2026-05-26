@@ -86,15 +86,15 @@ export const WalletForm = ({ wallet, setWallet, addRecentWallet }: WalletFormPro
   const [hasQueried, setHasQueried] = useState(false);
   const [platforms, setPlatforms] = useState<Platform[]>(() => {
     const p = _initParams.get('platforms');
-    if (!p) return ['jupiter', 'pacifica'];
+    if (!p) {
+      return ['jupiter', 'pacifica'];
+    }
     const valid = p.split(',').filter((x): x is Platform => x === 'jupiter' || x === 'pacifica');
     return valid.length ? valid : ['jupiter', 'pacifica'];
   });
   const cacheRef = useRef<{ [key: string]: Trade[] }>({});
   const cacheTsRef = useRef<{ [key: string]: number }>({});
   const didAutoSubmit = useRef(false);
-
-  const stats = useMemo(() => computeTradeStats(filteredTrades), [filteredTrades]);
 
   const toTimestamp = (date: string): string | undefined =>
     date ? String(Math.floor(new Date(date).getTime() / 1000)) : undefined;
@@ -114,10 +114,7 @@ export const WalletForm = ({ wallet, setWallet, addRecentWallet }: WalletFormPro
       setError('Enter a valid Solana wallet address (32–44 Base58 characters).');
       return;
     }
-    if (!startDate) {
-      setError('Start date is required.');
-      return;
-    }
+
     if (platforms.length === 0) {
       setError('Select at least one platform.');
       return;
@@ -126,8 +123,12 @@ export const WalletForm = ({ wallet, setWallet, addRecentWallet }: WalletFormPro
     // Sync current form values to URL so the user can bookmark / share
     const urlParams = new URLSearchParams();
     urlParams.set('wallet', wallet);
-    urlParams.set('start_date', formatDateParam(startDate));
-    if (endDate) urlParams.set('end_date', formatDateParam(endDate));
+    if (startDate) {
+      urlParams.set('start_date', formatDateParam(startDate));
+    }
+    if (endDate) {
+      urlParams.set('end_date', formatDateParam(endDate));
+    }
     urlParams.set('platforms', platforms.join(','));
     window.history.replaceState(null, '', `?${urlParams.toString()}`);
 
@@ -248,14 +249,19 @@ export const WalletForm = ({ wallet, setWallet, addRecentWallet }: WalletFormPro
     setFilteredTrades(
       trades.filter((trade) => {
         const t = new Date(trade.closed).getTime();
+
+        if (!platforms.includes(trade.source.toLowerCase() as Platform)) {
+          return false;
+        }
+
         return (
           (!startTs || t >= parseInt(startTs) * 1000) && (!endTs || t <= parseInt(endTs) * 1000)
         );
       })
     );
-  }, [trades, startDate, endDate]);
+  }, [trades, startDate, endDate, platforms]);
 
-  const isDisabled = loading || !wallet || !startDate || platforms.length === 0;
+  const isDisabled = loading || !wallet || platforms.length === 0;
   const hasData = !loading && filteredTrades.length > 0;
 
   return (
@@ -268,12 +274,14 @@ export const WalletForm = ({ wallet, setWallet, addRecentWallet }: WalletFormPro
             <div className="d-flex align-items-center gap-2 flex-wrap">
               {/* Wallet address */}
               <div className="tc-wallet-input-wrap">
+                <label className="tc-label" htmlFor="wallet">Wallet Address *</label>
                 <input
                   id="wallet"
                   type="text"
                   name="wallet"
                   className="tc-input font-monospace"
                   placeholder="Wallet address…"
+                  required
                   value={wallet}
                   onChange={(e) => setWallet(e.target.value)}
                   autoComplete="off"
@@ -282,25 +290,29 @@ export const WalletForm = ({ wallet, setWallet, addRecentWallet }: WalletFormPro
               </div>
 
               {/* Date range */}
-              <span className="tc-label">From</span>
-              <input
-                id="start-date"
-                type="date"
-                name="start-date"
-                className="tc-input tc-date-input"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-              />
-              <span className="tc-label">To</span>
-              <input
-                id="end-date"
-                type="date"
-                name="end-date"
-                className="tc-input tc-date-input"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-              />
+              <div>
+                <label className="tc-label" htmlFor="start-date">From</label>
+                <input
+                  id="start-date"
+                  type="date"
+                  name="start-date"
+                  className="tc-input tc-date-input"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                />
 
+              </div>
+              <div>
+                <label className="tc-label" htmlFor="end-date">To</label>
+                <input
+                  id="end-date"
+                  type="date"
+                  name="end-date"
+                  className="tc-input tc-date-input"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                />
+              </div>
               {/* Platform checkboxes */}
               <div className="tc-platform-group">
                 {(['jupiter', 'pacifica'] as Platform[]).map((p) => {
