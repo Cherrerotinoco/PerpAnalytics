@@ -52,7 +52,35 @@ function saveCachedTrades(key: string, trades: Trade[]): void {
   }
 }
 
+// ─── URL param helpers ────────────────────────────────────────────────────────
+/** Parse DD.MM.YYYY (URL format) → YYYY-MM-DD (HTML date input value) */
+function parseDateParam(s: string | null): string {
+  if (!s) return '';
+  const m = s.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
+  if (!m) return '';
+  const [, d, mo, y] = m;
+  return `${y}-${mo.padStart(2, '0')}-${d.padStart(2, '0')}`;
+}
+
+/** Format YYYY-MM-DD (HTML date input value) → DD.MM.YYYY (URL-friendly) */
+function formatDateParam(s: string): string {
+  if (!s) return '';
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return '';
+  const [, y, mo, d] = m;
+  return `${d}.${mo}.${y}`;
+}
+
 type Platform = 'jupiter' | 'pacifica';
+
+// ─── Panel placeholder ────────────────────────────────────────────────────────
+function PanelPlaceholder({ searched = false }: { searched?: boolean }) {
+  return (
+    <div className="tc-panel-placeholder">
+      {searched ? 'No data for this period' : 'Run a search to see your data'}
+    </div>
+  );
+}
 
 interface WalletFormProps {
   wallet: string;
@@ -61,30 +89,34 @@ interface WalletFormProps {
 }
 
 export default function WalletForm({ wallet, setWallet, addRecentWallet }: WalletFormProps) {
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [startDate, setStartDate] = useState(() => parseDateParam(new URLSearchParams(window.location.search).get('start_date')));
+  const [endDate, setEndDate] = useState(() => parseDateParam(new URLSearchParams(window.location.search).get('end_date')));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [trades, setTrades] = useState<Trade[]>([]);
   const [filteredTrades, setFilteredTrades] = useState<Trade[]>([]);
   const [hasQueried, setHasQueried] = useState(false);
-  const [platforms, setPlatforms] = useState<Platform[]>(['jupiter', 'pacifica']);
+  const [platforms, setPlatforms] = useState<Platform[]>(() => {
+    const p = new URLSearchParams(window.location.search).get('platforms');
+    if (!p) return ['jupiter', 'pacifica'];
+    const valid = p.split(',').filter((x): x is Platform => x === 'jupiter' || x === 'pacifica');
+    return valid.length ? valid : ['jupiter', 'pacifica'];
+  });
   const cacheRef = useRef<{ [key: string]: Trade[] }>({});
   const cacheTsRef = useRef<{ [key: string]: number }>({});
   const resultsRef = useRef<HTMLDivElement>(null);
-  const shouldScrollRef = useRef(false);
+  const didAutoSubmit = useRef(false);
 
   const stats = useMemo(() => computeTradeStats(filteredTrades), [filteredTrades]);
 
   const toTimestamp = (date: string): string | undefined =>
     date ? String(Math.floor(new Date(date).getTime() / 1000)) : undefined;
 
+  // ── Pre-fill wallet from URL on mount ──
   useEffect(() => {
-    if (shouldScrollRef.current && filteredTrades.length > 0 && resultsRef.current) {
-      shouldScrollRef.current = false;
-      resultsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-  }, [filteredTrades]);
+    const urlWallet = new URLSearchParams(window.location.search).get('wallet');
+    if (urlWallet) setWallet(urlWallet);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent | null, forceRefresh = false) => {
     if (e) {
@@ -103,6 +135,14 @@ export default function WalletForm({ wallet, setWallet, addRecentWallet }: Walle
       setError('Select at least one platform.');
       return;
     }
+
+    // Sync current form values to URL so the user can bookmark / share
+    const urlParams = new URLSearchParams();
+    urlParams.set('wallet', wallet);
+    urlParams.set('start_date', formatDateParam(startDate));
+    if (endDate) urlParams.set('end_date', formatDateParam(endDate));
+    urlParams.set('platforms', platforms.join(','));
+    window.history.replaceState(null, '', `?${urlParams.toString()}`);
 
     const cacheKey = JSON.stringify({ wallet, platforms: [...platforms].sort() });
 
@@ -123,7 +163,6 @@ export default function WalletForm({ wallet, setWallet, addRecentWallet }: Walle
       setTrades(cachedTrades);
       setHasQueried(true);
       setLoading(false);
-      shouldScrollRef.current = true;
       return;
     }
 
@@ -134,7 +173,6 @@ export default function WalletForm({ wallet, setWallet, addRecentWallet }: Walle
       setTrades(stored);
       setHasQueried(true);
       setLoading(false);
-      shouldScrollRef.current = true;
       return;
     }
 
@@ -191,7 +229,6 @@ export default function WalletForm({ wallet, setWallet, addRecentWallet }: Walle
       setTrades(allTrades);
       setHasQueried(true);
       addRecentWallet(wallet);
-      shouldScrollRef.current = true;
     } catch (err) {
       console.error('Failed to fetch trades:', err);
       setError('Failed to fetch trades. Check the console for details.');
@@ -208,7 +245,19 @@ export default function WalletForm({ wallet, setWallet, addRecentWallet }: Walle
     setError('');
     setTrades([]);
     setHasQueried(false);
+    didAutoSubmit.current = false;
+    window.history.replaceState(null, '', window.location.pathname);
   };
+
+  // ── Auto-submit when URL params pre-filled wallet + start_date ──
+  useEffect(() => {
+    if (didAutoSubmit.current) return;
+    const p = new URLSearchParams(window.location.search);
+    if (!p.get('wallet') || !p.get('start_date')) return;
+    if (!wallet || !startDate) return;
+    didAutoSubmit.current = true;
+    handleSubmit(null);
+  }, [wallet, startDate]);
 
   useEffect(() => {
     const startTs = toTimestamp(startDate);
@@ -225,6 +274,7 @@ export default function WalletForm({ wallet, setWallet, addRecentWallet }: Walle
   }, [trades, startDate, endDate]);
 
   const isDisabled = loading || !wallet || !startDate || platforms.length === 0;
+  const hasData    = !loading && filteredTrades.length > 0;
 
   return (
     <div>
@@ -361,98 +411,90 @@ export default function WalletForm({ wallet, setWallet, addRecentWallet }: Walle
         </div>
       )}
 
-      {/* ── Empty state ────────────────────────────────────────────────────── */}
+      {/* ── No-results notice ──────────────────────────────────────────────── */}
       {!loading && hasQueried && trades.length === 0 && (
-        <div className="tc-panel tc-empty-state">
-          <svg
-            width="36"
-            height="36"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            className="tc-empty-icon"
-          >
-            <circle cx="11" cy="11" r="8" />
-            <path d="M21 21l-4.35-4.35" />
-          </svg>
-          <p>No trades found for this period and selected platforms.</p>
-        </div>
+        <p className="tc-notice-empty">
+          No trades found for this wallet and selected platforms in the chosen period.
+        </p>
       )}
 
-      {/* ── Dashboard ──────────────────────────────────────────────────────── */}
-      {!loading && filteredTrades.length > 0 && (
-        <div ref={resultsRef}>
-          {/* Row 1: Equity Curve | Performance | Risk & Drawdown */}
-          <div className="mb-3 d-flex align-items-stretch gap-3 flex-wrap">
-            {/* Equity Curve */}
-            <div className="tc-panel tc-panel-equity">
-              <div className="tc-panel-header">
-                <span className="tc-panel-title">Equity Curve</span>
-              </div>
-              <div className="tc-panel-body">
-                <EquityCurveChart trades={filteredTrades} />
-              </div>
-            </div>
-
-            {/* Performance */}
-            <div className="tc-panel tc-panel-stat">
-              <div className="tc-panel-header">
-                <span className="tc-panel-title">Performance</span>
-              </div>
-              <PerformanceSection stats={stats} />
-            </div>
-
-            {/* Risk & Drawdown */}
-            <div className="tc-panel tc-panel-stat">
-              <div className="tc-panel-header">
-                <span className="tc-panel-title">Risk &amp; Drawdown</span>
-              </div>
-              <RiskSection stats={stats} />
-            </div>
-          </div>
-
-          {/* Row 2: Trades | PnL Calendar | PnL by Symbol */}
-          <div className="mb-3 d-flex align-items-stretch gap-3 flex-wrap">
-            {/* Trades */}
-            <div className="tc-panel tc-panel-stat">
-              <div className="tc-panel-header">
-                <span className="tc-panel-title">Trades</span>
-              </div>
-              <TradesSection stats={stats} />
-            </div>
-
-            {/* PnL Calendar */}
-            <div className="tc-panel tc-panel-calendar">
-              <div className="tc-panel-header">
-                <span className="tc-panel-title">PnL Calendar</span>
-              </div>
-              <div className="tc-panel-body">
-                <PnlCalendar trades={filteredTrades} />
-              </div>
-            </div>
-
-            {/* PnL by Symbol */}
-            <div className="tc-panel tc-panel-symbol">
-              <div className="tc-panel-header">
-                <span className="tc-panel-title">PnL by Symbol</span>
-              </div>
-              <div className="tc-panel-body">
-                <PnlBySymbolChart trades={filteredTrades} />
-              </div>
-            </div>
-          </div>
-
-          {/* Trade History */}
-          <div className="tc-panel tc-panel-overflow">
+      {/* ── Dashboard (always visible) ─────────────────────────────────────── */}
+      <div ref={resultsRef}>
+        {/* Row 1: Equity Curve | Performance | Risk & Drawdown */}
+        <div className="mb-3 d-flex align-items-stretch gap-3 flex-wrap">
+          {/* Equity Curve */}
+          <div className="tc-panel tc-panel-equity">
             <div className="tc-panel-header">
-              <span className="tc-panel-title">Trade History</span>
-              <span className="tc-small-muted">{filteredTrades.length} trades</span>
+              <span className="tc-panel-title">Equity Curve</span>
             </div>
-            <TradeList trades={filteredTrades} />
+            <div className="tc-panel-body">
+              {hasData
+                ? <EquityCurveChart trades={filteredTrades} />
+                : <PanelPlaceholder searched={hasQueried} />}
+            </div>
+          </div>
+
+          {/* Performance */}
+          <div className="tc-panel tc-panel-stat">
+            <div className="tc-panel-header">
+              <span className="tc-panel-title">Performance</span>
+            </div>
+            {hasData ? <PerformanceSection stats={stats} /> : <PanelPlaceholder searched={hasQueried} />}
+          </div>
+
+          {/* Risk & Drawdown */}
+          <div className="tc-panel tc-panel-stat">
+            <div className="tc-panel-header">
+              <span className="tc-panel-title">Risk &amp; Drawdown</span>
+            </div>
+            {hasData ? <RiskSection stats={stats} /> : <PanelPlaceholder searched={hasQueried} />}
           </div>
         </div>
-      )}
+
+        {/* Row 2: Trades | PnL Calendar | PnL by Symbol */}
+        <div className="mb-3 d-flex align-items-stretch gap-3 flex-wrap">
+          {/* Trades */}
+          <div className="tc-panel tc-panel-stat">
+            <div className="tc-panel-header">
+              <span className="tc-panel-title">Trades</span>
+            </div>
+            {hasData ? <TradesSection stats={stats} /> : <PanelPlaceholder searched={hasQueried} />}
+          </div>
+
+          {/* PnL Calendar */}
+          <div className="tc-panel tc-panel-calendar">
+            <div className="tc-panel-header">
+              <span className="tc-panel-title">PnL Calendar</span>
+            </div>
+            <div className="tc-panel-body">
+              {hasData
+                ? <PnlCalendar trades={filteredTrades} />
+                : <PanelPlaceholder searched={hasQueried} />}
+            </div>
+          </div>
+
+          {/* PnL by Symbol */}
+          <div className="tc-panel tc-panel-symbol">
+            <div className="tc-panel-header">
+              <span className="tc-panel-title">PnL by Symbol</span>
+            </div>
+            <div className="tc-panel-body">
+              {hasData
+                ? <PnlBySymbolChart trades={filteredTrades} />
+                : <PanelPlaceholder searched={hasQueried} />}
+            </div>
+          </div>
+        </div>
+
+        {/* Trade History */}
+        <div className="tc-panel tc-panel-overflow">
+          <div className="tc-panel-header">
+            <span className="tc-panel-title">Trade History</span>
+            {hasData && <span className="tc-small-muted">{filteredTrades.length} trades</span>}
+          </div>
+          {hasData ? <TradeList trades={filteredTrades} /> : <PanelPlaceholder searched={hasQueried} />}
+        </div>
+      </div>
     </div>
   );
 }

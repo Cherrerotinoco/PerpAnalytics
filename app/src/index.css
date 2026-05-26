@@ -648,6 +648,30 @@ body {
   min-width: 0;
 }
 
+/* ─── Panel placeholder ──────────────────────────────────────────────────────── */
+.tc-panel-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0.75rem;
+  padding: 2rem 1rem;
+  min-height: 80px;
+  border: 1px dashed var(--tc-border);
+  border-radius: var(--tc-radius);
+  font-size: 0.75rem;
+  color: var(--tc-border);
+  letter-spacing: 0.02em;
+}
+
+/* ─── No-results notice ──────────────────────────────────────────────────────── */
+.tc-notice-empty {
+  font-size: 0.8rem;
+  color: var(--tc-muted);
+  text-align: center;
+  padding: 0.25rem 0 0.75rem;
+  margin: 0;
+}
+
 /* ─── Panel body & overflow ──────────────────────────────────────────────────── */
 .tc-panel-body {
   padding: 0.75rem;
