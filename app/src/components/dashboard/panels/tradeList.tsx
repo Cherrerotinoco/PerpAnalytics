@@ -1,5 +1,5 @@
 import { useState, useMemo, memo } from 'react';
-import { Trade } from '../types/tradeTypes';
+import { Trade } from '../../../types/tradeTypes';
 
 // ─── Formatters ───────────────────────────────────────────────────────────────
 function fmtDateTime(d: Date | null | undefined): string {
@@ -7,7 +7,12 @@ function fmtDateTime(d: Date | null | undefined): string {
     return '—';
   }
   const date = d.toLocaleDateString('en-US', { year: '2-digit', month: '2-digit', day: '2-digit' });
-  const time = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+  const time = d.toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  });
   return `${date} ${time}`;
 }
 
@@ -36,16 +41,26 @@ type SortDir = 'asc' | 'desc';
 // ─── Sort helper (module-level — no closure over component state) ─────────────
 function getValue(t: Trade, col: SortCol) {
   switch (col) {
-    case 'opened':   return t.opened;
-    case 'closed':   return t.closed;
-    case 'symbol':   return t.symbol;
-    case 'side':     return t.side;
-    case 'closeType': return t.closeType;
-    case 'pnl':      return t.pnl;
-    case 'fee':      return t.fee;
-    case 'sizeUsd':  return t.sizeUsd;
-    case 'source':   return t.source;
-    default:         return '';
+    case 'opened':
+      return t.opened;
+    case 'closed':
+      return t.closed;
+    case 'symbol':
+      return t.symbol;
+    case 'side':
+      return t.side;
+    case 'closeType':
+      return t.closeType;
+    case 'pnl':
+      return t.pnl;
+    case 'fee':
+      return t.fee;
+    case 'sizeUsd':
+      return t.sizeUsd;
+    case 'source':
+      return t.source;
+    default:
+      return '';
   }
 }
 
@@ -55,24 +70,26 @@ export default memo(function TradeList({ trades }: { trades: Trade[] }) {
   const [page, setPage] = useState(1);
 
   // ── Sort (memoised — only recomputes when trades array or sort config changes) ──
-  const sorted = useMemo(() =>
-    [...trades].sort((a, b) => {
-      const vA = getValue(a, sort.col);
-      const vB = getValue(b, sort.col);
-      if (vA === vB) return 0;
-      if (vA == null) return 1;
-      if (vB == null) return -1;
-      if (typeof vA === 'number' && typeof vB === 'number') {
-        return sort.dir === 'asc' ? vA - vB : vB - vA;
-      }
-      if (vA instanceof Date && vB instanceof Date) {
-        return sort.dir === 'asc' ? vA.getTime() - vB.getTime() : vB.getTime() - vA.getTime();
-      }
-      return sort.dir === 'asc'
-        ? String(vA).localeCompare(String(vB))
-        : String(vB).localeCompare(String(vA));
-    }),
-  [trades, sort]);
+  const sorted = useMemo(
+    () =>
+      [...trades].sort((a, b) => {
+        const vA = getValue(a, sort.col);
+        const vB = getValue(b, sort.col);
+        if (vA === vB) return 0;
+        if (vA == null) return 1;
+        if (vB == null) return -1;
+        if (typeof vA === 'number' && typeof vB === 'number') {
+          return sort.dir === 'asc' ? vA - vB : vB - vA;
+        }
+        if (vA instanceof Date && vB instanceof Date) {
+          return sort.dir === 'asc' ? vA.getTime() - vB.getTime() : vB.getTime() - vA.getTime();
+        }
+        return sort.dir === 'asc'
+          ? String(vA).localeCompare(String(vB))
+          : String(vB).localeCompare(String(vA));
+      }),
+    [trades, sort]
+  );
 
   if (!trades.length) {
     return null;
@@ -95,11 +112,7 @@ export default memo(function TradeList({ trades }: { trades: Trade[] }) {
     return (
       <th onClick={() => handleSort(col)}>
         {label}
-        {isActive && (
-          <span className="tc-sort-arrow">
-            {sort.dir === 'asc' ? '▲' : '▼'}
-          </span>
-        )}
+        {isActive && <span className="tc-sort-arrow">{sort.dir === 'asc' ? '▲' : '▼'}</span>}
       </th>
     );
   };
@@ -142,13 +155,19 @@ export default memo(function TradeList({ trades }: { trades: Trade[] }) {
                     className="tc-side-badge"
                     style={{
                       color: t.side?.toLowerCase() === 'long' ? 'var(--tc-green)' : 'var(--tc-red)',
-                      background: t.side?.toLowerCase() === 'long' ? 'rgba(34,197,94,0.1)' : 'rgba(220,38,38,0.1)',
+                      background:
+                        t.side?.toLowerCase() === 'long'
+                          ? 'rgba(34,197,94,0.1)'
+                          : 'rgba(220,38,38,0.1)',
                     }}
                   >
                     {t.side}
                   </span>
                 </td>
-                <td className="fw-semibold" style={{ color: t.pnl >= 0 ? 'var(--tc-green)' : 'var(--tc-red)' }}>
+                <td
+                  className="fw-semibold"
+                  style={{ color: t.pnl >= 0 ? 'var(--tc-green)' : 'var(--tc-red)' }}
+                >
                   {t.pnl >= 0 ? '+' : ''}
                   {fmtNum(t.pnl)}
                 </td>
@@ -174,11 +193,7 @@ export default memo(function TradeList({ trades }: { trades: Trade[] }) {
             {Array.from({ length: winEnd - winStart + 1 }, (_, i) => {
               const pageNum = winStart + i;
               return (
-                <PagBtn
-                  key={pageNum}
-                  onClick={() => setPage(pageNum)}
-                  active={pageNum === page}
-                >
+                <PagBtn key={pageNum} onClick={() => setPage(pageNum)} active={pageNum === page}>
                   {pageNum}
                 </PagBtn>
               );

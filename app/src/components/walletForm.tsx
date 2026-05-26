@@ -2,18 +2,8 @@ import React, { useState, useRef, useEffect, useMemo, lazy, Suspense } from 'rea
 import { Trade } from '../types/tradeTypes';
 import { buildJupiterTrades, JupiterTrade } from '../utils/normalizeJupiter';
 import { buildPacificaTrades, PacificaFill } from '../utils/normalizePacifica';
-import {
-  computeTradeStats,
-  PerformanceSection,
-  RiskSection,
-  TradesSection,
-} from './statistics';
-
-
-const TradeList = lazy(() => import('./tradeList'));
-const EquityCurveChart = lazy(() => import('./equityCurveChart'));
-const PnlCalendar = lazy(() => import('./PnlCalendar'));
-const PnlBySymbolChart = lazy(() => import('./PnlBySymbolChart'));
+import { computeTradeStats } from './dashboard/panels/statistics';
+import { DashboardContainer } from './dashboard';
 
 const SOLANA_ADDRESS_REGEX = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 const MAX_CACHE_ENTRIES = 10;
@@ -48,7 +38,10 @@ function loadCachedTrades(key: string): Trade[] | null {
 
 function saveCachedTrades(key: string, trades: Trade[]): void {
   try {
-    localStorage.setItem(STORAGE_PREFIX + key, JSON.stringify({ cachedAt: Date.now(), data: trades }));
+    localStorage.setItem(
+      STORAGE_PREFIX + key,
+      JSON.stringify({ cachedAt: Date.now(), data: trades })
+    );
   } catch {
     // Storage quota exceeded, silently skip
   }
@@ -77,22 +70,13 @@ const _initParams = new URLSearchParams(window.location.search);
 
 type Platform = 'jupiter' | 'pacifica';
 
-// ─── Panel placeholder ────────────────────────────────────────────────────────
-function PanelPlaceholder({ searched = false }: { searched?: boolean }) {
-  return (
-    <div className="tc-panel-placeholder">
-      {searched ? 'No data for this period' : 'Run a search to see your data'}
-    </div>
-  );
-}
-
 interface WalletFormProps {
   wallet: string;
   setWallet: (w: string) => void;
   addRecentWallet: (w: string) => void;
 }
 
-export default function WalletForm({ wallet, setWallet, addRecentWallet }: WalletFormProps) {
+export const WalletForm = ({ wallet, setWallet, addRecentWallet }: WalletFormProps) => {
   const [startDate, setStartDate] = useState(() => parseDateParam(_initParams.get('start_date')));
   const [endDate, setEndDate] = useState(() => parseDateParam(_initParams.get('end_date')));
   const [loading, setLoading] = useState(false);
@@ -108,7 +92,6 @@ export default function WalletForm({ wallet, setWallet, addRecentWallet }: Walle
   });
   const cacheRef = useRef<{ [key: string]: Trade[] }>({});
   const cacheTsRef = useRef<{ [key: string]: number }>({});
-  const resultsRef = useRef<HTMLDivElement>(null);
   const didAutoSubmit = useRef(false);
 
   const stats = useMemo(() => computeTradeStats(filteredTrades), [filteredTrades]);
@@ -251,8 +234,6 @@ export default function WalletForm({ wallet, setWallet, addRecentWallet }: Walle
     }
   };
 
-
-
   useEffect(() => {
     if (didAutoSubmit.current) return;
     if (!_initParams.get('wallet') || !_initParams.get('start_date')) return;
@@ -268,8 +249,7 @@ export default function WalletForm({ wallet, setWallet, addRecentWallet }: Walle
       trades.filter((trade) => {
         const t = new Date(trade.closed).getTime();
         return (
-          (!startTs || t >= parseInt(startTs) * 1000) &&
-          (!endTs || t <= parseInt(endTs) * 1000)
+          (!startTs || t >= parseInt(startTs) * 1000) && (!endTs || t <= parseInt(endTs) * 1000)
         );
       })
     );
@@ -385,7 +365,16 @@ export default function WalletForm({ wallet, setWallet, addRecentWallet }: Walle
                 onClick={() => handleSubmit(null, true)}
                 className="tc-btn-icon"
               >
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <svg
+                  width="13"
+                  height="13"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
                   <polyline points="23 4 23 10 17 10" />
                   <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
                 </svg>
@@ -421,84 +410,14 @@ export default function WalletForm({ wallet, setWallet, addRecentWallet }: Walle
       )}
 
       {/* ── Dashboard (always visible) ─────────────────────────────────────── */}
-      <div ref={resultsRef}>
-        {/* Row 1: Equity Curve | Performance | Risk & Drawdown */}
-        <div className="mb-3 d-flex align-items-stretch gap-3 flex-wrap">
-          {/* Equity Curve */}
-          <div className="tc-panel tc-panel-equity">
-            <div className="tc-panel-header">
-              <span className="tc-panel-title">Equity Curve</span>
-            </div>
-            <div className="tc-panel-body">
-              {hasData
-                ? <Suspense fallback={<PanelPlaceholder />}><EquityCurveChart trades={filteredTrades} /></Suspense>
-                : <PanelPlaceholder searched={hasQueried} />}
-            </div>
-          </div>
-
-          {/* Performance */}
-          <div className="tc-panel tc-panel-stat">
-            <div className="tc-panel-header">
-              <span className="tc-panel-title">Performance</span>
-            </div>
-            {hasData ? <PerformanceSection stats={stats} /> : <PanelPlaceholder searched={hasQueried} />}
-          </div>
-
-          {/* Risk & Drawdown */}
-          <div className="tc-panel tc-panel-stat">
-            <div className="tc-panel-header">
-              <span className="tc-panel-title">Risk &amp; Drawdown</span>
-            </div>
-            {hasData ? <RiskSection stats={stats} /> : <PanelPlaceholder searched={hasQueried} />}
-          </div>
-        </div>
-
-        {/* Row 2: Trades | PnL Calendar | PnL by Symbol */}
-        <div className="mb-3 d-flex align-items-stretch gap-3 flex-wrap">
-          {/* Trades */}
-          <div className="tc-panel tc-panel-stat">
-            <div className="tc-panel-header">
-              <span className="tc-panel-title">Trades</span>
-            </div>
-            {hasData ? <TradesSection stats={stats} /> : <PanelPlaceholder searched={hasQueried} />}
-          </div>
-
-          {/* PnL Calendar */}
-          <div className="tc-panel tc-panel-calendar">
-            <div className="tc-panel-header">
-              <span className="tc-panel-title">PnL Calendar</span>
-            </div>
-            <div className="tc-panel-body">
-              {hasData
-                ? <Suspense fallback={<PanelPlaceholder />}><PnlCalendar trades={filteredTrades} /></Suspense>
-                : <PanelPlaceholder searched={hasQueried} />}
-            </div>
-          </div>
-
-          {/* PnL by Symbol */}
-          <div className="tc-panel tc-panel-symbol">
-            <div className="tc-panel-header">
-              <span className="tc-panel-title">PnL by Symbol</span>
-            </div>
-            <div className="tc-panel-body">
-              {hasData
-                ? <Suspense fallback={<PanelPlaceholder />}><PnlBySymbolChart trades={filteredTrades} /></Suspense>
-                : <PanelPlaceholder searched={hasQueried} />}
-            </div>
-          </div>
-        </div>
-
-        {/* Trade History */}
-        <div className="tc-panel tc-panel-overflow">
-          <div className="tc-panel-header">
-            <span className="tc-panel-title">Trade History</span>
-            {hasData && <span className="tc-small-muted">{filteredTrades.length} trades</span>}
-          </div>
-          {hasData
-            ? <Suspense fallback={<PanelPlaceholder />}><TradeList trades={filteredTrades} /></Suspense>
-            : <PanelPlaceholder searched={hasQueried} />}
-        </div>
+      <div>
+        <DashboardContainer
+          trades={filteredTrades}
+          stats={stats}
+          hasData={hasData}
+          hasQueried={hasQueried}
+        />
       </div>
     </div>
   );
-}
+};

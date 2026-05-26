@@ -46,8 +46,7 @@ export default function App() {
           </h1>
           <p style={{ fontSize: '0.82rem', color: 'var(--tc-muted)', margin: 0 }}>
             Quantitative statistics for your positions on{' '}
-            <span style={{ color: 'var(--tc-text)', fontWeight: 500 }}>Jupiter Perpetuals</span>
-            {' '}y{' '}
+            <span style={{ color: 'var(--tc-text)', fontWeight: 500 }}>Jupiter Perpetuals</span> y{' '}
             <span style={{ color: 'var(--tc-text)', fontWeight: 500 }}>Pacifica Finance</span>.
           </p>
         </div>

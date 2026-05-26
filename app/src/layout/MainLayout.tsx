@@ -5,9 +5,7 @@ export default function MainLayout({ children }: { children: ReactNode }) {
   return (
     <div className="tc-app-root min-vh-100 d-flex flex-column">
       <Header />
-      <main className="flex-fill p-3 position-relative">
-        {children}
-      </main>
+      <main className="flex-fill p-3 position-relative">{children}</main>
       <footer className="tc-footer">
         <p className="tc-footer-brand mb-1">PerpsAnalytics</p>
         <p className="tc-footer-sub mb-2">Quantitative trade analytics for Solana perpetuals.</p>

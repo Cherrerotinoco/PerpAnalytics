@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { Trade } from '../types/tradeTypes';
+import { Trade } from '../../../types/tradeTypes';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 export interface TradeStats {
@@ -260,7 +260,11 @@ function MetricGrid({ children }: { children: React.ReactNode }) {
 }
 
 // ─── Performance section ──────────────────────────────────────────────────────
-export const PerformanceSection = memo(function PerformanceSection({ stats: st }: { stats: TradeStats }) {
+export const PerformanceSection = memo(function PerformanceSection({
+  stats: st,
+}: {
+  stats: TradeStats;
+}) {
   return (
     <div className="tc-section">
       <MetricGrid>

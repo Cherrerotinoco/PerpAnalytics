@@ -1,11 +1,21 @@
 import { useState, useEffect, memo } from 'react';
-import { Trade } from '../types/tradeTypes';
+import { Trade } from '../../../types/tradeTypes';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const WEEK_DAYS = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
 const MONTH_NAMES = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
 ];
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -37,7 +47,10 @@ function getMonthRange(trades: Trade[]): Array<{ year: number; month: number }> 
   while (y < maxDate.getFullYear() || (y === maxDate.getFullYear() && m <= maxDate.getMonth())) {
     result.push({ year: y, month: m });
     m++;
-    if (m > 11) { m = 0; y++; }
+    if (m > 11) {
+      m = 0;
+      y++;
+    }
   }
   return result;
 }
@@ -157,7 +170,9 @@ function MonthGrid({
                     {hasTrade && (
                       <span
                         className="tc-cal-day-pnl"
-                        style={{ color: pnl! >= 0 ? 'rgba(34,197,94,0.95)' : 'rgba(239,68,68,0.95)' }}
+                        style={{
+                          color: pnl! >= 0 ? 'rgba(34,197,94,0.95)' : 'rgba(239,68,68,0.95)',
+                        }}
                       >
                         {fmtCell(pnl!)}
                       </span>
@@ -197,7 +212,9 @@ export default memo(function PnlCalendar({ trades }: { trades: Trade[] }) {
   }
 
   let maxAbs = 0;
-  dailyMap.forEach((pnl) => { if (Math.abs(pnl) > maxAbs) maxAbs = Math.abs(pnl); });
+  dailyMap.forEach((pnl) => {
+    if (Math.abs(pnl) > maxAbs) maxAbs = Math.abs(pnl);
+  });
 
   return (
     <div>

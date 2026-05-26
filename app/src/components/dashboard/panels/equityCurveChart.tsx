@@ -9,16 +9,20 @@ import {
   CartesianGrid,
   ReferenceLine,
 } from 'recharts';
-import { Trade } from '../types/tradeTypes';
-import { computeTradeStats } from './statistics';
-import { useTheme } from '../context/ThemeContext';
+import { Trade } from '../../../types/tradeTypes';
+import { useTheme } from '../../../context/ThemeContext';
+import { computeTradeStats } from './Statistics';
 
 function fmtMoney(v: number): string {
   return v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function fmtDate(ts: number): string {
-  return new Date(ts).toLocaleDateString('en-US', { day: '2-digit', month: '2-digit', year: '2-digit' });
+  return new Date(ts).toLocaleDateString('en-US', {
+    day: '2-digit',
+    month: '2-digit',
+    year: '2-digit',
+  });
 }
 
 const CustomTooltip = ({ active, payload, label }: any) => {
@@ -27,8 +31,12 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   return (
     <div className="tc-chart-tooltip">
       <p className="tc-chart-tooltip-date">{fmtDate(label)}</p>
-      <p className="tc-chart-tooltip-val" style={{ color: val >= 0 ? 'var(--tc-green)' : 'var(--tc-red)' }}>
-        {val >= 0 ? '+' : ''}{fmtMoney(val)} $
+      <p
+        className="tc-chart-tooltip-val"
+        style={{ color: val >= 0 ? 'var(--tc-green)' : 'var(--tc-red)' }}
+      >
+        {val >= 0 ? '+' : ''}
+        {fmtMoney(val)} $
       </p>
     </div>
   );
@@ -45,9 +53,15 @@ export default memo(function EquityCurveChart({ trades }: { trades: Trade[] }) {
   if (!data.length) return null;
 
   const isPositive = stats.totalPnl >= 0;
-  const lineColor   = isPositive ? (theme === 'dark' ? '#22c55e' : '#16a34a') : (theme === 'dark' ? '#ef4444' : '#dc2626');
-  const gridColor   = theme === 'dark' ? '#2a2a2a' : '#e5e7eb';
-  const axisColor   = theme === 'dark' ? '#6b7280' : '#9ca3af';
+  const lineColor = isPositive
+    ? theme === 'dark'
+      ? '#22c55e'
+      : '#16a34a'
+    : theme === 'dark'
+      ? '#ef4444'
+      : '#dc2626';
+  const gridColor = theme === 'dark' ? '#2a2a2a' : '#e5e7eb';
+  const axisColor = theme === 'dark' ? '#6b7280' : '#9ca3af';
   const refLineColor = theme === 'dark' ? '#374151' : '#d1d5db';
 
   const xMin = data[0].x;
@@ -60,7 +74,9 @@ export default memo(function EquityCurveChart({ trades }: { trades: Trade[] }) {
   return (
     <>
       <div className="tc-chart-header">
-        <span className="tc-chart-date-range">{fmtDate(xMin)} — {fmtDate(xMax)}</span>
+        <span className="tc-chart-date-range">
+          {fmtDate(xMin)} — {fmtDate(xMax)}
+        </span>
         <span
           className="tc-pnl-badge"
           style={{
@@ -69,7 +85,8 @@ export default memo(function EquityCurveChart({ trades }: { trades: Trade[] }) {
             border: `1px solid ${isPositive ? 'rgba(34,197,94,0.2)' : 'rgba(220,38,38,0.2)'}`,
           }}
         >
-          {isPositive ? '+' : ''}{fmtMoney(stats.totalPnl)} $
+          {isPositive ? '+' : ''}
+          {fmtMoney(stats.totalPnl)} $
         </span>
       </div>
 

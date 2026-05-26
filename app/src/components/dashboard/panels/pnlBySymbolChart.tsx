@@ -9,8 +9,8 @@ import {
   Cell,
   LabelList,
 } from 'recharts';
-import { Trade } from '../types/tradeTypes';
-import { useTheme } from '../context/ThemeContext';
+import { Trade } from '../../../types/tradeTypes';
+import { useTheme } from '../../../context/ThemeContext';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 interface SymbolRow {
@@ -50,12 +50,12 @@ export default memo(function PnlBySymbolChart({ trades }: { trades: Trade[] }) {
 
   if (!data.length) return null;
 
-  const axisColor   = theme === 'dark' ? '#6b7280' : '#9ca3af';
-  const textColor   = theme === 'dark' ? '#e0e0e0' : '#111827';
+  const axisColor = theme === 'dark' ? '#6b7280' : '#9ca3af';
+  const textColor = theme === 'dark' ? '#e0e0e0' : '#111827';
   const surfaceColor = theme === 'dark' ? '#141414' : '#ffffff';
-  const borderColor  = theme === 'dark' ? '#2a2a2a' : '#e5e7eb';
-  const greenColor  = theme === 'dark' ? '#22c55e' : '#16a34a';
-  const redColor    = theme === 'dark' ? '#ef4444' : '#dc2626';
+  const borderColor = theme === 'dark' ? '#2a2a2a' : '#e5e7eb';
+  const greenColor = theme === 'dark' ? '#22c55e' : '#16a34a';
+  const redColor = theme === 'dark' ? '#ef4444' : '#dc2626';
 
   const chartHeight = Math.max(140, data.length * 32);
 
@@ -93,10 +93,7 @@ export default memo(function PnlBySymbolChart({ trades }: { trades: Trade[] }) {
           }}
           labelStyle={{ color: textColor, fontWeight: 600, marginBottom: 2 }}
           itemStyle={{ color: textColor }}
-          formatter={(value: number) => [
-            `${value >= 0 ? '+' : ''}${value.toFixed(2)} $`,
-            'PnL',
-          ]}
+          formatter={(value: number) => [`${value >= 0 ? '+' : ''}${value.toFixed(2)} $`, 'PnL']}
         />
         <Bar dataKey="pnl" radius={[0, 3, 3, 0]}>
           <LabelList
@@ -106,11 +103,7 @@ export default memo(function PnlBySymbolChart({ trades }: { trades: Trade[] }) {
             formatter={(v: number) => fmtLabel(v)}
           />
           {data.map((row, i) => (
-            <Cell
-              key={i}
-              fill={row.pnl >= 0 ? greenColor : redColor}
-              fillOpacity={0.82}
-            />
+            <Cell key={i} fill={row.pnl >= 0 ? greenColor : redColor} fillOpacity={0.82} />
           ))}
         </Bar>
       </BarChart>
