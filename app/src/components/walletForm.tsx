@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo, lazy, Suspense } from 'react';
 import { Trade } from '../types/tradeTypes';
 import { buildJupiterTrades, JupiterTrade } from '../utils/normalizeJupiter';
 import { buildPacificaTrades, PacificaFill } from '../utils/normalizePacifica';
@@ -8,10 +8,13 @@ import {
   RiskSection,
   TradesSection,
 } from './statistics';
-import TradeList from './tradeList';
-import EquityCurveChart from './equityCurveChart';
-import PnlCalendar from './PnlCalendar';
-import PnlBySymbolChart from './PnlBySymbolChart';
+
+// Lazy-loaded: only needed after a search returns data.
+// Recharts (EquityCurveChart, PnlBySymbolChart) defers ~300 KB from initial load.
+const TradeList        = lazy(() => import('./tradeList'));
+const EquityCurveChart = lazy(() => import('./equityCurveChart'));
+const PnlCalendar      = lazy(() => import('./PnlCalendar'));
+const PnlBySymbolChart = lazy(() => import('./PnlBySymbolChart'));
 
 const SOLANA_ADDRESS_REGEX = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 const MAX_CACHE_ENTRIES = 10;
@@ -288,7 +291,7 @@ export default function WalletForm({ wallet, setWallet, addRecentWallet }: Walle
                 id="wallet"
                 type="text"
                 name="wallet"
-                className="tc-input form-control form-control-sm font-monospace"
+                className="tc-input font-monospace"
                 placeholder="Wallet address…"
                 value={wallet}
                 onChange={(e) => setWallet(e.target.value)}
@@ -303,7 +306,7 @@ export default function WalletForm({ wallet, setWallet, addRecentWallet }: Walle
               id="start-date"
               type="date"
               name="start-date"
-              className="tc-input form-control form-control-sm tc-date-input"
+              className="tc-input tc-date-input"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
             />
@@ -312,7 +315,7 @@ export default function WalletForm({ wallet, setWallet, addRecentWallet }: Walle
               id="end-date"
               type="date"
               name="end-date"
-              className="tc-input form-control form-control-sm tc-date-input"
+              className="tc-input tc-date-input"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
             />
@@ -429,7 +432,7 @@ export default function WalletForm({ wallet, setWallet, addRecentWallet }: Walle
             </div>
             <div className="tc-panel-body">
               {hasData
-                ? <EquityCurveChart trades={filteredTrades} />
+                ? <Suspense fallback={<PanelPlaceholder />}><EquityCurveChart trades={filteredTrades} /></Suspense>
                 : <PanelPlaceholder searched={hasQueried} />}
             </div>
           </div>
@@ -468,7 +471,7 @@ export default function WalletForm({ wallet, setWallet, addRecentWallet }: Walle
             </div>
             <div className="tc-panel-body">
               {hasData
-                ? <PnlCalendar trades={filteredTrades} />
+                ? <Suspense fallback={<PanelPlaceholder />}><PnlCalendar trades={filteredTrades} /></Suspense>
                 : <PanelPlaceholder searched={hasQueried} />}
             </div>
           </div>
@@ -480,7 +483,7 @@ export default function WalletForm({ wallet, setWallet, addRecentWallet }: Walle
             </div>
             <div className="tc-panel-body">
               {hasData
-                ? <PnlBySymbolChart trades={filteredTrades} />
+                ? <Suspense fallback={<PanelPlaceholder />}><PnlBySymbolChart trades={filteredTrades} /></Suspense>
                 : <PanelPlaceholder searched={hasQueried} />}
             </div>
           </div>
@@ -492,7 +495,9 @@ export default function WalletForm({ wallet, setWallet, addRecentWallet }: Walle
             <span className="tc-panel-title">Trade History</span>
             {hasData && <span className="tc-small-muted">{filteredTrades.length} trades</span>}
           </div>
-          {hasData ? <TradeList trades={filteredTrades} /> : <PanelPlaceholder searched={hasQueried} />}
+          {hasData
+            ? <Suspense fallback={<PanelPlaceholder />}><TradeList trades={filteredTrades} /></Suspense>
+            : <PanelPlaceholder searched={hasQueried} />}
         </div>
       </div>
     </div>

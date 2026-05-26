@@ -20,13 +20,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     const initial = stored ?? 'dark';
     // Set eagerly to avoid a flash of the wrong theme on first paint
     document.documentElement.setAttribute('data-theme', initial);
-    document.documentElement.setAttribute('data-bs-theme', initial);
     return initial;
   });
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
-    document.documentElement.setAttribute('data-bs-theme', theme);
   }, [theme]);
 
   const toggleTheme = () => {
