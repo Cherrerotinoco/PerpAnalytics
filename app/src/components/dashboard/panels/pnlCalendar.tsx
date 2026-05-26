@@ -22,7 +22,7 @@ const MONTH_NAMES = [
 type DailyMap = Map<string, number>; // "YYYY-MM-DD" → total PnL
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-function buildDailyMap(trades: Trade[]): DailyMap {
+const buildDailyMap = (trades: Trade[]): DailyMap => {
   const map: DailyMap = new Map();
   for (const t of trades) {
     const d = t.closed ?? t.opened;
@@ -31,9 +31,9 @@ function buildDailyMap(trades: Trade[]): DailyMap {
     map.set(key, (map.get(key) ?? 0) + t.pnl);
   }
   return map;
-}
+};
 
-function getMonthRange(trades: Trade[]): Array<{ year: number; month: number }> {
+const getMonthRange = (trades: Trade[]): Array<{ year: number; month: number }> => {
   const dates = trades.map((t) => t.closed ?? t.opened).filter(Boolean) as Date[];
   if (!dates.length) return [];
 
@@ -53,36 +53,35 @@ function getMonthRange(trades: Trade[]): Array<{ year: number; month: number }> 
     }
   }
   return result;
-}
+};
 
-function dayKey(year: number, month: number, day: number): string {
-  return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-}
+const dayKey = (year: number, month: number, day: number): string =>
+  `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
-function cellBg(pnl: number | undefined, maxAbs: number): string {
+const cellBg = (pnl: number | undefined, maxAbs: number): string => {
   if (pnl === undefined) return 'transparent';
   if (pnl === 0) return 'var(--tc-surface-2)';
   const opacity = Math.min(0.88, 0.15 + 0.73 * (Math.abs(pnl) / (maxAbs || 1)));
   return pnl > 0
     ? `rgba(34,197,94,${opacity.toFixed(2)})`
     : `rgba(239,68,68,${opacity.toFixed(2)})`;
-}
+};
 
-function fmtCell(v: number): string {
+const fmtCell = (v: number): string => {
   const abs = Math.abs(v);
   const s = v >= 0 ? '+' : '';
   if (abs >= 1000) return `${s}${(v / 1000).toFixed(1)}k`;
   if (abs >= 100) return `${s}${v.toFixed(0)}`;
   return `${s}${v.toFixed(1)}`;
-}
+};
 
-function fmtTotal(v: number): string {
+const fmtTotal = (v: number): string => {
   const s = v >= 0 ? '+' : '';
   return `${s}${v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} $`;
-}
+};
 
 // ─── Nav button ───────────────────────────────────────────────────────────────
-function NavBtn({
+const NavBtn = ({
   onClick,
   disabled,
   children,
@@ -90,16 +89,14 @@ function NavBtn({
   onClick: () => void;
   disabled: boolean;
   children: React.ReactNode;
-}) {
-  return (
-    <button type="button" onClick={onClick} disabled={disabled} className="tc-nav-btn">
-      {children}
-    </button>
-  );
-}
+}) => (
+  <button type="button" onClick={onClick} disabled={disabled} className="tc-nav-btn">
+    {children}
+  </button>
+);
 
 // ─── Month grid ───────────────────────────────────────────────────────────────
-function MonthGrid({
+const MonthGrid = ({
   year,
   month,
   dailyMap,
@@ -109,7 +106,7 @@ function MonthGrid({
   month: number;
   dailyMap: DailyMap;
   maxAbs: number;
-}) {
+}) => {
   const firstDow = new Date(year, month, 1).getDay();
   const startOffset = (firstDow + 6) % 7; // Mon = 0
   const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -176,10 +173,10 @@ function MonthGrid({
       </tbody>
     </table>
   );
-}
+};
 
 // ─── Main component ───────────────────────────────────────────────────────────
-export default memo(function PnlCalendar({ trades }: { trades: Trade[] }) {
+const PnlCalendar = memo(({ trades }: { trades: Trade[] }) => {
   const dailyMap = buildDailyMap(trades);
   const months = getMonthRange(trades);
   const [idx, setIdx] = useState(0);
@@ -238,3 +235,5 @@ export default memo(function PnlCalendar({ trades }: { trades: Trade[] }) {
     </div>
   );
 });
+
+export default PnlCalendar;

@@ -18,7 +18,7 @@ interface SymbolRow {
   pnl: number;
 }
 
-function computeBySymbol(trades: Trade[], top = 8): SymbolRow[] {
+const computeBySymbol = (trades: Trade[], top = 8): SymbolRow[] => {
   const map = new Map<string, number>();
   for (const t of trades) {
     if (!t.symbol) continue;
@@ -28,23 +28,23 @@ function computeBySymbol(trades: Trade[], top = 8): SymbolRow[] {
     .map(([symbol, pnl]) => ({ symbol, pnl }))
     .sort((a, b) => Math.abs(b.pnl) - Math.abs(a.pnl))
     .slice(0, top);
-}
+};
 
-function fmtLabel(v: number): string {
+const fmtLabel = (v: number): string => {
   const abs = Math.abs(v);
   const prefix = v >= 0 ? '+' : '';
   if (abs >= 1000) return `${prefix}${(v / 1000).toFixed(1)}k`;
   return `${prefix}${v.toFixed(0)}`;
-}
+};
 
-function fmtAxis(v: number): string {
+const fmtAxis = (v: number): string => {
   const abs = Math.abs(v);
   if (abs >= 1000) return `${v >= 0 ? '' : '-'}${(abs / 1000).toFixed(0)}k`;
   return String(v);
-}
+};
 
 // ─── Component ────────────────────────────────────────────────────────────────
-export default memo(function PnlBySymbolChart({ trades }: { trades: Trade[] }) {
+const PnlBySymbolChart = memo(({ trades }: { trades: Trade[] }) => {
   const { theme } = useTheme();
   const data = computeBySymbol(trades);
 
@@ -110,3 +110,5 @@ export default memo(function PnlBySymbolChart({ trades }: { trades: Trade[] }) {
     </ResponsiveContainer>
   );
 });
+
+export default PnlBySymbolChart;

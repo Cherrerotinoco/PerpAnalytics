@@ -18,6 +18,16 @@ export default [
     },
     rules: {
       curly: ['error', 'all'],
+      // Enforce arrow functions — ban `function` declarations and named function expressions
+      'func-style': ['error', 'expression'],
+      'prefer-arrow-callback': ['error', { allowNamedFunctions: false }],
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'FunctionExpression[id!=null]',
+          message: 'Named function expressions are not allowed; use arrow functions instead.',
+        },
+      ],
     },
   },
   prettier,

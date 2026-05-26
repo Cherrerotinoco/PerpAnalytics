@@ -2,7 +2,7 @@ import { useState, useMemo, memo } from 'react';
 import { Trade } from '../../../types/tradeTypes';
 
 // ─── Formatters ───────────────────────────────────────────────────────────────
-function fmtDateTime(d: Date | null | undefined): string {
+const fmtDateTime = (d: Date | null | undefined): string => {
   if (!d) {
     return '—';
   }
@@ -14,14 +14,14 @@ function fmtDateTime(d: Date | null | undefined): string {
     hour12: false,
   });
   return `${date} ${time}`;
-}
+};
 
-function fmtNum(n: number | null | undefined): string {
+const fmtNum = (n: number | null | undefined): string => {
   if (n == null) {
     return '—';
   }
   return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
+};
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const PAGE_SIZE = 20;
@@ -39,7 +39,7 @@ type SortCol =
 type SortDir = 'asc' | 'desc';
 
 // ─── Sort helper (module-level — no closure over component state) ─────────────
-function getValue(t: Trade, col: SortCol) {
+const getValue = (t: Trade, col: SortCol) => {
   switch (col) {
     case 'opened':
       return t.opened;
@@ -62,10 +62,10 @@ function getValue(t: Trade, col: SortCol) {
     default:
       return '';
   }
-}
+};
 
 // ─── Component ────────────────────────────────────────────────────────────────
-export default memo(function TradeList({ trades }: { trades: Trade[] }) {
+const TradeList = memo(({ trades }: { trades: Trade[] }) => {
   const [sort, setSort] = useState<{ col: SortCol; dir: SortDir }>({ col: 'opened', dir: 'desc' });
   const [page, setPage] = useState(1);
 
@@ -201,8 +201,10 @@ export default memo(function TradeList({ trades }: { trades: Trade[] }) {
   );
 });
 
+export default TradeList;
+
 // ─── Pagination button ────────────────────────────────────────────────────────
-function PagBtn({
+const PagBtn = ({
   children,
   onClick,
   disabled,
@@ -212,15 +214,13 @@ function PagBtn({
   onClick: () => void;
   disabled?: boolean;
   active?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className={`tc-page-btn${active ? ' active' : ''}`}
-    >
-      {children}
-    </button>
-  );
-}
+}) => (
+  <button
+    type="button"
+    onClick={onClick}
+    disabled={disabled}
+    className={`tc-page-btn${active ? ' active' : ''}`}
+  >
+    {children}
+  </button>
+);

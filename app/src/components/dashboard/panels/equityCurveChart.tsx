@@ -13,17 +13,15 @@ import { Trade } from '../../../types/tradeTypes';
 import { useTheme } from '../../../context/ThemeContext';
 import { computeTradeStats } from './statistics';
 
-function fmtMoney(v: number): string {
-  return v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
+const fmtMoney = (v: number): string =>
+  v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-function fmtDate(ts: number): string {
-  return new Date(ts).toLocaleDateString('en-US', {
+const fmtDate = (ts: number): string =>
+  new Date(ts).toLocaleDateString('en-US', {
     day: '2-digit',
     month: '2-digit',
     year: '2-digit',
   });
-}
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
@@ -39,7 +37,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   );
 };
 
-export default memo(function EquityCurveChart({ trades }: { trades: Trade[] }) {
+const EquityCurveChart = memo(({ trades }: { trades: Trade[] }) => {
   const { theme } = useTheme();
   const stats = computeTradeStats(trades);
 
@@ -122,3 +120,5 @@ export default memo(function EquityCurveChart({ trades }: { trades: Trade[] }) {
     </>
   );
 });
+
+export default EquityCurveChart;

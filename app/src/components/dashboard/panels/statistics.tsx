@@ -31,26 +31,26 @@ export interface TradeStats {
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-function stdDev(values: number[]): number {
+const stdDev = (values: number[]): number => {
   if (values.length < 2) {
     return 0;
   }
   const mean = values.reduce((a, b) => a + b, 0) / values.length;
   const variance = values.reduce((sum, v) => sum + (v - mean) ** 2, 0) / (values.length - 1);
   return Math.sqrt(variance);
-}
+};
 
 // Downside deviation per Sortino standard: RMS of returns clipped at MAR=0,
 // using the full trade count as denominator (not just the losing-trade count).
 //   σ_d = sqrt( Σ min(rᵢ, 0)² / n )
-function downsideStdDev(values: number[]): number {
+const downsideStdDev = (values: number[]): number => {
   if (values.length === 0) return 0;
   const sumSq = values.reduce((acc, v) => acc + Math.min(v, 0) ** 2, 0);
   return Math.sqrt(sumSq / values.length);
-}
+};
 
 // ─── Stats computation ────────────────────────────────────────────────────────
-export function computeTradeStats(trades: Trade[]): TradeStats {
+export const computeTradeStats = (trades: Trade[]): TradeStats => {
   const sortedTrades = [...trades].sort((a, b) => {
     const tA = a.closed?.getTime() ?? a.opened?.getTime() ?? 0;
     const tB = b.closed?.getTime() ?? b.opened?.getTime() ?? 0;
@@ -193,10 +193,10 @@ export function computeTradeStats(trades: Trade[]): TradeStats {
     feesBySource,
     totalFees,
   };
-}
+};
 
 // ─── Formatters ───────────────────────────────────────────────────────────────
-function fmtNum(n: number, decimals = 2): string {
+const fmtNum = (n: number, decimals = 2): string => {
   if (!isFinite(n)) {
     return '∞';
   }
@@ -204,14 +204,13 @@ function fmtNum(n: number, decimals = 2): string {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   });
-}
-function fmtPct(n: number): string {
-  return `${n.toFixed(0)}%`;
-}
-function sign(n: number): string {
-  return n >= 0 ? '+' : '';
-}
-function sharpeLabel(v: number): string {
+};
+
+const fmtPct = (n: number): string => `${n.toFixed(0)}%`;
+
+const sign = (n: number): string => (n >= 0 ? '+' : '');
+
+const sharpeLabel = (v: number): string => {
   if (v >= 2) {
     return 'Excellent';
   }
@@ -222,13 +221,12 @@ function sharpeLabel(v: number): string {
     return 'Acceptable';
   }
   return 'Negative';
-}
+};
 
 // ─── Color helpers ────────────────────────────────────────────────────────────
-function posNegClass(v: number): string {
-  return v >= 0 ? 'tc-green' : 'tc-red';
-}
-function ratioClass(v: number): string {
+const posNegClass = (v: number): string => (v >= 0 ? 'tc-green' : 'tc-red');
+
+const ratioClass = (v: number): string => {
   if (v >= 1) {
     return 'tc-green';
   }
@@ -236,18 +234,16 @@ function ratioClass(v: number): string {
     return 'tc-amber';
   }
   return 'tc-red';
-}
+};
 
 // ─── Shared UI primitives ─────────────────────────────────────────────────────
-function TipIcon({ text }: { text: string }) {
-  return (
-    <span className="tc-tip">
-      ?<span className="tc-tip-box">{text}</span>
-    </span>
-  );
-}
+const TipIcon = ({ text }: { text: string }) => (
+  <span className="tc-tip">
+    ?<span className="tc-tip-box">{text}</span>
+  </span>
+);
 
-function Metric({
+const Metric = ({
   label,
   value,
   sub,
@@ -259,156 +255,146 @@ function Metric({
   sub?: string;
   colorClass?: string;
   tooltip?: string;
-}) {
-  return (
-    <div className="tc-card">
-      <div className="tc-metric-label-row">
-        <p className="tc-label mb-0">{label}</p>
-        {tooltip && <TipIcon text={tooltip} />}
-      </div>
-      <p className={`tc-value mb-0 ${colorClass ?? ''}`}>{value}</p>
-      {sub && <p className="tc-metric-sub">{sub}</p>}
+}) => (
+  <div className="tc-card">
+    <div className="tc-metric-label-row">
+      <p className="tc-label mb-0">{label}</p>
+      {tooltip && <TipIcon text={tooltip} />}
     </div>
-  );
-}
+    <p className={`tc-value mb-0 ${colorClass ?? ''}`}>{value}</p>
+    {sub && <p className="tc-metric-sub">{sub}</p>}
+  </div>
+);
 
-function MetricGrid({ children }: { children: React.ReactNode }) {
-  return <div className="tc-metric-grid">{children}</div>;
-}
+const MetricGrid = ({ children }: { children: React.ReactNode }) => (
+  <div className="tc-metric-grid">{children}</div>
+);
 
 // ─── Performance section ──────────────────────────────────────────────────────
-export const PerformanceSection = memo(function PerformanceSection({
-  stats: st,
-}: {
-  stats: TradeStats;
-}) {
-  return (
-    <div className="tc-section">
-      <MetricGrid>
-        <Metric
-          label="Total PnL"
-          value={`${sign(st.totalPnl)}${fmtNum(st.totalPnl)} $`}
-          colorClass={posNegClass(st.totalPnl)}
-          tooltip="Sum of PnL across all closed trades."
-        />
-        <Metric
-          label="Profit Factor"
-          value={isFinite(st.profitFactor) ? fmtNum(st.profitFactor) : '∞'}
-          sub={st.profitFactor >= 1 ? 'Profitable' : 'Unprofitable'}
-          colorClass={st.profitFactor >= 1 ? 'tc-green' : 'tc-red'}
-          tooltip="Gross profit ÷ gross loss. A value above 1.0 means the strategy is net-profitable."
-        />
-        <Metric
-          label="Max Profit"
-          value={`+${fmtNum(st.maxWin)} $`}
-          colorClass="tc-green"
-          tooltip="PnL of the single largest winning trade."
-        />
-        <Metric
-          label="Max Loss"
-          value={`-${fmtNum(st.maxLoss)} $`}
-          colorClass="tc-red"
-          tooltip="Absolute PnL of the single largest losing trade."
-        />
-        <Metric
-          label="Expectancy"
-          value={`${sign(st.expectancy)}${fmtNum(st.expectancy)} $`}
-          sub="per trade"
-          colorClass={posNegClass(st.expectancy)}
-          tooltip="Total PnL ÷ total trades. Average dollars earned (or lost) per trade."
-        />
-        <Metric
-          label="Risk / Reward"
-          value={isFinite(st.riskReward) ? fmtNum(st.riskReward) : '∞'}
-          sub="avg win / avg loss"
-          colorClass={st.riskReward >= 1 ? 'tc-green' : ''}
-          tooltip="Average winning trade ÷ average losing trade. A value > 1 means wins are larger than losses on average."
-        />
-      </MetricGrid>
+export const PerformanceSection = memo(({ stats: st }: { stats: TradeStats }) => (
+  <div className="tc-section">
+    <MetricGrid>
+      <Metric
+        label="Total PnL"
+        value={`${sign(st.totalPnl)}${fmtNum(st.totalPnl)} $`}
+        colorClass={posNegClass(st.totalPnl)}
+        tooltip="Sum of PnL across all closed trades."
+      />
+      <Metric
+        label="Profit Factor"
+        value={isFinite(st.profitFactor) ? fmtNum(st.profitFactor) : '∞'}
+        sub={st.profitFactor >= 1 ? 'Profitable' : 'Unprofitable'}
+        colorClass={st.profitFactor >= 1 ? 'tc-green' : 'tc-red'}
+        tooltip="Gross profit ÷ gross loss. A value above 1.0 means the strategy is net-profitable."
+      />
+      <Metric
+        label="Max Profit"
+        value={`+${fmtNum(st.maxWin)} $`}
+        colorClass="tc-green"
+        tooltip="PnL of the single largest winning trade."
+      />
+      <Metric
+        label="Max Loss"
+        value={`-${fmtNum(st.maxLoss)} $`}
+        colorClass="tc-red"
+        tooltip="Absolute PnL of the single largest losing trade."
+      />
+      <Metric
+        label="Expectancy"
+        value={`${sign(st.expectancy)}${fmtNum(st.expectancy)} $`}
+        sub="per trade"
+        colorClass={posNegClass(st.expectancy)}
+        tooltip="Total PnL ÷ total trades. Average dollars earned (or lost) per trade."
+      />
+      <Metric
+        label="Risk / Reward"
+        value={isFinite(st.riskReward) ? fmtNum(st.riskReward) : '∞'}
+        sub="avg win / avg loss"
+        colorClass={st.riskReward >= 1 ? 'tc-green' : ''}
+        tooltip="Average winning trade ÷ average losing trade. A value > 1 means wins are larger than losses on average."
+      />
+    </MetricGrid>
 
-      {/* ── Fees by platform ── */}
-      {Object.keys(st.feesBySource).length > 0 && (
-        <div className="tc-card mt-2">
-          <div className="tc-metric-label-row mb-1">
-            <p className="tc-label mb-0">Fees Paid</p>
-            <TipIcon text="Cumulative trading fees (opening + closing) broken down by platform." />
-          </div>
-
-          {Object.entries(st.feesBySource)
-            .sort((a, b) => b[1] - a[1])
-            .map(([source, fee]) => (
-              <div key={source} className="tc-fees-row">
-                <span className="tc-metric-sub">{source}</span>
-                <span className="tc-fees-amount">-{fmtNum(fee)} $</span>
-              </div>
-            ))}
-
-          {Object.keys(st.feesBySource).length > 1 && (
-            <div className="tc-fees-total">
-              <span className="tc-metric-sub fw-semibold">Total</span>
-              <span className="tc-fees-amount">-{fmtNum(st.totalFees)} $</span>
-            </div>
-          )}
+    {/* ── Fees by platform ── */}
+    {Object.keys(st.feesBySource).length > 0 && (
+      <div className="tc-card mt-2">
+        <div className="tc-metric-label-row mb-1">
+          <p className="tc-label mb-0">Fees Paid</p>
+          <TipIcon text="Cumulative trading fees (opening + closing) broken down by platform." />
         </div>
-      )}
-    </div>
-  );
-});
+
+        {Object.entries(st.feesBySource)
+          .sort((a, b) => b[1] - a[1])
+          .map(([source, fee]) => (
+            <div key={source} className="tc-fees-row">
+              <span className="tc-metric-sub">{source}</span>
+              <span className="tc-fees-amount">-{fmtNum(fee)} $</span>
+            </div>
+          ))}
+
+        {Object.keys(st.feesBySource).length > 1 && (
+          <div className="tc-fees-total">
+            <span className="tc-metric-sub fw-semibold">Total</span>
+            <span className="tc-fees-amount">-{fmtNum(st.totalFees)} $</span>
+          </div>
+        )}
+      </div>
+    )}
+  </div>
+));
 
 // ─── Risk & Drawdown section ──────────────────────────────────────────────────
-export const RiskSection = memo(function RiskSection({ stats: st }: { stats: TradeStats }) {
-  return (
-    <div className="tc-section">
-      <MetricGrid>
-        <Metric
-          label="Max Drawdown"
-          value={`-${fmtNum(st.maxDrawdown)} $`}
-          sub={`${fmtNum(st.maxDrawdownPct, 1)}% from peak`}
-          colorClass="tc-red"
-          tooltip="Largest peak-to-trough decline in the running equity curve."
-        />
-        <Metric
-          label="Calmar Ratio"
-          value={isFinite(st.calmarRatio) ? fmtNum(st.calmarRatio) : '∞'}
-          sub="PnL / max drawdown"
-          colorClass={ratioClass(st.calmarRatio)}
-          tooltip="Annualised PnL ÷ max drawdown, based on the period spanned by the selected trades. Higher values mean better annualised return relative to the worst drawdown."
-        />
-        <Metric
-          label="Sharpe Ratio"
-          value={fmtNum(st.sharpeRatio)}
-          sub={sharpeLabel(st.sharpeRatio)}
-          colorClass={ratioClass(st.sharpeRatio)}
-          tooltip="Mean PnL ÷ std deviation of all trade PnLs (risk-free rate = 0, per-trade, non-annualised). Measures return per unit of total volatility."
-        />
-        <Metric
-          label="Sortino Ratio"
-          value={isFinite(st.sortino) ? fmtNum(st.sortino) : '∞'}
-          sub="downside vol. only"
-          colorClass={ratioClass(st.sortino)}
-          tooltip="Mean PnL ÷ downside deviation (RMS of all returns clipped at zero, full trade count denominator). Penalises downside risk exclusively."
-        />
-        <Metric
-          label="Recovery Factor"
-          value={isFinite(st.recoveryFactor) ? fmtNum(st.recoveryFactor) : '∞'}
-          sub="profit vs risk"
-          colorClass={st.recoveryFactor >= 1 ? 'tc-green' : 'tc-red'}
-          tooltip="Total net PnL ÷ max drawdown (non-annualised). Indicates how well total profit covers the worst drawdown experienced."
-        />
-        <Metric
-          label="VaR 95%"
-          value={`${st.var95 >= 0 ? '+' : ''}${fmtNum(st.var95)} $`}
-          sub="worst loss in 95% of trades"
-          colorClass={st.var95 >= 0 ? 'tc-green' : 'tc-red'}
-          tooltip="5th-percentile trade PnL (sorted ascending). In 95% of trades, the loss will not exceed this value."
-        />
-      </MetricGrid>
-    </div>
-  );
-});
+export const RiskSection = memo(({ stats: st }: { stats: TradeStats }) => (
+  <div className="tc-section">
+    <MetricGrid>
+      <Metric
+        label="Max Drawdown"
+        value={`-${fmtNum(st.maxDrawdown)} $`}
+        sub={`${fmtNum(st.maxDrawdownPct, 1)}% from peak`}
+        colorClass="tc-red"
+        tooltip="Largest peak-to-trough decline in the running equity curve."
+      />
+      <Metric
+        label="Calmar Ratio"
+        value={isFinite(st.calmarRatio) ? fmtNum(st.calmarRatio) : '∞'}
+        sub="PnL / max drawdown"
+        colorClass={ratioClass(st.calmarRatio)}
+        tooltip="Annualised PnL ÷ max drawdown, based on the period spanned by the selected trades. Higher values mean better annualised return relative to the worst drawdown."
+      />
+      <Metric
+        label="Sharpe Ratio"
+        value={fmtNum(st.sharpeRatio)}
+        sub={sharpeLabel(st.sharpeRatio)}
+        colorClass={ratioClass(st.sharpeRatio)}
+        tooltip="Mean PnL ÷ std deviation of all trade PnLs (risk-free rate = 0, per-trade, non-annualised). Measures return per unit of total volatility."
+      />
+      <Metric
+        label="Sortino Ratio"
+        value={isFinite(st.sortino) ? fmtNum(st.sortino) : '∞'}
+        sub="downside vol. only"
+        colorClass={ratioClass(st.sortino)}
+        tooltip="Mean PnL ÷ downside deviation (RMS of all returns clipped at zero, full trade count denominator). Penalises downside risk exclusively."
+      />
+      <Metric
+        label="Recovery Factor"
+        value={isFinite(st.recoveryFactor) ? fmtNum(st.recoveryFactor) : '∞'}
+        sub="profit vs risk"
+        colorClass={st.recoveryFactor >= 1 ? 'tc-green' : 'tc-red'}
+        tooltip="Total net PnL ÷ max drawdown (non-annualised). Indicates how well total profit covers the worst drawdown experienced."
+      />
+      <Metric
+        label="VaR 95%"
+        value={`${st.var95 >= 0 ? '+' : ''}${fmtNum(st.var95)} $`}
+        sub="worst loss in 95% of trades"
+        colorClass={st.var95 >= 0 ? 'tc-green' : 'tc-red'}
+        tooltip="5th-percentile trade PnL (sorted ascending). In 95% of trades, the loss will not exceed this value."
+      />
+    </MetricGrid>
+  </div>
+));
 
 // ─── Trades section ───────────────────────────────────────────────────────────
-export const TradesSection = memo(function TradesSection({ stats: st }: { stats: TradeStats }) {
+export const TradesSection = memo(({ stats: st }: { stats: TradeStats }) => {
   const breakeven = st.totalTrades - st.winTrades - st.lossTrades;
 
   return (

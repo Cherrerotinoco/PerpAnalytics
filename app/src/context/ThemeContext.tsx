@@ -14,7 +14,7 @@ const ThemeContext = createContext<ThemeContextType>({
 
 export const useTheme = () => useContext(ThemeContext);
 
-export function ThemeProvider({ children }: { children: ReactNode }) {
+export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   const [theme, setTheme] = useState<Theme>(() => {
     const stored = localStorage.getItem('tc-theme') as Theme | null;
     const initial = stored ?? 'dark';
@@ -36,4 +36,4 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   };
 
   return <ThemeContext.Provider value={{ theme, toggleTheme }}>{children}</ThemeContext.Provider>;
-}
+};

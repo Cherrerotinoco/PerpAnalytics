@@ -32,7 +32,7 @@ export type JupiterTrade = {
   swapFeeTokenMint: string | null;
 };
 
-export function buildJupiterTrades(events: JupiterTrade[]): Trade[] {
+export const buildJupiterTrades = (events: JupiterTrade[]): Trade[] => {
   const byPos = new Map<string, JupiterTrade[]>();
   for (const e of events) {
     const k = e.positionPubkey || `${e.positionName}|${e.side}`;
@@ -123,4 +123,4 @@ export function buildJupiterTrades(events: JupiterTrade[]): Trade[] {
   }
 
   return trades;
-}
+};

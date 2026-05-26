@@ -18,7 +18,7 @@ export type PacificaFill = {
   cause: string | null;
 };
 
-export function buildPacificaTrades(fills: PacificaFill[]): Trade[] {
+export const buildPacificaTrades = (fills: PacificaFill[]): Trade[] => {
   fills.sort((a, b) => a.created_at - b.created_at);
 
   const positions = new Map<string, { openedAt: Date; netSize: number }>();
@@ -86,4 +86,4 @@ export function buildPacificaTrades(fills: PacificaFill[]): Trade[] {
   }
 
   return trades;
-}
+};

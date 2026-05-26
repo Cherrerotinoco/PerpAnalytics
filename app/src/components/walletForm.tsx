@@ -15,7 +15,7 @@ interface CacheEntry {
   data: Array<Omit<Trade, 'opened' | 'closed'> & { opened: string; closed: string }>;
 }
 
-function loadCachedTrades(key: string): Trade[] | null {
+const loadCachedTrades = (key: string): Trade[] | null => {
   try {
     const raw = localStorage.getItem(STORAGE_PREFIX + key);
     if (!raw) {
@@ -34,9 +34,9 @@ function loadCachedTrades(key: string): Trade[] | null {
   } catch {
     return null;
   }
-}
+};
 
-function saveCachedTrades(key: string, trades: Trade[]): void {
+const saveCachedTrades = (key: string, trades: Trade[]): void => {
   try {
     localStorage.setItem(
       STORAGE_PREFIX + key,
@@ -45,26 +45,26 @@ function saveCachedTrades(key: string, trades: Trade[]): void {
   } catch {
     // Storage quota exceeded, silently skip
   }
-}
+};
 
 // ─── URL param helpers ────────────────────────────────────────────────────────
 /** Parse DD.MM.YYYY (URL format) → YYYY-MM-DD (HTML date input value) */
-function parseDateParam(s: string | null): string {
+const parseDateParam = (s: string | null): string => {
   if (!s) return '';
   const m = s.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
   if (!m) return '';
   const [, d, mo, y] = m;
   return `${y}-${mo.padStart(2, '0')}-${d.padStart(2, '0')}`;
-}
+};
 
 /** Format YYYY-MM-DD (HTML date input value) → DD.MM.YYYY (URL-friendly) */
-function formatDateParam(s: string): string {
+const formatDateParam = (s: string): string => {
   if (!s) return '';
   const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (!m) return '';
   const [, y, mo, d] = m;
   return `${d}.${mo}.${y}`;
-}
+};
 
 const _initParams = new URLSearchParams(window.location.search);
 

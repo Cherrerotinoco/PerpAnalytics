@@ -34,7 +34,6 @@ const DEFAULT_LAYOUT: IJsonModel = {
   layout: {
     type: 'column',
     children: [
-      // ── Top row (60 %): charts + three independent stat panels ─────────────
       {
         type: 'row',
         weight: 60,
@@ -65,7 +64,6 @@ const DEFAULT_LAYOUT: IJsonModel = {
           },
         ],
       },
-      // ── Bottom row (40 %): trade history full-width ────────────────────────
       {
         type: 'tabset',
         weight: 40,
@@ -75,7 +73,7 @@ const DEFAULT_LAYOUT: IJsonModel = {
   },
 };
 
-function loadModel(): Model {
+const loadModel = (): Model => {
   try {
     const raw = localStorage.getItem(LAYOUT_KEY);
     if (raw) {
@@ -87,92 +85,76 @@ function loadModel(): Model {
   const m = Model.fromJson(DEFAULT_LAYOUT);
   m.setSplitterSize(4);
   return m;
-}
+};
 
-function saveModel(model: Model): void {
+const saveModel = (model: Model): void => {
   try {
     localStorage.setItem(LAYOUT_KEY, JSON.stringify(model.toJson()));
   } catch { /* quota exceeded */ }
-}
+};
 
 // ─── Shared panel shell ────────────────────────────────────────────────────────
 // FlexLayout provides the tab header — panels only render their body content.
-function PanelShell({ children, scroll = false }: { children: React.ReactNode; scroll?: boolean }) {
-  return (
-    <div className={scroll ? 'tc-fl-panel tc-fl-panel--scroll' : 'tc-fl-panel'}>
-      {children}
-    </div>
-  );
-}
+const PanelShell = ({ children, scroll = false }: { children: React.ReactNode; scroll?: boolean }) => (
+  <div className={scroll ? 'tc-fl-panel tc-fl-panel--scroll' : 'tc-fl-panel'}>
+    {children}
+  </div>
+);
 
 // ─── Individual panel components ───────────────────────────────────────────────
 interface CommonProps { hasData: boolean; hasQueried: boolean }
 interface TradeProps extends CommonProps { trades: Trade[] }
 interface StatsProps extends CommonProps { stats: ReturnType<typeof computeTradeStats> }
 
-function EquityPanel({ hasData, hasQueried, trades }: TradeProps) {
-  return (
-    <PanelShell>
-      {hasData
-        ? <Suspense fallback={<PanelPlaceholder />}><EquityCurveChart trades={trades} /></Suspense>
-        : <PanelPlaceholder searched={hasQueried} />}
-    </PanelShell>
-  );
-}
+const EquityPanel = ({ hasData, hasQueried, trades }: TradeProps) => (
+  <PanelShell>
+    {hasData
+      ? <Suspense fallback={<PanelPlaceholder />}><EquityCurveChart trades={trades} /></Suspense>
+      : <PanelPlaceholder searched={hasQueried} />}
+  </PanelShell>
+);
 
-function PerformancePanel({ hasData, hasQueried, stats }: StatsProps) {
-  return (
-    <PanelShell scroll>
-      {hasData ? <PerformanceSection stats={stats} /> : <PanelPlaceholder searched={hasQueried} />}
-    </PanelShell>
-  );
-}
+const PerformancePanel = ({ hasData, hasQueried, stats }: StatsProps) => (
+  <PanelShell scroll>
+    {hasData ? <PerformanceSection stats={stats} /> : <PanelPlaceholder searched={hasQueried} />}
+  </PanelShell>
+);
 
-function RiskPanel({ hasData, hasQueried, stats }: StatsProps) {
-  return (
-    <PanelShell scroll>
-      {hasData ? <RiskSection stats={stats} /> : <PanelPlaceholder searched={hasQueried} />}
-    </PanelShell>
-  );
-}
+const RiskPanel = ({ hasData, hasQueried, stats }: StatsProps) => (
+  <PanelShell scroll>
+    {hasData ? <RiskSection stats={stats} /> : <PanelPlaceholder searched={hasQueried} />}
+  </PanelShell>
+);
 
-function TradesPanel({ hasData, hasQueried, stats }: StatsProps) {
-  return (
-    <PanelShell scroll>
-      {hasData ? <TradesSection stats={stats} /> : <PanelPlaceholder searched={hasQueried} />}
-    </PanelShell>
-  );
-}
+const TradesPanel = ({ hasData, hasQueried, stats }: StatsProps) => (
+  <PanelShell scroll>
+    {hasData ? <TradesSection stats={stats} /> : <PanelPlaceholder searched={hasQueried} />}
+  </PanelShell>
+);
 
-function CalendarPanel({ hasData, hasQueried, trades }: TradeProps) {
-  return (
-    <PanelShell scroll>
-      {hasData
-        ? <Suspense fallback={<PanelPlaceholder />}><PnlCalendar trades={trades} /></Suspense>
-        : <PanelPlaceholder searched={hasQueried} />}
-    </PanelShell>
-  );
-}
+const CalendarPanel = ({ hasData, hasQueried, trades }: TradeProps) => (
+  <PanelShell scroll>
+    {hasData
+      ? <Suspense fallback={<PanelPlaceholder />}><PnlCalendar trades={trades} /></Suspense>
+      : <PanelPlaceholder searched={hasQueried} />}
+  </PanelShell>
+);
 
-function SymbolPanel({ hasData, hasQueried, trades }: TradeProps) {
-  return (
-    <PanelShell>
-      {hasData
-        ? <Suspense fallback={<PanelPlaceholder />}><PnlBySymbolChart trades={trades} /></Suspense>
-        : <PanelPlaceholder searched={hasQueried} />}
-    </PanelShell>
-  );
-}
+const SymbolPanel = ({ hasData, hasQueried, trades }: TradeProps) => (
+  <PanelShell>
+    {hasData
+      ? <Suspense fallback={<PanelPlaceholder />}><PnlBySymbolChart trades={trades} /></Suspense>
+      : <PanelPlaceholder searched={hasQueried} />}
+  </PanelShell>
+);
 
-function HistoryPanel({ hasData, hasQueried, trades }: TradeProps) {
-  return (
-    <PanelShell scroll>
-      {hasData
-        ? <Suspense fallback={<PanelPlaceholder />}><TradeList trades={trades} /></Suspense>
-        : <PanelPlaceholder searched={hasQueried} />}
-    </PanelShell>
-  );
-}
+const HistoryPanel = ({ hasData, hasQueried, trades }: TradeProps) => (
+  <PanelShell scroll>
+    {hasData
+      ? <Suspense fallback={<PanelPlaceholder />}><TradeList trades={trades} /></Suspense>
+      : <PanelPlaceholder searched={hasQueried} />}
+  </PanelShell>
+);
 
 // ─── Dashboard ─────────────────────────────────────────────────────────────────
 interface DashboardGridProps {
@@ -181,7 +163,7 @@ interface DashboardGridProps {
   hasQueried: boolean;
 }
 
-export default function DashboardGrid({ filteredTrades, hasData, hasQueried }: DashboardGridProps) {
+const DashboardGrid = ({ filteredTrades, hasData, hasQueried }: DashboardGridProps) => {
   const [model] = useState<Model>(loadModel);
   const stats = useMemo(() => computeTradeStats(filteredTrades), [filteredTrades]);
 
@@ -223,4 +205,6 @@ export default function DashboardGrid({ filteredTrades, hasData, hasQueried }: D
       </div>
     </div>
   );
-}
+};
+
+export default DashboardGrid;
