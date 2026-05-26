@@ -37,8 +37,12 @@ const getMonthRange = (trades: Trade[]): Array<{ year: number; month: number }> 
   const dates = trades.map((t) => t.closed ?? t.opened).filter(Boolean) as Date[];
   if (!dates.length) return [];
 
-  const minDate = new Date(Math.min(...dates.map((d) => d.getTime())));
-  const maxDate = new Date(Math.max(...dates.map((d) => d.getTime())));
+  // Use reduce instead of spread+Math.min/max to avoid V8's argument count limit
+  // (~65 k) which would cause a stack overflow for power users with large histories.
+  const minTs = dates.reduce((m, d) => Math.min(m, d.getTime()), Infinity);
+  const maxTs = dates.reduce((m, d) => Math.max(m, d.getTime()), -Infinity);
+  const minDate = new Date(minTs);
+  const maxDate = new Date(maxTs);
 
   const result: Array<{ year: number; month: number }> = [];
   let y = minDate.getFullYear();
@@ -57,7 +61,6 @@ const getMonthRange = (trades: Trade[]): Array<{ year: number; month: number }> 
 
 const dayKey = (year: number, month: number, day: number): string =>
   `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-
 
 const fmtCell = (v: number): string => {
   const abs = Math.abs(v);

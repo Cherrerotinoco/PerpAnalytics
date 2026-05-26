@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useState } from 'react';
 import { Trade } from '../../../types/tradeTypes';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -152,9 +152,7 @@ export const computeTradeStats = (trades: Trade[]): TradeStats => {
     sortedTrades[sortedTrades.length - 1]?.opened?.getTime() ??
     0;
   const periodYears =
-    firstTs > 0 && lastTs > firstTs
-      ? (lastTs - firstTs) / (365.25 * 24 * 60 * 60 * 1000)
-      : 0;
+    firstTs > 0 && lastTs > firstTs ? (lastTs - firstTs) / (365.25 * 24 * 60 * 60 * 1000) : 0;
   const annualisedPnl = periodYears >= 1 / 365 ? totalPnl / periodYears : totalPnl;
   const calmarRatio =
     maxDrawdown > 0 ? annualisedPnl / maxDrawdown : annualisedPnl > 0 ? Infinity : 0;
@@ -237,12 +235,6 @@ const ratioClass = (v: number): string => {
 };
 
 // ─── Shared UI primitives ─────────────────────────────────────────────────────
-const TipIcon = ({ text }: { text: string }) => (
-  <span className="tc-tip">
-    ?<span className="tc-tip-box">{text}</span>
-  </span>
-);
-
 const Metric = ({
   label,
   value,
@@ -255,16 +247,51 @@ const Metric = ({
   sub?: string;
   colorClass?: string;
   tooltip?: string;
-}) => (
-  <div className="tc-card">
-    <div className="tc-metric-label-row">
-      <p className="tc-label mb-0">{label}</p>
-      {tooltip && <TipIcon text={tooltip} />}
+}) => {
+  const [flipped, setFlipped] = useState(false);
+
+  if (!tooltip) {
+    return (
+      <div className="tc-card">
+        <p className="tc-label mb-0">{label}</p>
+        <p className={`tc-value mb-0 ${colorClass ?? ''}`}>{value}</p>
+        {sub && <p className="tc-metric-sub">{sub}</p>}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className={`tc-card tc-flip-card${flipped ? ' tc-flip-card--flipped' : ''}`}
+      onMouseLeave={() => setFlipped(false)}
+    >
+      <div className="tc-flip-inner">
+        {/* ── Front ── */}
+        <div className="tc-flip-front">
+          <div className="tc-metric-label-row">
+            <p className="tc-label mb-0">{label}</p>
+            <button
+              type="button"
+              className="tc-flip-trigger"
+              onMouseEnter={() => setFlipped(true)}
+              aria-label={`About ${label}`}
+            >
+              ?
+            </button>
+          </div>
+          <p className={`tc-value mb-0 ${colorClass ?? ''}`}>{value}</p>
+          {sub && <p className="tc-metric-sub">{sub}</p>}
+        </div>
+        {/* ── Back ── */}
+        <div className="tc-flip-back">
+          <div className="tc-flip-back-text-wrap">
+            <p className="tc-flip-back-text">{tooltip}</p>
+          </div>
+        </div>
+      </div>
     </div>
-    <p className={`tc-value mb-0 ${colorClass ?? ''}`}>{value}</p>
-    {sub && <p className="tc-metric-sub">{sub}</p>}
-  </div>
-);
+  );
+};
 
 const MetricGrid = ({ children }: { children: React.ReactNode }) => (
   <div className="tc-metric-grid">{children}</div>
@@ -318,10 +345,7 @@ export const PerformanceSection = memo(({ stats: st }: { stats: TradeStats }) =>
     {/* ── Fees by platform ── */}
     {Object.keys(st.feesBySource).length > 0 && (
       <div className="tc-card mt-2">
-        <div className="tc-metric-label-row mb-1">
-          <p className="tc-label mb-0">Fees Paid</p>
-          <TipIcon text="Cumulative trading fees (opening + closing) broken down by platform." />
-        </div>
+        <p className="tc-label mb-1">Fees Paid</p>
 
         {Object.entries(st.feesBySource)
           .sort((a, b) => b[1] - a[1])
@@ -422,10 +446,7 @@ export const TradesSection = memo(({ stats: st }: { stats: TradeStats }) => {
         />
         {/* Streaks card */}
         <div className="tc-card">
-          <div className="tc-metric-label-row mb-2">
-            <p className="tc-label mb-0">Max Streaks</p>
-            <TipIcon text="Longest uninterrupted run of consecutive wins and consecutive losses." />
-          </div>
+          <p className="tc-label mb-2">Max Streaks</p>
           <div className="tc-streaks-row mb-1">
             <span className="tc-metric-sub">Consec. Wins</span>
             <span className="tc-streaks-value tc-green">{st.maxConsecWins}</span>

@@ -188,8 +188,55 @@ body {
 }
 
 /* ─── Metric tooltip ────────────────────────────────────────────────────────── */
-.tc-tip {
-  position: relative;
+/* ─── Metric card flip ───────────────────────────────────────────────────────── */
+/* Flip cards zero-out .tc-card padding; each face applies it instead.          */
+.tc-flip-card {
+  padding: 0;
+  perspective: 700px;
+}
+
+.tc-flip-inner {
+  display: grid;
+  grid-template-areas: 'face'; /* stack front + back in same cell */
+  transform-style: preserve-3d;
+  transition: transform 0.38s ease;
+}
+
+.tc-flip-card--flipped .tc-flip-inner {
+  transform: rotateY(180deg);
+}
+
+.tc-flip-front,
+.tc-flip-back {
+  grid-area: face; /* overlap in the same grid cell */
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  padding: 0.5rem 0.65rem;
+  border-radius: calc(var(--tc-radius) - 1px);
+}
+
+.tc-flip-back {
+  transform: rotateY(180deg);
+  display: flex;
+  align-items: center;
+}
+
+/* ── Back-face text: height 0 → natural via grid-template-rows trick ──────────
+   0fr clips the paragraph to zero height without removing it from the 3D
+   stack. Transitioning to 1fr animates to the element's true auto height.   */
+.tc-flip-back-text-wrap {
+  display: grid;
+  grid-template-rows: 0fr;
+  width: 100%;
+  transition: grid-template-rows 0.3s ease;
+}
+
+.tc-flip-card--flipped .tc-flip-back-text-wrap {
+  grid-template-rows: 1fr;
+}
+
+/* ── Flip trigger button (?) ─────────────────────────────────────────────────── */
+.tc-flip-trigger {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -197,70 +244,31 @@ body {
   height: 13px;
   border-radius: 50%;
   border: 1px solid var(--tc-border);
+  background: none;
   color: var(--tc-muted);
   font-size: 0.55rem;
-  font-style: normal;
   font-weight: 700;
-  cursor: default;
   line-height: 1;
+  cursor: pointer;
   flex-shrink: 0;
+  padding: 0;
   transition:
-    border-color 0.1s,
-    color 0.1s;
+    border-color 0.15s,
+    color 0.15s;
 }
 
-.tc-tip:hover {
+.tc-flip-trigger:hover {
   border-color: var(--tc-accent);
   color: var(--tc-accent);
 }
 
-.tc-tip-box {
-  display: none;
-  position: absolute;
-  bottom: calc(100% + 8px);
-  left: 50%;
-  transform: translateX(-50%);
-  background: var(--tc-surface);
-  border: 1px solid var(--tc-border);
-  color: var(--tc-text);
+/* ── Back-face content ───────────────────────────────────────────────────────── */
+.tc-flip-back-text {
+  overflow: hidden; /* required — clips content when grid row = 0fr */
   font-size: 0.66rem;
+  color: var(--tc-muted);
   line-height: 1.5;
-  padding: 0.45rem 0.6rem;
-  border-radius: 5px;
-  width: 175px;
-  z-index: 300;
-  pointer-events: none;
-  font-weight: 400;
-  text-transform: none;
-  letter-spacing: 0;
-  white-space: normal;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
-}
-
-/* arrow border */
-.tc-tip-box::before {
-  content: '';
-  position: absolute;
-  top: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  border: 5px solid transparent;
-  border-top-color: var(--tc-border);
-}
-
-/* arrow fill */
-.tc-tip-box::after {
-  content: '';
-  position: absolute;
-  top: calc(100% - 1px);
-  left: 50%;
-  transform: translateX(-50%);
-  border: 4px solid transparent;
-  border-top-color: var(--tc-surface);
-}
-
-.tc-tip:hover .tc-tip-box {
-  display: block;
+  margin: 0;
 }
 
 /* ─── Progress bar ──────────────────────────────────────────────────────────── */
@@ -577,8 +585,12 @@ body {
   transition: color 0.12s;
 }
 
-.tc-platform-label--active  { color: var(--tc-text); }
-.tc-platform-label--inactive { color: var(--tc-muted); }
+.tc-platform-label--active {
+  color: var(--tc-text);
+}
+.tc-platform-label--inactive {
+  color: var(--tc-muted);
+}
 
 .tc-platform-label input[type='checkbox'] {
   display: none;
@@ -597,8 +609,14 @@ body {
     background 0.12s;
 }
 
-.tc-checkbox-box--active  { border: 1.5px solid var(--tc-accent); background: var(--tc-accent); }
-.tc-checkbox-box--inactive { border: 1.5px solid var(--tc-border); background: transparent; }
+.tc-checkbox-box--active {
+  border: 1.5px solid var(--tc-accent);
+  background: var(--tc-accent);
+}
+.tc-checkbox-box--inactive {
+  border: 1.5px solid var(--tc-border);
+  background: transparent;
+}
 
 .tc-wallet-input-wrap {
   flex: 1 1 200px;
@@ -766,16 +784,32 @@ body {
 }
 
 /* Cell background — flat colours, no gradient */
-.tc-cal-cell--win  { background: rgba(34,  197, 94,  0.14); }
-.tc-cal-cell--loss { background: rgba(239, 68,  68,  0.14); }
-.tc-cal-cell--zero { background: var(--tc-surface-2); }
+.tc-cal-cell--win {
+  background: rgba(34, 197, 94, 0.14);
+}
+.tc-cal-cell--loss {
+  background: rgba(239, 68, 68, 0.14);
+}
+.tc-cal-cell--zero {
+  background: var(--tc-surface-2);
+}
 
-[data-theme='light'] .tc-cal-cell--win  { background: rgba(22,  163, 74,  0.12); }
-[data-theme='light'] .tc-cal-cell--loss { background: rgba(220, 38,  38,  0.10); }
+[data-theme='light'] .tc-cal-cell--win {
+  background: rgba(22, 163, 74, 0.12);
+}
+[data-theme='light'] .tc-cal-cell--loss {
+  background: rgba(220, 38, 38, 0.1);
+}
 
-.tc-cal-day-num--win   { color: rgba(34,  197, 94,  0.65); }
-.tc-cal-day-num--loss  { color: rgba(239, 68,  68,  0.65); }
-.tc-cal-day-num--empty { color: var(--tc-muted); }
+.tc-cal-day-num--win {
+  color: rgba(34, 197, 94, 0.65);
+}
+.tc-cal-day-num--loss {
+  color: rgba(239, 68, 68, 0.65);
+}
+.tc-cal-day-num--empty {
+  color: var(--tc-muted);
+}
 
 .tc-cal-day-pnl {
   font-size: 0.7rem;
@@ -783,8 +817,12 @@ body {
   line-height: 1;
 }
 
-.tc-cal-day-pnl--win  { color: rgba(34,  197, 94,  0.95); }
-.tc-cal-day-pnl--loss { color: rgba(239, 68,  68,  0.95); }
+.tc-cal-day-pnl--win {
+  color: rgba(34, 197, 94, 0.95);
+}
+.tc-cal-day-pnl--loss {
+  color: rgba(239, 68, 68, 0.95);
+}
 
 /* ─── Equity curve chart ─────────────────────────────────────────────────────── */
 .tc-chart-header {
@@ -1008,7 +1046,9 @@ body {
   padding: 0.2rem 0.65rem;
   border-radius: var(--tc-radius);
   cursor: pointer;
-  transition: color 0.15s, border-color 0.15s;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
 }
 .tc-btn-ghost:hover {
   color: var(--tc-text);
@@ -1040,55 +1080,55 @@ body {
 
 /* ─── FlexLayout CSS variable overrides (dark theme — default) ─────────────── */
 .flexlayout__layout {
-  --color-text:                       var(--tc-text);
-  --color-background:                 var(--tc-bg);
-  --color-base:                       var(--tc-bg);
-  --color-1:                          var(--tc-surface);
-  --color-2:                          var(--tc-surface-2);
-  --color-3:                          #252525;
-  --color-4:                          var(--tc-border);
-  --color-5:                          #3a3a3a;
-  --color-6:                          #4a4a4a;
-  --font-family:                      'Inter Tight', system-ui, -apple-system, sans-serif;
-  --font-size:                        small;
-  --font-weight:                      500;
-  --splitter-size:                    4px;
-  --splitter-active-size:             6px;
-  --color-splitter:                   var(--tc-border);
-  --color-splitter-hover:             var(--tc-muted);
-  --color-splitter-drag:              var(--tc-accent);
-  --color-tab-selected:               var(--tc-text);
-  --color-tab-selected-background:    var(--tc-surface-2);
-  --color-tab-unselected:             var(--tc-muted);
-  --color-tab-unselected-background:  transparent;
-  --color-tabset-background:          var(--tc-surface);
+  --color-text: var(--tc-text);
+  --color-background: var(--tc-bg);
+  --color-base: var(--tc-bg);
+  --color-1: var(--tc-surface);
+  --color-2: var(--tc-surface-2);
+  --color-3: #252525;
+  --color-4: var(--tc-border);
+  --color-5: #3a3a3a;
+  --color-6: #4a4a4a;
+  --font-family: 'Inter Tight', system-ui, -apple-system, sans-serif;
+  --font-size: small;
+  --font-weight: 500;
+  --splitter-size: 4px;
+  --splitter-active-size: 6px;
+  --color-splitter: var(--tc-border);
+  --color-splitter-hover: var(--tc-muted);
+  --color-splitter-drag: var(--tc-accent);
+  --color-tab-selected: var(--tc-text);
+  --color-tab-selected-background: var(--tc-surface-2);
+  --color-tab-unselected: var(--tc-muted);
+  --color-tab-unselected-background: transparent;
+  --color-tabset-background: var(--tc-surface);
   --color-tabset-background-selected: var(--tc-surface);
-  --color-tabset-divider-line:        var(--tc-border);
-  --color-tab-content:                var(--tc-bg);
-  --color-drag-rect-border:           var(--tc-accent);
-  --color-drag-rect-background:       rgba(245,158,11,0.08);
-  --color-drag-rect:                  var(--tc-text);
-  --color-edge-marker:                var(--tc-muted);
+  --color-tabset-divider-line: var(--tc-border);
+  --color-tab-content: var(--tc-bg);
+  --color-drag-rect-border: var(--tc-accent);
+  --color-drag-rect-background: rgba(245, 158, 11, 0.08);
+  --color-drag-rect: var(--tc-text);
+  --color-edge-marker: var(--tc-muted);
 }
 
 /* ─── Light theme overrides ─────────────────────────────────────────────────── */
 [data-theme='light'] .flexlayout__layout {
-  --color-text:                       var(--tc-text);
-  --color-background:                 var(--tc-bg);
-  --color-base:                       var(--tc-bg);
-  --color-1:                          var(--tc-surface);
-  --color-2:                          var(--tc-surface-2);
-  --color-3:                          #e9eaec;
-  --color-4:                          var(--tc-border);
-  --color-5:                          #d1d5db;
-  --color-6:                          #c1c5cb;
-  --color-tab-selected:               var(--tc-text);
-  --color-tab-selected-background:    var(--tc-surface);
-  --color-tab-unselected:             var(--tc-muted);
-  --color-tabset-background:          var(--tc-surface-2);
+  --color-text: var(--tc-text);
+  --color-background: var(--tc-bg);
+  --color-base: var(--tc-bg);
+  --color-1: var(--tc-surface);
+  --color-2: var(--tc-surface-2);
+  --color-3: #e9eaec;
+  --color-4: var(--tc-border);
+  --color-5: #d1d5db;
+  --color-6: #c1c5cb;
+  --color-tab-selected: var(--tc-text);
+  --color-tab-selected-background: var(--tc-surface);
+  --color-tab-unselected: var(--tc-muted);
+  --color-tabset-background: var(--tc-surface-2);
   --color-tabset-background-selected: var(--tc-surface);
-  --color-tabset-divider-line:        var(--tc-border);
-  --color-tab-content:                var(--tc-bg);
-  --color-splitter:                   var(--tc-border);
-  --color-splitter-hover:             var(--tc-muted);
+  --color-tabset-divider-line: var(--tc-border);
+  --color-tab-content: var(--tc-bg);
+  --color-splitter: var(--tc-border);
+  --color-splitter-hover: var(--tc-muted);
 }

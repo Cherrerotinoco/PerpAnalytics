@@ -72,7 +72,9 @@ const EquityCurveChart = memo(({ trades }: { trades: Trade[] }) => {
         <span className="tc-chart-date-range">
           {fmtDate(xMin)} — {fmtDate(xMax)}
         </span>
-        <span className={`tc-pnl-badge ${isPositive ? 'tc-badge--positive' : 'tc-badge--negative'}`}>
+        <span
+          className={`tc-pnl-badge ${isPositive ? 'tc-badge--positive' : 'tc-badge--negative'}`}
+        >
           {isPositive ? '+' : ''}
           {fmtMoney(stats.totalPnl)} $
         </span>

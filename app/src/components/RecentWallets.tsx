@@ -3,7 +3,7 @@ type RecentWalletsProps = {
   onSelect: (wallet: string) => void;
 };
 
-export default function RecentWallets({ wallets, onSelect }: RecentWalletsProps) {
+const RecentWallets = ({ wallets, onSelect }: RecentWalletsProps) => {
   if (!wallets.length) return null;
 
   return (
@@ -21,4 +21,6 @@ export default function RecentWallets({ wallets, onSelect }: RecentWalletsProps)
       ))}
     </div>
   );
-}
+};
+
+export default RecentWallets;

@@ -1,8 +1,7 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Trade } from '../types/tradeTypes';
 import { buildJupiterTrades, JupiterTrade } from '../utils/normalizeJupiter';
 import { buildPacificaTrades, PacificaFill } from '../utils/normalizePacifica';
-import { computeTradeStats } from './dashboard/panels/statistics';
 import DashboardGrid from './dashboard/DashboardGrid';
 
 const SOLANA_ADDRESS_REGEX = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
@@ -15,18 +14,50 @@ interface CacheEntry {
   data: Array<Omit<Trade, 'opened' | 'closed'> & { opened: string; closed: string }>;
 }
 
+/** Reject obviously malformed entries that could corrupt calculations. */
+const isValidCachedTrade = (t: unknown): boolean => {
+  if (!t || typeof t !== 'object') return false;
+  const o = t as Record<string, unknown>;
+  return (
+    typeof o.symbol === 'string' &&
+    o.symbol.length > 0 &&
+    o.symbol.length <= 32 &&
+    (o.side === 'long' || o.side === 'short') &&
+    typeof o.pnl === 'number' &&
+    isFinite(o.pnl) &&
+    typeof o.fee === 'number' &&
+    isFinite(o.fee) &&
+    typeof o.sizeUsd === 'number' &&
+    isFinite(o.sizeUsd) &&
+    (o.source === 'Jupiter' || o.source === 'Pacifica') &&
+    typeof o.opened === 'string' &&
+    !isNaN(Date.parse(o.opened)) &&
+    typeof o.closed === 'string' &&
+    !isNaN(Date.parse(o.closed))
+  );
+};
+
 const loadCachedTrades = (key: string): Trade[] | null => {
   try {
     const raw = localStorage.getItem(STORAGE_PREFIX + key);
-    if (!raw) {
-      return null;
-    }
+    if (!raw) return null;
     const entry = JSON.parse(raw) as CacheEntry;
-    if (Date.now() - entry.cachedAt > CACHE_TTL_MS) {
+    if (
+      !entry ||
+      typeof entry.cachedAt !== 'number' ||
+      !Array.isArray(entry.data) ||
+      Date.now() - entry.cachedAt > CACHE_TTL_MS
+    ) {
       localStorage.removeItem(STORAGE_PREFIX + key);
       return null;
     }
-    return entry.data.map((t) => ({
+    const valid = entry.data.filter(isValidCachedTrade);
+    // If more than 5% of entries are corrupt, discard the whole cache entry.
+    if (valid.length < entry.data.length * 0.95) {
+      localStorage.removeItem(STORAGE_PREFIX + key);
+      return null;
+    }
+    return valid.map((t) => ({
       ...t,
       opened: new Date(t.opened),
       closed: new Date(t.closed),
@@ -95,9 +126,6 @@ export const WalletForm = ({ wallet, setWallet, addRecentWallet }: WalletFormPro
   const cacheRef = useRef<{ [key: string]: Trade[] }>({});
   const cacheTsRef = useRef<{ [key: string]: number }>({});
   const didAutoSubmit = useRef(false);
-
-  const toTimestamp = (date: string): string | undefined =>
-    date ? String(Math.floor(new Date(date).getTime() / 1000)) : undefined;
 
   // ── Pre-fill wallet from URL on mount ──
   useEffect(() => {
@@ -172,6 +200,8 @@ export const WalletForm = ({ wallet, setWallet, addRecentWallet }: WalletFormPro
         platforms.map(async (platform) => {
           if (platform === 'jupiter') {
             const allEvents: JupiterTrade[] = [];
+            // Jupiter returns a stable `count` (total items) so the recursion is
+            // naturally bounded — no extra guard needed.
             const fetchPage = async (start: number, end: number): Promise<void> => {
               const url = `https://perps-api.jup.ag/v1/trades?walletAddress=${wallet}&start=${start}&end=${end}`;
               const res = await fetch(url, { signal: controller.signal });
@@ -189,6 +219,9 @@ export const WalletForm = ({ wallet, setWallet, addRecentWallet }: WalletFormPro
           }
           if (platform === 'pacifica') {
             const allFills: PacificaFill[] = [];
+            // Guard: only continue if the server actually returned items.
+            // This stops infinite loops when has_more is true but data is empty
+            // (e.g. a misbehaving or compromised endpoint).
             const fetchPage = async (cursor?: string): Promise<void> => {
               const cursorParam = cursor ? `&cursor=${encodeURIComponent(cursor)}` : '';
               const res = await fetch(
@@ -199,8 +232,9 @@ export const WalletForm = ({ wallet, setWallet, addRecentWallet }: WalletFormPro
                 throw new Error(`Error fetching Pacifica data: ${res.statusText}`);
               }
               const json = await res.json();
-              allFills.push(...(json.data ?? []));
-              if (json.has_more) {
+              const page: PacificaFill[] = json.data ?? [];
+              allFills.push(...page);
+              if (json.has_more && page.length > 0) {
                 await fetchPage(json.next_cursor);
               }
             };
@@ -244,18 +278,15 @@ export const WalletForm = ({ wallet, setWallet, addRecentWallet }: WalletFormPro
   }, [wallet, startDate]);
 
   useEffect(() => {
-    const startTs = toTimestamp(startDate);
-    const endTs = toTimestamp(endDate);
+    // Compute boundary timestamps once — trade.closed is already a Date object.
+    const startMs = startDate ? new Date(startDate).getTime() : 0;
+    const endMs = endDate ? new Date(endDate).getTime() : 0;
     setFilteredTrades(
       trades.filter((trade) => {
-        const t = new Date(trade.closed).getTime();
-
-        if (!platforms.includes(trade.source.toLowerCase() as Platform)) {
-          return false;
-        }
-
+        const t = trade.closed.getTime();
+        const sourceKey = trade.source.toLowerCase() as Platform;
         return (
-          (!startTs || t >= parseInt(startTs) * 1000) && (!endTs || t <= parseInt(endTs) * 1000)
+          platforms.includes(sourceKey) && (!startMs || t >= startMs) && (!endMs || t <= endMs)
         );
       })
     );
@@ -274,7 +305,9 @@ export const WalletForm = ({ wallet, setWallet, addRecentWallet }: WalletFormPro
             <div className="d-flex align-items-center gap-2 flex-wrap">
               {/* Wallet address */}
               <div className="tc-wallet-input-wrap">
-                <label className="tc-label" htmlFor="wallet">Wallet Address *</label>
+                <label className="tc-label" htmlFor="wallet">
+                  Wallet Address *
+                </label>
                 <input
                   id="wallet"
                   type="text"
@@ -291,7 +324,9 @@ export const WalletForm = ({ wallet, setWallet, addRecentWallet }: WalletFormPro
 
               {/* Date range */}
               <div>
-                <label className="tc-label" htmlFor="start-date">From</label>
+                <label className="tc-label" htmlFor="start-date">
+                  From
+                </label>
                 <input
                   id="start-date"
                   type="date"
@@ -300,10 +335,11 @@ export const WalletForm = ({ wallet, setWallet, addRecentWallet }: WalletFormPro
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
                 />
-
               </div>
               <div>
-                <label className="tc-label" htmlFor="end-date">To</label>
+                <label className="tc-label" htmlFor="end-date">
+                  To
+                </label>
                 <input
                   id="end-date"
                   type="date"
@@ -403,21 +439,17 @@ export const WalletForm = ({ wallet, setWallet, addRecentWallet }: WalletFormPro
           </form>
         </div>
 
-
         {/* ── No-results notice ──────────────────────────────────────────────── */}
         {!loading && hasQueried && trades.length === 0 && (
           <p className="tc-notice-empty">
             No trades found for this wallet and selected platforms in the chosen period.
           </p>
         )}
-      </div>{/* end tc-wallet-top */}
+      </div>
+      {/* end tc-wallet-top */}
 
       {/* ── Dashboard ──────────────────────────────────────────────────────── */}
-      <DashboardGrid
-        filteredTrades={filteredTrades}
-        hasData={hasData}
-        hasQueried={hasQueried}
-      />
+      <DashboardGrid filteredTrades={filteredTrades} hasData={hasData} hasQueried={hasQueried} />
     </div>
   );
 };

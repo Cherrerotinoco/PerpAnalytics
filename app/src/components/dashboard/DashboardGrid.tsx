@@ -4,7 +4,12 @@ import type { TabNode, IJsonModel } from 'flexlayout-react';
 import 'flexlayout-react/style/dark.css';
 
 import { Trade } from '../../types/tradeTypes';
-import { computeTradeStats, PerformanceSection, RiskSection, TradesSection } from './panels/statistics';
+import {
+  computeTradeStats,
+  PerformanceSection,
+  RiskSection,
+  TradesSection,
+} from './panels/statistics';
 import { PanelPlaceholder } from './PanelPlaceholder';
 
 const EquityCurveChart = lazy(() => import('./panels/equityCurveChart'));
@@ -81,7 +86,9 @@ const loadModel = (): Model => {
       m.setSplitterSize(4);
       return m;
     }
-  } catch { /* ignore corrupt data */ }
+  } catch {
+    /* ignore corrupt data */
+  }
   const m = Model.fromJson(DEFAULT_LAYOUT);
   m.setSplitterSize(4);
   return m;
@@ -90,27 +97,42 @@ const loadModel = (): Model => {
 const saveModel = (model: Model): void => {
   try {
     localStorage.setItem(LAYOUT_KEY, JSON.stringify(model.toJson()));
-  } catch { /* quota exceeded */ }
+  } catch {
+    /* quota exceeded */
+  }
 };
 
 // ─── Shared panel shell ────────────────────────────────────────────────────────
 // FlexLayout provides the tab header — panels only render their body content.
-const PanelShell = ({ children, scroll = false }: { children: React.ReactNode; scroll?: boolean }) => (
-  <div className={scroll ? 'tc-fl-panel tc-fl-panel--scroll' : 'tc-fl-panel'}>
-    {children}
-  </div>
-);
+const PanelShell = ({
+  children,
+  scroll = false,
+}: {
+  children: React.ReactNode;
+  scroll?: boolean;
+}) => <div className={scroll ? 'tc-fl-panel tc-fl-panel--scroll' : 'tc-fl-panel'}>{children}</div>;
 
 // ─── Individual panel components ───────────────────────────────────────────────
-interface CommonProps { hasData: boolean; hasQueried: boolean }
-interface TradeProps extends CommonProps { trades: Trade[] }
-interface StatsProps extends CommonProps { stats: ReturnType<typeof computeTradeStats> }
+interface CommonProps {
+  hasData: boolean;
+  hasQueried: boolean;
+}
+interface TradeProps extends CommonProps {
+  trades: Trade[];
+}
+interface StatsProps extends CommonProps {
+  stats: ReturnType<typeof computeTradeStats>;
+}
 
 const EquityPanel = ({ hasData, hasQueried, trades }: TradeProps) => (
   <PanelShell>
-    {hasData
-      ? <Suspense fallback={<PanelPlaceholder />}><EquityCurveChart trades={trades} /></Suspense>
-      : <PanelPlaceholder searched={hasQueried} />}
+    {hasData ? (
+      <Suspense fallback={<PanelPlaceholder />}>
+        <EquityCurveChart trades={trades} />
+      </Suspense>
+    ) : (
+      <PanelPlaceholder searched={hasQueried} />
+    )}
   </PanelShell>
 );
 
@@ -134,25 +156,37 @@ const TradesPanel = ({ hasData, hasQueried, stats }: StatsProps) => (
 
 const CalendarPanel = ({ hasData, hasQueried, trades }: TradeProps) => (
   <PanelShell scroll>
-    {hasData
-      ? <Suspense fallback={<PanelPlaceholder />}><PnlCalendar trades={trades} /></Suspense>
-      : <PanelPlaceholder searched={hasQueried} />}
+    {hasData ? (
+      <Suspense fallback={<PanelPlaceholder />}>
+        <PnlCalendar trades={trades} />
+      </Suspense>
+    ) : (
+      <PanelPlaceholder searched={hasQueried} />
+    )}
   </PanelShell>
 );
 
 const SymbolPanel = ({ hasData, hasQueried, trades }: TradeProps) => (
   <PanelShell>
-    {hasData
-      ? <Suspense fallback={<PanelPlaceholder />}><PnlBySymbolChart trades={trades} /></Suspense>
-      : <PanelPlaceholder searched={hasQueried} />}
+    {hasData ? (
+      <Suspense fallback={<PanelPlaceholder />}>
+        <PnlBySymbolChart trades={trades} />
+      </Suspense>
+    ) : (
+      <PanelPlaceholder searched={hasQueried} />
+    )}
   </PanelShell>
 );
 
 const HistoryPanel = ({ hasData, hasQueried, trades }: TradeProps) => (
   <PanelShell scroll>
-    {hasData
-      ? <Suspense fallback={<PanelPlaceholder />}><TradeList trades={trades} /></Suspense>
-      : <PanelPlaceholder searched={hasQueried} />}
+    {hasData ? (
+      <Suspense fallback={<PanelPlaceholder />}>
+        <TradeList trades={trades} />
+      </Suspense>
+    ) : (
+      <PanelPlaceholder searched={hasQueried} />
+    )}
   </PanelShell>
 );
 
@@ -169,20 +203,31 @@ const DashboardGrid = ({ filteredTrades, hasData, hasQueried }: DashboardGridPro
 
   const onModelChange = useCallback(() => saveModel(model), [model]);
 
-  const factory = useCallback((node: TabNode): React.ReactNode => {
-    const c = node.getComponent() ?? '';
-    const common: CommonProps = { hasData, hasQueried };
-    switch (c) {
-      case 'equity': return <EquityPanel      {...common} trades={filteredTrades} />;
-      case 'performance': return <PerformancePanel {...common} stats={stats} />;
-      case 'risk': return <RiskPanel        {...common} stats={stats} />;
-      case 'trades': return <TradesPanel      {...common} stats={stats} />;
-      case 'calendar': return <CalendarPanel    {...common} trades={filteredTrades} />;
-      case 'symbol': return <SymbolPanel      {...common} trades={filteredTrades} />;
-      case 'history': return <HistoryPanel     {...common} trades={filteredTrades} />;
-      default: return null;
-    }
-  }, [hasData, hasQueried, filteredTrades, stats]);
+  const factory = useCallback(
+    (node: TabNode): React.ReactNode => {
+      const c = node.getComponent() ?? '';
+      const common: CommonProps = { hasData, hasQueried };
+      switch (c) {
+        case 'equity':
+          return <EquityPanel {...common} trades={filteredTrades} />;
+        case 'performance':
+          return <PerformancePanel {...common} stats={stats} />;
+        case 'risk':
+          return <RiskPanel {...common} stats={stats} />;
+        case 'trades':
+          return <TradesPanel {...common} stats={stats} />;
+        case 'calendar':
+          return <CalendarPanel {...common} trades={filteredTrades} />;
+        case 'symbol':
+          return <SymbolPanel {...common} trades={filteredTrades} />;
+        case 'history':
+          return <HistoryPanel {...common} trades={filteredTrades} />;
+        default:
+          return null;
+      }
+    },
+    [hasData, hasQueried, filteredTrades, stats]
+  );
 
   const onReset = useCallback(() => {
     localStorage.removeItem(LAYOUT_KEY);
@@ -198,8 +243,12 @@ const DashboardGrid = ({ filteredTrades, hasData, hasQueried }: DashboardGridPro
 
       {/* Toolbar */}
       <div className="tc-dashboard-toolbar">
-        <button type="button" className="tc-btn-ghost" onClick={onReset}
-          title="Reset panel layout to default">
+        <button
+          type="button"
+          className="tc-btn-ghost"
+          onClick={onReset}
+          title="Reset panel layout to default"
+        >
           ↺ Reset layout
         </button>
       </div>
