@@ -55,7 +55,7 @@ const Header = () => {
       }
       if (currentY > lastScrollY.current && currentY > 60) {
         header.classList.add('tc-header--hidden');
-      } else {
+      } else if (currentY === 0) {
         header.classList.remove('tc-header--hidden');
       }
       lastScrollY.current = currentY;
