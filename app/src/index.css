@@ -1061,10 +1061,10 @@ body {
 }
 
 /* FlexLayout container — position:relative required; min-height floors the     */
-/* layout at 75 vh so panels always have meaningful space to render into.        */
+/* layout at 90 vh so panels always have meaningful space to render into.        */
 .tc-fl-wrap {
   flex: 1;
-  min-height: 100vh;
+  min-height: 90vh;
   position: relative;
 }
 
@@ -1136,4 +1136,205 @@ body {
   --color-tab-content: var(--tc-bg);
   --color-splitter: var(--tc-border);
   --color-splitter-hover: var(--tc-muted);
+}
+
+/* ─── vanilla-cookieconsent theme overrides ──────────────────────────────────── */
+#cc-main {
+  --cc-font-family: 'Inter Tight', system-ui, -apple-system, sans-serif;
+
+  /* Modal */
+  --cc-bg: var(--tc-surface);
+  --cc-primary-color: var(--tc-text);
+  --cc-secondary-color: var(--tc-muted);
+  --cc-link-color: var(--tc-accent);
+  --cc-separator-border-color: var(--tc-border);
+  --cc-overlay-bg: rgba(0, 0, 0, 0.5);
+  --cc-modal-border-radius: var(--tc-radius);
+  --cc-btn-border-radius: var(--tc-radius);
+  --cc-z-index: 9999;
+
+  /* Primary button (Accept) */
+  --cc-btn-primary-bg: var(--tc-accent);
+  --cc-btn-primary-color: #000;
+  --cc-btn-primary-border-color: var(--tc-accent);
+  --cc-btn-primary-hover-bg: var(--tc-amber);
+  --cc-btn-primary-hover-color: #000;
+  --cc-btn-primary-hover-border-color: var(--tc-amber);
+
+  /* Secondary button (Decline / Save) */
+  --cc-btn-secondary-bg: var(--tc-surface-2);
+  --cc-btn-secondary-color: var(--tc-text);
+  --cc-btn-secondary-border-color: var(--tc-border);
+  --cc-btn-secondary-hover-bg: var(--tc-surface-3);
+  --cc-btn-secondary-hover-color: var(--tc-text);
+  --cc-btn-secondary-hover-border-color: var(--tc-muted);
+
+  /* Accordion / category blocks */
+  --cc-cookie-category-block-bg: var(--tc-surface-2);
+  --cc-cookie-category-block-border: var(--tc-border);
+  --cc-cookie-category-block-hover-bg: var(--tc-surface-3);
+  --cc-cookie-category-block-hover-border: var(--tc-muted);
+  --cc-cookie-category-expanded-block-bg: var(--tc-surface-2);
+  --cc-cookie-category-expanded-block-hover-bg: var(--tc-surface-3);
+  --cc-section-category-border: var(--tc-border);
+
+  /* Toggle */
+  --cc-toggle-on-bg: var(--tc-accent);
+  --cc-toggle-off-bg: var(--tc-border);
+  --cc-toggle-on-knob-bg: #000;
+  --cc-toggle-off-knob-bg: var(--tc-text);
+  --cc-toggle-readonly-bg: var(--tc-surface-2);
+  --cc-toggle-readonly-knob-bg: var(--tc-muted);
+  --cc-toggle-readonly-knob-icon-color: var(--tc-surface-2);
+  --cc-toggle-enabled-icon-color: #000;
+  --cc-toggle-disabled-icon-color: var(--tc-surface);
+
+  /* Footer (preferences modal) */
+  --cc-footer-bg: var(--tc-surface-2);
+  --cc-footer-border-color: var(--tc-border);
+  --cc-footer-color: var(--tc-muted);
+
+  /* Scrollbar */
+  --cc-webkit-scrollbar-bg: var(--tc-border);
+  --cc-webkit-scrollbar-hover-bg: var(--tc-muted);
+}
+
+/* ─── Footer links row ───────────────────────────────────────────────────────── */
+.tc-footer-links {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.tc-footer-link {
+  color: var(--tc-muted);
+  text-decoration: none;
+  font-size: 0.75rem;
+  transition: color 0.12s;
+}
+
+.tc-footer-link:hover {
+  color: var(--tc-text);
+}
+
+.tc-footer-link-sep {
+  color: var(--tc-border);
+  font-size: 0.75rem;
+  user-select: none;
+}
+
+/* ─── Cookie Policy page ─────────────────────────────────────────────────────── */
+.tc-policy-page {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 4rem;
+}
+
+.tc-policy-content h1 {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--tc-text);
+  margin-bottom: 0.25rem;
+}
+
+.tc-policy-content h2 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--tc-text);
+  margin-top: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+.tc-policy-content h3 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--tc-text);
+  margin-top: 1.25rem;
+  margin-bottom: 0.4rem;
+}
+
+.tc-policy-content p,
+.tc-policy-content li {
+  font-size: 0.875rem;
+  color: var(--tc-muted);
+  line-height: 1.7;
+  margin-bottom: 0.5rem;
+}
+
+.tc-policy-content a {
+  color: var(--tc-accent);
+  text-decoration: none;
+}
+
+.tc-policy-content a:hover {
+  text-decoration: underline;
+}
+
+.tc-policy-content code {
+  font-size: 0.8rem;
+  background: var(--tc-surface-2);
+  border: 1px solid var(--tc-border);
+  border-radius: 3px;
+  padding: 0.1em 0.35em;
+  color: var(--tc-text);
+}
+
+.tc-policy-meta {
+  font-size: 0.78rem;
+  color: var(--tc-muted);
+  margin-bottom: 1.5rem;
+}
+
+.tc-policy-back {
+  display: inline-block;
+  font-size: 0.82rem;
+  color: var(--tc-muted);
+  text-decoration: none;
+  margin-bottom: 1.5rem;
+  transition: color 0.12s;
+}
+
+.tc-policy-back:hover {
+  color: var(--tc-text);
+}
+
+.tc-policy-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+  margin-bottom: 1rem;
+}
+
+.tc-policy-table th,
+.tc-policy-table td {
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--tc-border);
+  color: var(--tc-muted);
+}
+
+.tc-policy-table th {
+  background: var(--tc-surface-2);
+  color: var(--tc-text);
+  font-weight: 600;
+}
+
+.tc-policy-prefs-btn {
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 500;
+  background: var(--tc-surface-2);
+  border: 1px solid var(--tc-border);
+  border-radius: var(--tc-radius);
+  color: var(--tc-text);
+  padding: 0.45rem 1rem;
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s;
+  margin-bottom: 1rem;
+}
+
+.tc-policy-prefs-btn:hover {
+  border-color: var(--tc-muted);
+  background: var(--tc-surface);
 }

@@ -1,8 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
+import { Routes, Route } from 'react-router-dom';
 import WalletForm from './components/walletForm';
 import MainLayout from './layout/MainLayout';
 import RecentWallets from './components/RecentWallets';
+import CookiePolicyPage from './pages/CookiePolicyPage';
 import { ThemeProvider } from './context/ThemeContext';
+import { useCookieConsent } from './hooks/useCookieConsent';
 
 const SOLANA_ADDRESS_REGEX = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 const MAX_RECENT = 5;
@@ -29,6 +32,8 @@ const loadRecentWallets = (): string[] => {
 
 // ─── App ───────────────────────────────────────────────────────────────────────
 const App = () => {
+  useCookieConsent();
+
   const [wallet, setWallet] = useState('');
   const [recentWallets, setRecentWallets] = useState<string[]>(loadRecentWallets);
 
@@ -57,21 +62,31 @@ const App = () => {
   return (
     <ThemeProvider>
       <MainLayout>
-        {/* ── Page intro + recent wallets (shrink-only above dashboard) ─────── */}
-        <div className="tc-page-top">
-          <div className="tc-page-intro">
-            <h1 className="tc-page-title">Analyze your Solana trades</h1>
-            <p className="tc-page-subtitle">
-              Quantitative statistics for your positions on{' '}
-              <span className="tc-page-highlight">Jupiter Perpetuals</span> and{' '}
-              <span className="tc-page-highlight">Pacifica Finance</span>.
-            </p>
-          </div>
-          <RecentWallets wallets={recentWallets} onSelect={(w) => setWallet(w)} />
-        </div>
+        <Routes>
+          <Route
+            path="/"
+            element={
+              <>
+                {/* ── Page intro + recent wallets (shrink-only above dashboard) ─────── */}
+                <div className="tc-page-top">
+                  <div className="tc-page-intro">
+                    <h1 className="tc-page-title">Analyze your Solana trades</h1>
+                    <p className="tc-page-subtitle">
+                      Quantitative statistics for your positions on{' '}
+                      <span className="tc-page-highlight">Jupiter Perpetuals</span> and{' '}
+                      <span className="tc-page-highlight">Pacifica Finance</span>.
+                    </p>
+                  </div>
+                  <RecentWallets wallets={recentWallets} onSelect={(w) => setWallet(w)} />
+                </div>
 
-        {/* WalletForm fills remaining height and contains the FlexLayout dashboard */}
-        <WalletForm wallet={wallet} setWallet={setWallet} addRecentWallet={addRecentWallet} />
+                {/* WalletForm fills remaining height and contains the FlexLayout dashboard */}
+                <WalletForm wallet={wallet} setWallet={setWallet} addRecentWallet={addRecentWallet} />
+              </>
+            }
+          />
+          <Route path="/cookie-policy" element={<CookiePolicyPage />} />
+        </Routes>
       </MainLayout>
     </ThemeProvider>
   );

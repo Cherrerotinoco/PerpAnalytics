@@ -1,4 +1,5 @@
 import Header from './header/header';
+import { Link } from 'react-router-dom';
 import { ReactNode } from 'react';
 
 const MainLayout = ({ children }: { children: ReactNode }) => (
@@ -23,7 +24,19 @@ const MainLayout = ({ children }: { children: ReactNode }) => (
         BzPG6Mwpgbh9AGLUuJkqUA2HBmLQhe3mHxR5B4tfv42U
       </code>
       <p className="tc-footer-sub mt-2 mb-0">
-        © {new Date().getFullYear()} PerpsAnalytics. All rights reserved.
+        © {new Date().getFullYear()} PerpAnalytics. All rights reserved.
+      </p>
+      <p className="tc-footer-links mt-1 mb-0">
+        <a
+          href="https://github.com/Cherrerotinoco/PerpAnalytics"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="tc-footer-link"
+        >
+          GitHub
+        </a>
+        <span className="tc-footer-link-sep">·</span>
+        <Link to="/cookie-policy" className="tc-footer-link">Cookie Policy</Link>
       </p>
     </footer>
   </div>
