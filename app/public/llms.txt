@@ -1,0 +1,30 @@
+# PerpsAnalytics
+
+> Free, client-side analytics dashboard for Solana perpetuals traders on Jupiter Perpetuals and Pacifica Finance.
+
+PerpsAnalytics is a free web application that lets Solana traders analyse their full trading history by pasting their wallet address. It fetches trade data directly from the Jupiter Perpetuals and Pacifica Finance APIs and displays it in an interactive dashboard. No sign-up, no wallet connection, and no data is stored — everything runs in the browser.
+
+## What it does
+
+- Fetches complete trade history for any Solana wallet from Jupiter Perpetuals and Pacifica Finance
+- Displays an equity curve showing cumulative PnL over time
+- Shows PnL breakdown by traded symbol (SOL, BTC, ETH, etc.)
+- Renders a daily PnL calendar heatmap
+- Calculates key statistics: win rate, average win, average loss, expectancy, largest win/loss, and winning/losing streaks
+- Provides a full sortable and searchable trade list
+
+## Who it is for
+
+Traders who use Jupiter Perpetuals or Pacifica Finance on the Solana blockchain and want quantitative statistics about their trading performance beyond what the platforms natively provide.
+
+## Technical details
+
+- Built with React 19, TypeScript, and Vite
+- Fully client-side — no backend, no database
+- Open source: https://github.com/Cherrerotinoco/PerpAnalytics
+- Deployed at: https://tradingdashboard-lw0q.onrender.com/
+
+## Supported platforms
+
+- Jupiter Perpetuals (perps-api.jup.ag)
+- Pacifica Finance (api.pacifica.fi)

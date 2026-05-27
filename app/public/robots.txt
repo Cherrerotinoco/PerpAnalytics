@@ -1,2 +1,18 @@
 User-agent: *
 Allow: /
+Disallow: /cookie-policy
+
+# AI crawlers — explicitly welcome
+User-agent: GPTBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Googlebot
+Allow: /
+
+Sitemap: https://tradingdashboard-lw0q.onrender.com/sitemap.xml
