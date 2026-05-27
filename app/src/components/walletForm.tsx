@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Trade } from '../types/tradeTypes';
 import { buildJupiterTrades, JupiterTrade } from '../utils/normalizeJupiter';
 import { buildPacificaTrades, PacificaFill } from '../utils/normalizePacifica';
@@ -126,12 +126,41 @@ export const WalletForm = ({ wallet, setWallet, addRecentWallet }: WalletFormPro
   const cacheRef = useRef<{ [key: string]: Trade[] }>({});
   const cacheTsRef = useRef<{ [key: string]: number }>({});
   const didAutoSubmit = useRef(false);
+  const dashboardRef = useRef<HTMLDivElement>(null);
+
+  const scrollToDashboard = useCallback(() => {
+    dashboardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
 
   // ── Pre-fill wallet from URL on mount ──
   useEffect(() => {
     const urlWallet = _initParams.get('wallet');
-    if (urlWallet) setWallet(urlWallet);
+    if (urlWallet) {
+      setWallet(urlWallet);
+    }
   }, []);
+
+  // ── Live-sync filter changes to URL ──────────────────────────────────────
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (startDate) {
+      params.set('start_date', formatDateParam(startDate));
+    } else {
+      params.delete('start_date');
+    }
+    if (endDate) {
+      params.set('end_date', formatDateParam(endDate));
+    } else {
+      params.delete('end_date');
+    }
+    if (platforms.length > 0) {
+      params.set('platforms', platforms.join(','));
+    } else {
+      params.delete('platforms');
+    }
+    const qs = params.toString();
+    window.history.replaceState(null, '', qs ? `?${qs}` : window.location.pathname);
+  }, [startDate, endDate, platforms]);
 
   const handleSubmit = async (e: React.FormEvent | null, forceRefresh = false) => {
     if (e) {
@@ -148,16 +177,9 @@ export const WalletForm = ({ wallet, setWallet, addRecentWallet }: WalletFormPro
       return;
     }
 
-    // Sync current form values to URL so the user can bookmark / share
-    const urlParams = new URLSearchParams();
+    // Write wallet to URL — filters are already kept in sync by the live-sync effect
+    const urlParams = new URLSearchParams(window.location.search);
     urlParams.set('wallet', wallet);
-    if (startDate) {
-      urlParams.set('start_date', formatDateParam(startDate));
-    }
-    if (endDate) {
-      urlParams.set('end_date', formatDateParam(endDate));
-    }
-    urlParams.set('platforms', platforms.join(','));
     window.history.replaceState(null, '', `?${urlParams.toString()}`);
 
     const cacheKey = JSON.stringify({ wallet, platforms: [...platforms].sort() });
@@ -172,6 +194,7 @@ export const WalletForm = ({ wallet, setWallet, addRecentWallet }: WalletFormPro
     setError('');
     setTrades([]);
     setHasQueried(false);
+    scrollToDashboard();
 
     const cachedTrades = cacheRef.current[cacheKey];
     const cachedAt = cacheTsRef.current[cacheKey] ?? 0;
@@ -300,7 +323,7 @@ export const WalletForm = ({ wallet, setWallet, addRecentWallet }: WalletFormPro
       {/* ── Above-fold: form, status ────────────────────────────────────────── */}
       <div className="tc-wallet-top">
         {/* ── Search bar ─────────────────────────────────────────────────────── */}
-        <div className="tc-panel tc-search-pad mb-3">
+        <div className="tc-panel tc-search-pad">
           <form onSubmit={handleSubmit} autoComplete="off">
             <div className="d-flex align-items-center gap-2 flex-wrap">
               {/* Wallet address */}
@@ -449,7 +472,14 @@ export const WalletForm = ({ wallet, setWallet, addRecentWallet }: WalletFormPro
       {/* end tc-wallet-top */}
 
       {/* ── Dashboard ──────────────────────────────────────────────────────── */}
-      <DashboardGrid filteredTrades={filteredTrades} hasData={hasData} hasQueried={hasQueried} />
+      <div className="pt-3" ref={dashboardRef}>
+        <DashboardGrid
+          filteredTrades={filteredTrades}
+          hasData={hasData}
+          hasQueried={hasQueried}
+          onScrollRequest={scrollToDashboard}
+        />
+      </div>
     </div>
   );
 };

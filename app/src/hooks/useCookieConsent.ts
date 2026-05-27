@@ -65,10 +65,7 @@ export const useCookieConsent = () => {
           enabled: false,
           autoClear: {
             // Remove GA cookies if the user opts out
-            cookies: [
-              { name: /^_ga/ },
-              { name: '_gid' },
-            ],
+            cookies: [{ name: /^_ga/ }, { name: '_gid' }],
           },
         },
       },

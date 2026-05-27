@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, lazy, Suspense } from 'react';
 import { Layout, Model } from 'flexlayout-react';
-import type { TabNode, IJsonModel } from 'flexlayout-react';
+import type { Action, TabNode, IJsonModel } from 'flexlayout-react';
 import 'flexlayout-react/style/dark.css';
 
 import { Trade } from '../../types/tradeTypes';
@@ -195,13 +195,29 @@ interface DashboardGridProps {
   filteredTrades: Trade[];
   hasData: boolean;
   hasQueried: boolean;
+  onScrollRequest?: () => void;
 }
 
-const DashboardGrid = ({ filteredTrades, hasData, hasQueried }: DashboardGridProps) => {
+const DashboardGrid = ({
+  filteredTrades,
+  hasData,
+  hasQueried,
+  onScrollRequest,
+}: DashboardGridProps) => {
   const [model] = useState<Model>(loadModel);
   const stats = useMemo(() => computeTradeStats(filteredTrades), [filteredTrades]);
 
   const onModelChange = useCallback(() => saveModel(model), [model]);
+
+  const onAction = useCallback(
+    (action: Action) => {
+      if (action.type === 'FlexLayout_MaximizeToggle') {
+        onScrollRequest?.();
+      }
+      return action;
+    },
+    [onScrollRequest]
+  );
 
   const factory = useCallback(
     (node: TabNode): React.ReactNode => {
@@ -238,7 +254,7 @@ const DashboardGrid = ({ filteredTrades, hasData, hasQueried }: DashboardGridPro
     <div className="tc-dashboard-grid">
       {/* FlexLayout container — must be position:relative with explicit dimensions */}
       <div className="tc-fl-wrap">
-        <Layout model={model} factory={factory} onModelChange={onModelChange} />
+        <Layout model={model} factory={factory} onModelChange={onModelChange} onAction={onAction} />
       </div>
 
       {/* Toolbar */}

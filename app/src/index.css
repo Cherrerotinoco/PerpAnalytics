@@ -309,6 +309,11 @@ body {
   position: sticky;
   top: 0;
   z-index: 100;
+  transition: transform 0.25s ease;
+}
+
+.tc-header--hidden {
+  transform: translateY(-100%);
 }
 
 .tc-theme-btn {
@@ -928,23 +933,26 @@ body {
 .p-3 {
   padding: 1rem;
 }
+.pt-3 {
+  padding-top: 1rem;
+}
 .mb-0 {
-  margin-bottom: 0 !important;
+  margin-bottom: 0;
 }
 .mb-1 {
-  margin-bottom: 0.25rem !important;
+  margin-bottom: 0.25rem;
 }
 .mb-2 {
-  margin-bottom: 0.5rem !important;
+  margin-bottom: 0.5rem;
 }
 .mb-3 {
-  margin-bottom: 1rem !important;
+  margin-bottom: 1rem;
 }
 .mt-2 {
-  margin-top: 0.5rem !important;
+  margin-top: 0.5rem;
 }
 .mt-3 {
-  margin-top: 1rem !important;
+  margin-top: 1rem;
 }
 
 /* ─── Typography ─────────────────────────────────────────────────────────────── */
@@ -1330,7 +1338,9 @@ body {
   color: var(--tc-text);
   padding: 0.45rem 1rem;
   cursor: pointer;
-  transition: border-color 0.12s, background 0.12s;
+  transition:
+    border-color 0.12s,
+    background 0.12s;
   margin-bottom: 1rem;
 }
 

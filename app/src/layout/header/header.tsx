@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useTheme } from '../../context/ThemeContext';
 import Logo from '../../components/Logo';
@@ -42,9 +43,29 @@ const MoonIcon = () => (
 
 const Header = () => {
   const { theme, toggleTheme } = useTheme();
+  const headerRef = useRef<HTMLElement>(null);
+  const lastScrollY = useRef(0);
+
+  useEffect(() => {
+    const onScroll = () => {
+      const currentY = window.scrollY;
+      const header = headerRef.current;
+      if (!header) {
+        return;
+      }
+      if (currentY > lastScrollY.current && currentY > 60) {
+        header.classList.add('tc-header--hidden');
+      } else {
+        header.classList.remove('tc-header--hidden');
+      }
+      lastScrollY.current = currentY;
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   return (
-    <header className="tc-header">
+    <header ref={headerRef} className="tc-header">
       <Link to="/" className="text-decoration-none">
         <Logo />
       </Link>

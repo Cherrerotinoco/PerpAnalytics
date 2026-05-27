@@ -36,7 +36,9 @@ const MainLayout = ({ children }: { children: ReactNode }) => (
           GitHub
         </a>
         <span className="tc-footer-link-sep">·</span>
-        <Link to="/cookie-policy" className="tc-footer-link">Cookie Policy</Link>
+        <Link to="/cookie-policy" className="tc-footer-link">
+          Cookie Policy
+        </Link>
       </p>
     </footer>
   </div>

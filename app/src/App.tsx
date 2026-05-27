@@ -81,7 +81,11 @@ const App = () => {
                 </div>
 
                 {/* WalletForm fills remaining height and contains the FlexLayout dashboard */}
-                <WalletForm wallet={wallet} setWallet={setWallet} addRecentWallet={addRecentWallet} />
+                <WalletForm
+                  wallet={wallet}
+                  setWallet={setWallet}
+                  addRecentWallet={addRecentWallet}
+                />
               </>
             }
           />
