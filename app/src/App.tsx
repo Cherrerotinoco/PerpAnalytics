@@ -77,11 +77,11 @@ const App = () => {
                       <span className="tc-page-highlight">Pacifica Finance</span>.
                     </p>
                   </div>
-                  <RecentWallets wallets={recentWallets} onSelect={(w) => setWallet(w)} />
                 </div>
 
                 {/* WalletForm fills remaining height and contains the FlexLayout dashboard */}
                 <WalletForm
+                  recentWallets={recentWallets}
                   wallet={wallet}
                   setWallet={setWallet}
                   addRecentWallet={addRecentWallet}

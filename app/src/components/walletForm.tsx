@@ -3,6 +3,7 @@ import { Trade } from '../types/tradeTypes';
 import { buildJupiterTrades, JupiterTrade } from '../utils/normalizeJupiter';
 import { buildPacificaTrades, PacificaFill } from '../utils/normalizePacifica';
 import DashboardGrid from './dashboard/DashboardGrid';
+import RecentWallets from './RecentWallets';
 
 const SOLANA_ADDRESS_REGEX = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 const MAX_CACHE_ENTRIES = 10;
@@ -102,12 +103,13 @@ const _initParams = new URLSearchParams(window.location.search);
 type Platform = 'jupiter' | 'pacifica';
 
 interface WalletFormProps {
+  recentWallets: string[];
   wallet: string;
   setWallet: (w: string) => void;
   addRecentWallet: (w: string) => void;
 }
 
-export const WalletForm = ({ wallet, setWallet, addRecentWallet }: WalletFormProps) => {
+export const WalletForm = ({ recentWallets, wallet, setWallet, addRecentWallet }: WalletFormProps) => {
   const [startDate, setStartDate] = useState(() => parseDateParam(_initParams.get('start_date')));
   const [endDate, setEndDate] = useState(() => parseDateParam(_initParams.get('end_date')));
   const [loading, setLoading] = useState(false);
@@ -316,6 +318,8 @@ export const WalletForm = ({ wallet, setWallet, addRecentWallet }: WalletFormPro
     <div className="tc-wallet-root">
       {/* ── Above-fold: form, status ────────────────────────────────────────── */}
       <div className="tc-wallet-top">
+        <RecentWallets wallets={recentWallets} onSelect={(w) => setWallet(w)} />
+
         {/* ── Search bar ─────────────────────────────────────────────────────── */}
         <div className="tc-panel tc-search-pad">
           <form onSubmit={handleSubmit} autoComplete="off">
@@ -466,7 +470,7 @@ export const WalletForm = ({ wallet, setWallet, addRecentWallet }: WalletFormPro
       {/* end tc-wallet-top */}
 
       {/* ── Dashboard ──────────────────────────────────────────────────────── */}
-      <div className="pt-3" ref={dashboardRef} onClick={scrollToDashboard}>
+      <div ref={dashboardRef} onClick={() => scrollToDashboard()}>
         <DashboardGrid filteredTrades={filteredTrades} hasData={hasData} hasQueried={hasQueried} />
       </div>
     </div>
