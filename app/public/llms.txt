@@ -22,7 +22,7 @@ Traders who use Jupiter Perpetuals or Pacifica Finance on the Solana blockchain 
 - Built with React 19, TypeScript, and Vite
 - Fully client-side — no backend, no database
 - Open source: https://github.com/Cherrerotinoco/PerpAnalytics
-- Deployed at: https://tradingdashboard-lw0q.onrender.com/
+- Deployed at: https://perpanalytics.app/
 
 ## Supported platforms
 

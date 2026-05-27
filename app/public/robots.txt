@@ -15,4 +15,4 @@ Allow: /
 User-agent: Googlebot
 Allow: /
 
-Sitemap: https://tradingdashboard-lw0q.onrender.com/sitemap.xml
+Sitemap: https://perpanalytics.app/sitemap.xml
