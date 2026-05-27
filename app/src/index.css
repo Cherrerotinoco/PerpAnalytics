@@ -419,6 +419,7 @@ body {
   align-items: center;
   gap: 0.3rem;
   margin-bottom: 0.25rem;
+  justify-content: space-between;
 }
 
 .tc-metric-sub {
