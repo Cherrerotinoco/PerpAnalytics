@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Trade } from '../types/tradeTypes';
 import { buildJupiterTrades, JupiterTrade } from '../utils/normalizeJupiter';
 import { buildPacificaTrades, PacificaFill } from '../utils/normalizePacifica';
@@ -113,7 +113,6 @@ export const WalletForm = ({ wallet, setWallet, addRecentWallet }: WalletFormPro
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [trades, setTrades] = useState<Trade[]>([]);
-  const [filteredTrades, setFilteredTrades] = useState<Trade[]>([]);
   const [hasQueried, setHasQueried] = useState(false);
   const [platforms, setPlatforms] = useState<Platform[]>(() => {
     const p = _initParams.get('platforms');
@@ -300,19 +299,14 @@ export const WalletForm = ({ wallet, setWallet, addRecentWallet }: WalletFormPro
     handleSubmit(null);
   }, [wallet, startDate]);
 
-  useEffect(() => {
-    // Compute boundary timestamps once — trade.closed is already a Date object.
+  const filteredTrades = useMemo(() => {
     const startMs = startDate ? new Date(startDate).getTime() : 0;
     const endMs = endDate ? new Date(endDate).getTime() : 0;
-    setFilteredTrades(
-      trades.filter((trade) => {
-        const t = trade.closed.getTime();
-        const sourceKey = trade.source.toLowerCase() as Platform;
-        return (
-          platforms.includes(sourceKey) && (!startMs || t >= startMs) && (!endMs || t <= endMs)
-        );
-      })
-    );
+    return trades.filter((trade) => {
+      const t = trade.closed.getTime();
+      const sourceKey = trade.source.toLowerCase() as Platform;
+      return platforms.includes(sourceKey) && (!startMs || t >= startMs) && (!endMs || t <= endMs);
+    });
   }, [trades, startDate, endDate, platforms]);
 
   const isDisabled = loading || !wallet || platforms.length === 0;
@@ -472,13 +466,8 @@ export const WalletForm = ({ wallet, setWallet, addRecentWallet }: WalletFormPro
       {/* end tc-wallet-top */}
 
       {/* ── Dashboard ──────────────────────────────────────────────────────── */}
-      <div className="pt-3" ref={dashboardRef}>
-        <DashboardGrid
-          filteredTrades={filteredTrades}
-          hasData={hasData}
-          hasQueried={hasQueried}
-          onScrollRequest={scrollToDashboard}
-        />
+      <div className="pt-3" ref={dashboardRef} onClick={scrollToDashboard}>
+        <DashboardGrid filteredTrades={filteredTrades} hasData={hasData} hasQueried={hasQueried} />
       </div>
     </div>
   );
