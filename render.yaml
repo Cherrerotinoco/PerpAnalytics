@@ -15,11 +15,12 @@ services:
         name: Content-Security-Policy
         value: >-
           default-src 'self';
-          script-src 'self';
+          script-src 'self' https://www.googletagmanager.com 'unsafe-inline';
           style-src 'self' https://fonts.googleapis.com;
           font-src https://fonts.gstatic.com;
-          connect-src 'self' https://perps-api.jup.ag https://api.pacifica.fi;
-          img-src 'self' data:;
+          connect-src 'self' https://perps-api.jup.ag https://api.pacifica.fi https://www.google-analytics.com https://analytics.google.com;
+          img-src 'self' data: https://www.google-analytics.com https://www.googletagmanager.com;
+          frame-src https://www.googletagmanager.com;
           object-src 'none';
           base-uri 'self';
           form-action 'self';
