@@ -826,11 +826,15 @@ body {
 }
 
 /* ─── Equity curve chart ─────────────────────────────────────────────────────── */
+.recharts-responsive-container {
+  padding: 0.75rem;
+}
+
 .tc-chart-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 0.75rem;
+  padding: 0.75rem 0.75rem 0;
 }
 
 .tc-chart-date-range {
