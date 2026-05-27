@@ -1031,7 +1031,8 @@ body {
 
 /* DashboardGrid outer wrapper */
 .tc-dashboard-grid {
-  padding: 2.5vh 0 2.5vh}
+  padding: 2.5vh 0 2.5vh;
+}
 
 /* Toolbar row (Reset layout button) */
 .tc-dashboard-toolbar {

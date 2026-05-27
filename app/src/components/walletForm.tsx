@@ -109,7 +109,12 @@ interface WalletFormProps {
   addRecentWallet: (w: string) => void;
 }
 
-export const WalletForm = ({ recentWallets, wallet, setWallet, addRecentWallet }: WalletFormProps) => {
+export const WalletForm = ({
+  recentWallets,
+  wallet,
+  setWallet,
+  addRecentWallet,
+}: WalletFormProps) => {
   const [startDate, setStartDate] = useState(() => parseDateParam(_initParams.get('start_date')));
   const [endDate, setEndDate] = useState(() => parseDateParam(_initParams.get('end_date')));
   const [loading, setLoading] = useState(false);
