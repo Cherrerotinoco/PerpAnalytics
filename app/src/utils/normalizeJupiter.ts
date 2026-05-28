@@ -82,11 +82,7 @@ export const buildJupiterTrades = (events: JupiterTrade[]): Trade[] => {
           openedAt = ts;
         }
 
-        const proportion = liveSize > 0 ? Math.min(1, size / liveSize) : 1;
-        const allocatedOpenFee = openFeeAccum * proportion;
-        const closedSizeUsd = openSizeUsd > 0 ? openSizeUsd * proportion : size;
-        const totalFee = fee + allocatedOpenFee;
-        const netPnl = pnl - totalFee; // Jupiter returns gross PnL — subtract fees to get net
+        const netPnl = pnl - fee;
 
         let closeType: CloseType;
         if (isLiquidate) {
@@ -103,15 +99,15 @@ export const buildJupiterTrades = (events: JupiterTrade[]): Trade[] => {
           closed: ts,
           side: e.side === 'short' ? 'short' : 'long',
           pnl: netPnl,
-          fee: totalFee,
-          sizeUsd: closedSizeUsd,
+          fee: fee,
+          sizeUsd: size,
           closeType,
           source: 'Jupiter',
         });
 
         liveSize = Math.max(0, liveSize - size);
-        openSizeUsd = Math.max(0, openSizeUsd - closedSizeUsd);
-        openFeeAccum = Math.max(0, openFeeAccum - allocatedOpenFee);
+        openSizeUsd = Math.max(0, openSizeUsd);
+        openFeeAccum = Math.max(0, openFeeAccum - fee);
 
         if (liveSize < 1e-6) {
           liveSize = 0;
