@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Trade } from '../types/tradeTypes';
-import { buildJupiterTrades, JupiterTrade } from '../utils/normalizeJupiter';
-import { buildPacificaTrades, PacificaFill } from '../utils/normalizePacifica';
+import { normalizeJupiterTrades, JupiterTrade } from '../utils/normalizeJupiter';
+import { normalizePacificaTrades, PacificaFill } from '../utils/normalizePacifica';
 import DashboardGrid from './dashboard/DashboardGrid';
 import RecentWallets from './RecentWallets';
 
@@ -244,7 +244,7 @@ export const WalletForm = ({
               }
             };
             await fetchPage(0, 1000);
-            return buildJupiterTrades(allEvents);
+            return normalizeJupiterTrades(allEvents);
           }
           if (platform === 'pacifica') {
             const allFills: PacificaFill[] = [];
@@ -268,7 +268,7 @@ export const WalletForm = ({
               }
             };
             await fetchPage();
-            return buildPacificaTrades(allFills);
+            return normalizePacificaTrades(allFills);
           }
           return [];
         })

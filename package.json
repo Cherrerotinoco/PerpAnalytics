@@ -10,7 +10,9 @@
         "build:app": "vite build --config app/vite.config.ts",
         "preview:app": "vite preview --config app/vite.config.ts",
         "lint": "eslint app/src",
-        "format": "prettier --write app/src"
+        "format": "prettier --write app/src",
+        "test": "vitest run app/src",
+        "test:watch": "vitest app/src"
     },
     "engines": {
         "node": ">=18"
@@ -29,7 +31,8 @@
         "prettier": "^3.8.3",
         "tsx": "4.19.0",
         "typescript": "5.9.3",
-        "vite": "8.0.14"
+        "vite": "8.0.14",
+        "vitest": "^2.1.9"
     },
     "dependencies": {
         "flexlayout-react": "^0.9.1",

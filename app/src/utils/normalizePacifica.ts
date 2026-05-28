@@ -18,20 +18,20 @@ export type PacificaFill = {
   cause: string | null;
 };
 
-export const buildPacificaTrades = (fills: PacificaFill[]): Trade[] => {
-  fills.sort((a, b) => a.created_at - b.created_at);
+export const normalizePacificaTrades = (fills: PacificaFill[]): Trade[] => {
+  const sorted = [...fills].sort((a, b) => a.created_at - b.created_at);
 
   const positions = new Map<string, { openedAt: Date; netSize: number }>();
   const closeGroups = new Map<string, { fills: PacificaFill[]; openedAt: Date }>();
 
-  for (const fill of fills) {
+  for (const fill of sorted) {
     const direction = fill.side.endsWith('_long') ? 'long' : 'short';
     const posKey = `${fill.symbol}|${direction}`;
     const amount = parseFloat(fill.amount);
 
     if (fill.side.startsWith('open_')) {
       const existing = positions.get(posKey);
-      if (!existing || existing.netSize <= 0) {
+      if (!existing) {
         positions.set(posKey, { openedAt: new Date(fill.created_at), netSize: amount });
       } else {
         existing.netSize += amount;
@@ -57,10 +57,10 @@ export const buildPacificaTrades = (fills: PacificaFill[]): Trade[] => {
 
   const trades: Trade[] = [];
 
-  for (const [, group] of closeGroups) {
+  for (const group of closeGroups.values()) {
     const { fills: closeFills, openedAt: opened } = group;
     const first = closeFills[0];
-    const direction = first.side.endsWith('_long') ? 'long' : 'short';
+    const direction: Side = first.side.endsWith('_long') ? 'long' : 'short';
     const closed = new Date(first.created_at);
     const totalPnl = closeFills.reduce((s, f) => s + parseFloat(f.pnl), 0);
     const totalFee = closeFills.reduce((s, f) => s + parseFloat(f.fee), 0);
@@ -76,7 +76,7 @@ export const buildPacificaTrades = (fills: PacificaFill[]): Trade[] => {
       symbol: first.symbol,
       opened,
       closed,
-      side: direction as Side,
+      side: direction,
       pnl: totalPnl,
       fee: totalFee,
       sizeUsd: totalSize,
