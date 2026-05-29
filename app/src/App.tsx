@@ -13,6 +13,9 @@ const MAX_RECENT = 5;
 // ─── localStorage helpers ──────────────────────────────────────────────────────
 /** Safely load recent wallets, rejecting any entry that isn't a valid Base58 address. */
 const loadRecentWallets = (): string[] => {
+  if (typeof window === 'undefined') {
+    return [];
+  }
   try {
     const raw = localStorage.getItem('recentWallets');
     if (!raw) {
