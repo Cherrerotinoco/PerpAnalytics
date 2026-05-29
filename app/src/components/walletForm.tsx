@@ -99,7 +99,7 @@ const formatDateParam = (s: string): string => {
   return `${d}.${mo}.${y}`;
 };
 
-const _initParams = new URLSearchParams(window.location.search);
+const _initParams = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
 
 type Platform = 'jupiter' | 'pacifica';
 
