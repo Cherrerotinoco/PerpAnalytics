@@ -1,5 +1,5 @@
 import { useState, useMemo, memo } from 'react';
-import { Trade } from '../../../types/tradeTypes';
+import { Trade } from '../../types/tradeTypes';
 
 // ─── Formatters ───────────────────────────────────────────────────────────────
 const fmtDateTime = (d: Date | null | undefined): string => {

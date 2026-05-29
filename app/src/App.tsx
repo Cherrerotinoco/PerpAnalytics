@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Routes, Route } from 'react-router-dom';
-import WalletForm from './components/walletForm';
+import WalletForm from './components/WalletForm';
 import MainLayout from './layout/MainLayout';
 import RecentWallets from './components/RecentWallets';
 import CookiePolicyPage from './pages/CookiePolicyPage';
+import HomePage from './pages/HomePage';
 import { ThemeProvider } from './context/ThemeContext';
 import { useCookieConsent } from './hooks/useCookieConsent';
 
@@ -66,11 +67,14 @@ const App = () => {
     <ThemeProvider>
       <MainLayout>
         <Routes>
+          {/* Landing page */}
+          <Route path="/" element={<HomePage />} />
+
+          {/* App — wallet search + dashboard */}
           <Route
-            path="/"
+            path="/dashboard"
             element={
               <>
-                {/* ── Page intro + recent wallets (shrink-only above dashboard) ─────── */}
                 <div className="tc-page-top">
                   <div className="tc-page-intro">
                     <h1 className="tc-page-title">Analyze your Solana trades</h1>
@@ -81,8 +85,6 @@ const App = () => {
                     </p>
                   </div>
                 </div>
-
-                {/* WalletForm fills remaining height and contains the FlexLayout dashboard */}
                 <WalletForm
                   recentWallets={recentWallets}
                   wallet={wallet}
@@ -92,6 +94,7 @@ const App = () => {
               </>
             }
           />
+
           <Route path="/cookie-policy" element={<CookiePolicyPage />} />
         </Routes>
       </MainLayout>

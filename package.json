@@ -35,9 +35,10 @@
         "vitest": "^2.1.9"
     },
     "dependencies": {
-        "flexlayout-react": "^0.9.1",
+        "gridstack": "^12.6.0",
         "react": "19.2.6",
         "react-dom": "19.2.6",
+        "react-icons": "^5.6.0",
         "react-router-dom": "7.15.1",
         "recharts": "2.15.4",
         "vanilla-cookieconsent": "^3.1.0"

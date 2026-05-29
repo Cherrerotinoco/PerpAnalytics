@@ -9,8 +9,8 @@ import {
   CartesianGrid,
   ReferenceLine,
 } from 'recharts';
-import { Trade } from '../../../types/tradeTypes';
-import { useTheme } from '../../../context/ThemeContext';
+import { Trade } from '../../types/tradeTypes';
+import { useTheme } from '../../context/ThemeContext';
 import { computeTradeStats } from './statistics';
 
 const fmtMoney = (v: number): string =>

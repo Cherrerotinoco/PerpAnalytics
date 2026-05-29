@@ -9,8 +9,8 @@ import {
   Cell,
   LabelList,
 } from 'recharts';
-import { Trade } from '../../../types/tradeTypes';
-import { useTheme } from '../../../context/ThemeContext';
+import { Trade } from '../../types/tradeTypes';
+import { useTheme } from '../../context/ThemeContext';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 interface SymbolRow {

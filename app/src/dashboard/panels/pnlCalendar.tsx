@@ -1,5 +1,5 @@
 import { useState, useEffect, memo } from 'react';
-import { Trade } from '../../../types/tradeTypes';
+import { Trade } from '../../types/tradeTypes';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const WEEK_DAYS = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];

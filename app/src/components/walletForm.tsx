@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { CgSync, CgCheck } from 'react-icons/cg';
 import { Trade } from '../types/tradeTypes';
 import { normalizeJupiterTrades, JupiterTrade } from '../utils/normalizeJupiter';
 import { normalizePacificaTrades, PacificaFill } from '../utils/normalizePacifica';
-import DashboardGrid from './dashboard/DashboardGrid';
+import DashboardGrid from '../dashboard/DashboardGrid';
 import RecentWallets from './RecentWallets';
 
 const SOLANA_ADDRESS_REGEX = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
@@ -400,17 +401,7 @@ export const WalletForm = ({
                       <span
                         className={`tc-checkbox-box ${isActive ? 'tc-checkbox-box--active' : 'tc-checkbox-box--inactive'}`}
                       >
-                        {isActive && (
-                          <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
-                            <polyline
-                              points="1,3.5 3.2,5.8 8,1"
-                              stroke="#111"
-                              strokeWidth="1.6"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                          </svg>
-                        )}
+                        {isActive && <CgCheck aria-hidden="true" />}
                       </span>
                       {label}
                     </label>
@@ -436,19 +427,7 @@ export const WalletForm = ({
                   onClick={() => handleSubmit(null, true)}
                   className="tc-btn-icon"
                 >
-                  <svg
-                    width="13"
-                    height="13"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <polyline points="23 4 23 10 17 10" />
-                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
-                  </svg>
+                  <CgSync aria-hidden="true" />
                 </button>
               )}
             </div>
@@ -475,7 +454,7 @@ export const WalletForm = ({
       {/* end tc-wallet-top */}
 
       {/* ── Dashboard ──────────────────────────────────────────────────────── */}
-      <div ref={dashboardRef} onClick={() => scrollToDashboard()}>
+      <div ref={dashboardRef}>
         <DashboardGrid filteredTrades={filteredTrades} hasData={hasData} hasQueried={hasQueried} />
       </div>
     </div>

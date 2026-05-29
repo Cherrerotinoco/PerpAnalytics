@@ -1,5 +1,8 @@
-import { memo, useState } from 'react';
-import { Trade } from '../../../types/tradeTypes';
+import { memo, useState, createContext, useContext } from 'react';
+import { Trade } from '../../types/tradeTypes';
+
+// When true, Metric renders its label text inside the card (used on the landing page).
+export const MetricLabelContext = createContext(false);
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 export interface TradeStats {
@@ -194,7 +197,7 @@ export const computeTradeStats = (trades: Trade[]): TradeStats => {
 };
 
 // ─── Formatters ───────────────────────────────────────────────────────────────
-const fmtNum = (n: number, decimals = 2): string => {
+export const fmtNum = (n: number, decimals = 2): string => {
   if (!isFinite(n)) {
     return '∞';
   }
@@ -204,11 +207,11 @@ const fmtNum = (n: number, decimals = 2): string => {
   });
 };
 
-const fmtPct = (n: number): string => `${n.toFixed(0)}%`;
+export const fmtPct = (n: number): string => `${n.toFixed(0)}%`;
 
-const sign = (n: number): string => (n >= 0 ? '+' : '');
+export const sign = (n: number): string => (n >= 0 ? '+' : '');
 
-const sharpeLabel = (v: number): string => {
+export const sharpeLabel = (v: number): string => {
   if (v >= 2) {
     return 'Excellent';
   }
@@ -222,9 +225,9 @@ const sharpeLabel = (v: number): string => {
 };
 
 // ─── Color helpers ────────────────────────────────────────────────────────────
-const posNegClass = (v: number): string => (v >= 0 ? 'tc-green' : 'tc-red');
+export const posNegClass = (v: number): string => (v >= 0 ? 'tc-green' : 'tc-red');
 
-const ratioClass = (v: number): string => {
+export const ratioClass = (v: number): string => {
   if (v >= 1) {
     return 'tc-green';
   }
@@ -235,7 +238,7 @@ const ratioClass = (v: number): string => {
 };
 
 // ─── Shared UI primitives ─────────────────────────────────────────────────────
-const Metric = ({
+export const Metric = ({
   label,
   value,
   sub,
@@ -249,11 +252,12 @@ const Metric = ({
   tooltip?: string;
 }) => {
   const [flipped, setFlipped] = useState(false);
+  const showLabel = useContext(MetricLabelContext);
 
   if (!tooltip) {
     return (
       <div className="tc-card">
-        <p className="tc-label mb-0">{label}</p>
+        {showLabel && <p className="tc-metric-inline-label">{label}</p>}
         <p className={`tc-value mb-0 ${colorClass ?? ''}`}>{value}</p>
         {sub && <p className="tc-metric-sub">{sub}</p>}
       </div>
@@ -268,8 +272,19 @@ const Metric = ({
       <div className="tc-flip-inner">
         {/* ── Front ── */}
         <div className="tc-flip-front">
-          <div className="tc-metric-label-row">
-            <p className="tc-label mb-0">{label}</p>
+          {showLabel ? (
+            <div className="tc-metric-header">
+              <p className="tc-metric-inline-label">{label}</p>
+              <button
+                type="button"
+                className="tc-flip-trigger tc-flip-trigger--inline"
+                onMouseEnter={() => setFlipped(true)}
+                aria-label={`About ${label}`}
+              >
+                ?
+              </button>
+            </div>
+          ) : (
             <button
               type="button"
               className="tc-flip-trigger"
@@ -278,7 +293,7 @@ const Metric = ({
             >
               ?
             </button>
-          </div>
+          )}
           <p className={`tc-value mb-0 ${colorClass ?? ''}`}>{value}</p>
           {sub && <p className="tc-metric-sub">{sub}</p>}
         </div>
