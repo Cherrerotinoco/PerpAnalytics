@@ -11,6 +11,10 @@ services:
         destination: /index.html
 
     headers:
+      - path: /*.html
+        name: Content-Type
+        value: text/html; charset=utf-8
+
       - path: /*
         name: Content-Security-Policy
         value: >-
