@@ -24,7 +24,7 @@ const { render } = (await import(serverEntry)) as { render: (url: string) => str
 
 const template = fs.readFileSync(path.join(distPath, 'index.html'), 'utf-8');
 
-const routes = ['/', '/cookie-policy'];
+const routes = ['/', '/dashboard', '/cookie-policy'];
 
 for (const url of routes) {
   const appHtml = render(url);
