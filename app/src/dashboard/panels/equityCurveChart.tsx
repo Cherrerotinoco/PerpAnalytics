@@ -48,16 +48,22 @@ const EquityCurveChart = memo(({ trades }: { trades: Trade[] }) => {
   if (!data.length) return null;
 
   const isPositive = stats.totalPnl >= 0;
-  const lineColor = isPositive
-    ? theme === 'dark'
-      ? '#22c55e'
-      : '#16a34a'
-    : theme === 'dark'
-      ? '#ef4444'
-      : '#dc2626';
-  const gridColor = theme === 'dark' ? '#2a2a2a' : '#e5e7eb';
-  const axisColor = theme === 'dark' ? '#6b7280' : '#9ca3af';
+  const greenColor = theme === 'dark' ? '#22c55e' : '#16a34a';
+  const redColor   = theme === 'dark' ? '#ef4444' : '#dc2626';
+  const gridColor  = theme === 'dark' ? '#2a2a2a' : '#e5e7eb';
+  const axisColor  = theme === 'dark' ? '#6b7280' : '#9ca3af';
   const refLineColor = theme === 'dark' ? '#374151' : '#d1d5db';
+
+  const yValues = data.map((d) => d.y);
+  const yMin = Math.min(...yValues);
+  const yMax = Math.max(...yValues);
+  // Fraction from the top where y=0 falls (0 = top, 1 = bottom)
+  const zeroRatio =
+    yMax > 0 && yMin < 0
+      ? yMax / (yMax - yMin)
+      : yMax <= 0
+        ? 0   // all negative → full red
+        : 1;  // all positive → full green
 
   const xMin = data[0].x;
   const xMax = data[data.length - 1].x;
@@ -82,6 +88,12 @@ const EquityCurveChart = memo(({ trades }: { trades: Trade[] }) => {
 
       <ResponsiveContainer width="100%" height={280}>
         <LineChart data={data} margin={{ top: 8, right: 16, left: 8, bottom: 24 }}>
+          <defs>
+            <linearGradient id="equityLineGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset={zeroRatio}   stopColor={greenColor} />
+              <stop offset={zeroRatio}   stopColor={redColor}   />
+            </linearGradient>
+          </defs>
           <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
           <XAxis
             dataKey="x"
@@ -112,10 +124,10 @@ const EquityCurveChart = memo(({ trades }: { trades: Trade[] }) => {
           <Line
             type="monotone"
             dataKey="y"
-            stroke={lineColor}
+            stroke="url(#equityLineGradient)"
             strokeWidth={2}
             dot={false}
-            activeDot={{ r: 4, fill: lineColor, strokeWidth: 0 }}
+            activeDot={{ r: 4, fill: isPositive ? greenColor : redColor, strokeWidth: 0 }}
           />
         </LineChart>
       </ResponsiveContainer>
