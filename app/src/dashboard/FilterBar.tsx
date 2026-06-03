@@ -19,16 +19,16 @@ interface FilterBarProps {
 
 // ─── Section metadata ─────────────────────────────────────────────────────────
 const SECTIONS: { id: PanelSection; label: string }[] = [
-  { id: 'charts',      label: 'Charts'         },
-  { id: 'performance', label: 'Performance'     },
-  { id: 'risk',        label: 'Risk & Drawdown' },
-  { id: 'trades',      label: 'Trades'          },
+  { id: 'charts', label: 'Charts' },
+  { id: 'performance', label: 'Performance' },
+  { id: 'risk', label: 'Risk & Drawdown' },
+  { id: 'trades', label: 'Trades' },
 ];
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export const FilterBar = memo(({ panels, visible, onToggle, onApplyPreset }: FilterBarProps) => {
-  const [openSection, setOpenSection]   = useState<PanelSection | null>(null);
-  const [presetOpen,  setPresetOpen]    = useState(false);
+  const [openSection, setOpenSection] = useState<PanelSection | null>(null);
+  const [presetOpen, setPresetOpen] = useState(false);
   const barRef = useRef<HTMLDivElement>(null);
 
   // Close any open dropdown on outside click
@@ -64,8 +64,8 @@ export const FilterBar = memo(({ panels, visible, onToggle, onApplyPreset }: Fil
           if (sectionPanels.length === 0) return null;
 
           const visibleCount = sectionPanels.filter((p) => visible.has(p.id)).length;
-          const isOpen      = openSection === section.id;
-          const isFiltered  = visibleCount < sectionPanels.length;
+          const isOpen = openSection === section.id;
+          const isFiltered = visibleCount < sectionPanels.length;
 
           return (
             <div key={section.id} className="tc-filter-dropdown">
@@ -140,7 +140,6 @@ export const FilterBar = memo(({ panels, visible, onToggle, onApplyPreset }: Fil
                 className="tc-filter-menu-item"
                 onClick={() => { setPresetOpen(false); onApplyPreset(preset.id); }}
               >
-                <span className="tc-filter-menu-check" aria-hidden="true" />
                 {preset.label}
               </button>
             ))}
@@ -152,7 +151,6 @@ export const FilterBar = memo(({ panels, visible, onToggle, onApplyPreset }: Fil
               className="tc-filter-menu-item tc-filter-menu-item--muted"
               onClick={() => { setPresetOpen(false); onApplyPreset(null); }}
             >
-              <span className="tc-filter-menu-check" aria-hidden="true" />
               ↺ Reset to default
             </button>
           </div>

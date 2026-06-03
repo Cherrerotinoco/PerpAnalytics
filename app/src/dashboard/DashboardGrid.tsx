@@ -243,6 +243,7 @@ const DashboardGrid = ({ filteredTrades, hasData, hasQueried }: DashboardGridPro
   const containerRef = useRef<HTMLDivElement>(null);
   const gsRef        = useRef<GridStack | null>(null);
 
+  const [gsKey,   setGsKey]               = useState(0);
   const [gsReady, setGsReady]             = useState(false);
   const [mounts,  setMounts]              = useState<Map<string, HTMLElement>>(new Map());
   const [visiblePanelIds, setVisiblePanelIds] = useState<Set<string>>(loadVisiblePanels);
@@ -277,7 +278,7 @@ const DashboardGrid = ({ filteredTrades, hasData, hasQueried }: DashboardGridPro
       setGsReady(false);
       setMounts(new Map());
     };
-  }, []);
+  }, [gsKey]);
 
   // ── 2. Sync visible panels into GridStack ──────────────────────────────────
   useEffect(() => {
@@ -357,9 +358,14 @@ const DashboardGrid = ({ filteredTrades, hasData, hasQueried }: DashboardGridPro
         const positions = Object.entries(preset.positions).map(([id, pos]) => ({ id, ...pos }));
         localStorage.setItem(LAYOUT_KEY, JSON.stringify(positions));
         localStorage.setItem(VISIBILITY_KEY, JSON.stringify(preset.visible));
+        setVisiblePanelIds(new Set(preset.visible));
+      } else {
+        setVisiblePanelIds(new Set(DEFAULT_VISIBLE));
       }
+    } else {
+      setVisiblePanelIds(new Set(DEFAULT_VISIBLE));
     }
-    window.location.reload();
+    setGsKey((k) => k + 1);
   }, []);
 
   // ── Panel content renderer ─────────────────────────────────────────────────
