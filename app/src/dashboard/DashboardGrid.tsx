@@ -348,6 +348,16 @@ const DashboardGrid = ({ filteredTrades, hasData, hasQueried }: DashboardGridPro
     });
   }, []);
 
+  const handleToggleSection = useCallback((panelIds: string[], checkAll: boolean) => {
+    setVisiblePanelIds((prev) => {
+      const next = new Set(prev);
+      if (checkAll) panelIds.forEach((id) => next.add(id));
+      else panelIds.forEach((id) => next.delete(id));
+      saveVisiblePanels(next);
+      return next;
+    });
+  }, []);
+
   // ── Apply preset or reset ──────────────────────────────────────────────────
   const onApplyPreset = useCallback((presetId: string | null) => {
     localStorage.removeItem(LAYOUT_KEY);
@@ -394,7 +404,7 @@ const DashboardGrid = ({ filteredTrades, hasData, hasQueried }: DashboardGridPro
 
   return (
     <div className="tc-gs-wrapper">
-      <FilterBar panels={filterPanels} visible={visiblePanelIds} onToggle={handleToggle} onApplyPreset={onApplyPreset} />
+      <FilterBar panels={filterPanels} visible={visiblePanelIds} onToggle={handleToggle} onToggleSection={handleToggleSection} onApplyPreset={onApplyPreset} />
 
       {/* GridStack manages this div — React must not render children here directly */}
       <div ref={containerRef} className="grid-stack" />

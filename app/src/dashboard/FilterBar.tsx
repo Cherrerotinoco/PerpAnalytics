@@ -14,6 +14,7 @@ interface FilterBarProps {
   panels: FilterPanelDef[];
   visible: Set<string>;
   onToggle: (id: string) => void;
+  onToggleSection: (panelIds: string[], checkAll: boolean) => void;
   onApplyPreset: (presetId: string | null) => void;
 }
 
@@ -26,7 +27,7 @@ const SECTIONS: { id: PanelSection; label: string }[] = [
 ];
 
 // ─── Component ────────────────────────────────────────────────────────────────
-export const FilterBar = memo(({ panels, visible, onToggle, onApplyPreset }: FilterBarProps) => {
+export const FilterBar = memo(({ panels, visible, onToggle, onToggleSection, onApplyPreset }: FilterBarProps) => {
   const [openSection, setOpenSection] = useState<PanelSection | null>(null);
   const [presetOpen, setPresetOpen] = useState(false);
   const barRef = useRef<HTMLDivElement>(null);
@@ -88,6 +89,17 @@ export const FilterBar = memo(({ panels, visible, onToggle, onApplyPreset }: Fil
 
               {isOpen && (
                 <div className="tc-filter-menu" role="listbox" aria-multiselectable="true" aria-label={section.label}>
+                  <button
+                    type="button"
+                    className="tc-filter-menu-item tc-filter-menu-item--check-all"
+                    onClick={() => onToggleSection(sectionPanels.map((p) => p.id), visibleCount < sectionPanels.length)}
+                  >
+                    <span className="tc-filter-menu-check" aria-hidden="true">
+                      {visibleCount === sectionPanels.length && <CgCheck />}
+                    </span>
+                    {visibleCount === sectionPanels.length ? 'Uncheck all' : 'Check all'}
+                  </button>
+                  <div className="tc-filter-menu-divider" />
                   {sectionPanels.map((panel) => {
                     const checked = visible.has(panel.id);
                     return (

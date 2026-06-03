@@ -1626,6 +1626,11 @@ body {
   opacity: 0.7;
 }
 
+.tc-filter-menu-item--check-all {
+  font-weight: 600;
+  color: var(--tc-accent);
+}
+
 /* Preset / reset button — right side, separated by a left divider */
 .tc-filter-reset {
   margin-left: auto;
