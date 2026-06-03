@@ -34,10 +34,10 @@ interface PanelDef {
 }
 
 const CHART_PANELS: PanelDef[] = [
-  { id: 'equity',   title: 'Equity Curve',  section: 'charts', defaultVisible: true,  w: 8,  h: 6, x: 0, y: 0 },
-  { id: 'symbol',   title: 'PnL by Symbol', section: 'charts', defaultVisible: false, w: 4,  h: 6, x: 8, y: 0 },
-  { id: 'calendar', title: 'PnL Calendar',  section: 'charts', defaultVisible: false, w: 5,  h: 6, scroll: true },
-  { id: 'history',  title: 'Trade History', section: 'charts', defaultVisible: true,  w: 12, h: 6, x: 0, y: 6, scroll: true },
+  { id: 'equity',   title: 'Equity Curve',  section: 'charts', defaultVisible: true,  w: 8,  h: 6, x: 0, y: 0, sizeToContent: true },
+  { id: 'symbol',   title: 'PnL by Symbol', section: 'charts', defaultVisible: false, w: 4,  h: 6, x: 8, y: 0, sizeToContent: true },
+  { id: 'calendar', title: 'PnL Calendar',  section: 'charts', defaultVisible: false, w: 5,  h: 6, sizeToContent: true },
+  { id: 'history',  title: 'Trade History', section: 'charts', defaultVisible: true,  w: 12, h: 6, x: 0, y: 6, sizeToContent: true },
 ];
 
 // Default positions for the metric panels visible on first load (Overview layout).
@@ -201,8 +201,8 @@ const saveVisiblePanels = (ids: Set<string>): void => {
 };
 
 // ─── Panel shell ──────────────────────────────────────────────────────────────
-const panelHTML = (id: string, title: string): string => `
-  <div class="tc-gs-panel">
+const panelHTML = (id: string, title: string, scroll = false): string => `
+  <div class="tc-gs-panel${scroll ? ' tc-gs-panel--scroll' : ''}">
     <div class="tc-panel-header">
       <span class="tc-panel-title">${title}</span>
       <span class="tc-gs-grip" title="Drag to move" aria-hidden="true">⠿</span>
@@ -302,7 +302,7 @@ const DashboardGrid = ({ filteredTrades, hasData, hasQueried }: DashboardGridPro
           y:             sp?.y ?? panel.y,
           autoPosition:  !sp && panel.x === undefined,
           sizeToContent: panel.sizeToContent ?? false,
-          content:       panelHTML(panel.id, panel.title),
+          content:       panelHTML(panel.id, panel.title, panel.scroll),
         });
       } else if (!shouldExist && exists) {
         const itemEl = container.querySelector<GridItemHTMLElement>(`[gs-id="${panel.id}"]`);
@@ -328,13 +328,37 @@ const DashboardGrid = ({ filteredTrades, hasData, hasQueried }: DashboardGridPro
     const gs        = gsRef.current;
     const container = containerRef.current;
 
-    const id = requestAnimationFrame(() => {
+    const CHART_IDS = CHART_PANELS.map((p) => p.id);
+
+    const resize = () => {
       container
         .querySelectorAll<GridItemHTMLElement>('[gs-id^="metric-"]')
         .forEach((el) => gs.resizeToContent(el));
+      CHART_IDS.forEach((id) => {
+        const el = container.querySelector<GridItemHTMLElement>(`[gs-id="${id}"]`);
+        if (el) gs.resizeToContent(el);
+      });
+    };
+
+    const rafId = requestAnimationFrame(resize);
+
+    // Re-size chart panels whenever their content changes height (e.g. pagination, data load).
+    const ros: ResizeObserver[] = [];
+    CHART_IDS.forEach((id) => {
+      const mountEl = container.querySelector<HTMLElement>(`#gsmount-${id}`);
+      if (!mountEl) return;
+      const ro = new ResizeObserver(() => {
+        const itemEl = container.querySelector<GridItemHTMLElement>(`[gs-id="${id}"]`);
+        if (itemEl) gs.resizeToContent(itemEl);
+      });
+      ro.observe(mountEl);
+      ros.push(ro);
     });
 
-    return () => cancelAnimationFrame(id);
+    return () => {
+      cancelAnimationFrame(rafId);
+      ros.forEach((ro) => ro.disconnect());
+    };
   }, [gsReady, hasData, mounts]);
 
   // ── Toggle handler ─────────────────────────────────────────────────────────

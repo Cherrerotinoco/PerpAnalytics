@@ -1721,9 +1721,21 @@ body {
   padding: 10px 12px;
 }
 
-/* Scroll fallback: if the user manually drags a panel smaller than its content
- * the content scrolls rather than clipping hard. */
-.tc-gs-content--scroll {
+/* Scroll panels: propagate the GridStack item height so the inner scroll works.
+ * Intentionally separate from the base .tc-gs-panel rule — metric panels must
+ * stay height:auto so resizeToContent() can measure their natural height. */
+.tc-gs-panel--scroll {
+  height: 100%;
+}
+
+.tc-gs-panel--scroll .tc-gs-body {
+  flex: 1;
+  min-height: 0;
+}
+
+.tc-gs-panel--scroll .tc-gs-content--scroll {
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
 }
 
