@@ -330,6 +330,9 @@ const FeesPanel = ({ stats: st }: { stats: TradeStats }) => {
   );
 };
 
+// ─── O(1) lookup map ─────────────────────────────────────────────────────────
+const METRIC_PANEL_MAP = new Map(METRIC_PANEL_CONFIGS.map((c) => [c.id, c]));
+
 // ─── MetricPanel component ────────────────────────────────────────────────────
 interface MetricPanelProps {
   panelId: string;
@@ -337,7 +340,7 @@ interface MetricPanelProps {
 }
 
 export const MetricPanel = memo(({ panelId, stats }: MetricPanelProps) => {
-  const config = METRIC_PANEL_CONFIGS.find((c) => c.id === panelId);
+  const config = METRIC_PANEL_MAP.get(panelId);
   if (!config) return null;
   return <>{config.render(stats)}</>;
 });

@@ -169,7 +169,7 @@ export const WalletForm = ({
     window.history.replaceState(null, '', qs ? `?${qs}` : window.location.pathname);
   }, [startDate, endDate, platforms]);
 
-  const handleSubmit = async (e: React.FormEvent | null, forceRefresh = false) => {
+  const handleSubmit = useCallback(async (e: React.FormEvent | null, forceRefresh = false) => {
     if (e) {
       e.preventDefault();
     }
@@ -297,7 +297,7 @@ export const WalletForm = ({
       clearTimeout(fetchTimeout);
       setLoading(false);
     }
-  };
+  }, [wallet, platforms, startDate, endDate, addRecentWallet, scrollToDashboard]);
 
   useEffect(() => {
     if (didAutoSubmit.current) return;

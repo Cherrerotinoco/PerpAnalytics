@@ -161,7 +161,7 @@ const HomePage = () => {
             <div className="tc-landing-chart-card tc-landing-chart-card--wide">
               <p className="tc-landing-chart-label">Equity curve</p>
               <Suspense fallback={<ChartSkeleton />}>
-                <EquityCurveChart trades={MOCK_TRADES} />
+                <EquityCurveChart stats={stats} />
               </Suspense>
             </div>
             <div className="tc-landing-chart-card">

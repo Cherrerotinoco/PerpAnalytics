@@ -9,9 +9,8 @@ import {
   CartesianGrid,
   ReferenceLine,
 } from 'recharts';
-import { Trade } from '../../types/tradeTypes';
 import { useTheme } from '../../context/ThemeContext';
-import { computeTradeStats } from './statistics';
+import type { TradeStats } from './statistics';
 
 const fmtMoney = (v: number): string =>
   v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -37,9 +36,8 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   );
 };
 
-const EquityCurveChart = memo(({ trades }: { trades: Trade[] }) => {
+const EquityCurveChart = memo(({ stats }: { stats: TradeStats }) => {
   const { theme } = useTheme();
-  const stats = computeTradeStats(trades);
 
   const data = stats.equityCurve
     .map((y, i) => ({ x: Number(stats.equityCurveLabels[i]), y }))

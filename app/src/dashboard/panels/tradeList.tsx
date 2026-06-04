@@ -1,4 +1,4 @@
-import { useState, useMemo, memo } from 'react';
+import { useState, useMemo, useCallback, memo } from 'react';
 import { Trade } from '../../types/tradeTypes';
 
 // ─── Formatters ───────────────────────────────────────────────────────────────
@@ -64,6 +64,28 @@ const getValue = (t: Trade, col: SortCol) => {
   }
 };
 
+// ─── Header cell ──────────────────────────────────────────────────────────────
+// Defined at module level so React sees a stable component type across renders.
+const Th = ({
+  label,
+  col,
+  sort,
+  onSort,
+}: {
+  label: string;
+  col: SortCol;
+  sort: { col: SortCol; dir: SortDir };
+  onSort: (col: SortCol) => void;
+}) => {
+  const isActive = sort.col === col;
+  return (
+    <th onClick={() => onSort(col)}>
+      {label}
+      {isActive && <span className="tc-sort-arrow">{sort.dir === 'asc' ? '▲' : '▼'}</span>}
+    </th>
+  );
+};
+
 // ─── Component ────────────────────────────────────────────────────────────────
 const TradeList = memo(({ trades }: { trades: Trade[] }) => {
   const [sort, setSort] = useState<{ col: SortCol; dir: SortDir }>({ col: 'opened', dir: 'desc' });
@@ -99,23 +121,12 @@ const TradeList = memo(({ trades }: { trades: Trade[] }) => {
   const totalPages = Math.ceil(sorted.length / PAGE_SIZE);
   const paginated = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  const handleSort = (col: SortCol) => {
+  const handleSort = useCallback((col: SortCol) => {
     setPage(1);
     setSort((prev) =>
       prev.col === col ? { col, dir: prev.dir === 'asc' ? 'desc' : 'asc' } : { col, dir: 'asc' }
     );
-  };
-
-  // ── Header cell ──
-  const Th = ({ label, col }: { label: string; col: SortCol }) => {
-    const isActive = sort.col === col;
-    return (
-      <th onClick={() => handleSort(col)}>
-        {label}
-        {isActive && <span className="tc-sort-arrow">{sort.dir === 'asc' ? '▲' : '▼'}</span>}
-      </th>
-    );
-  };
+  }, []);
 
   const startRow = (page - 1) * PAGE_SIZE + 1;
   const endRow = Math.min(page * PAGE_SIZE, sorted.length);
@@ -132,14 +143,14 @@ const TradeList = memo(({ trades }: { trades: Trade[] }) => {
         <table className="tc-table w-100">
           <thead>
             <tr>
-              <Th label="Open" col="opened" />
-              <Th label="Close" col="closed" />
-              <Th label="Symbol" col="symbol" />
-              <Th label="Side" col="side" />
-              <Th label="PnL" col="pnl" />
-              <Th label="Fee" col="fee" />
-              <Th label="Size" col="sizeUsd" />
-              <Th label="Source" col="source" />
+              <Th label="Open"   col="opened"  sort={sort} onSort={handleSort} />
+              <Th label="Close"  col="closed"  sort={sort} onSort={handleSort} />
+              <Th label="Symbol" col="symbol"  sort={sort} onSort={handleSort} />
+              <Th label="Side"   col="side"    sort={sort} onSort={handleSort} />
+              <Th label="PnL"    col="pnl"     sort={sort} onSort={handleSort} />
+              <Th label="Fee"    col="fee"      sort={sort} onSort={handleSort} />
+              <Th label="Size"   col="sizeUsd" sort={sort} onSort={handleSort} />
+              <Th label="Source" col="source"  sort={sort} onSort={handleSort} />
             </tr>
           </thead>
           <tbody>

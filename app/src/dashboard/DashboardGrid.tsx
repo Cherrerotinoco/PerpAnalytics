@@ -205,7 +205,14 @@ const panelHTML = (id: string, title: string, scroll = false): string => `
   <div class="tc-gs-panel${scroll ? ' tc-gs-panel--scroll' : ''}">
     <div class="tc-panel-header">
       <span class="tc-panel-title">${title}</span>
-      <span class="tc-gs-grip" title="Drag to move" aria-hidden="true">⠿</span>
+      <div class="tc-panel-header-actions">
+        <button class="tc-gs-remove-btn" data-panel-id="${id}" title="Remove panel" aria-label="Remove panel">
+          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+          </svg>
+        </button>
+        <span class="tc-gs-grip" title="Drag to move" aria-hidden="true">⠿</span>
+      </div>
     </div>
     <div class="tc-gs-body" id="gsmount-${id}"></div>
   </div>
@@ -247,6 +254,7 @@ const DashboardGrid = ({ filteredTrades, hasData, hasQueried }: DashboardGridPro
   const [gsReady, setGsReady]             = useState(false);
   const [mounts,  setMounts]              = useState<Map<string, HTMLElement>>(new Map());
   const [visiblePanelIds, setVisiblePanelIds] = useState<Set<string>>(loadVisiblePanels);
+  const onRemovePanelRef = useRef<(id: string) => void>(() => {});
 
   const stats = useMemo(() => computeTradeStats(filteredTrades), [filteredTrades]);
 
@@ -264,6 +272,13 @@ const DashboardGrid = ({ filteredTrades, hasData, hasQueried }: DashboardGridPro
     const gs = GridStack.init(GS_OPTS, el);
     gs.on('change', () => saveLayout(gs));
 
+    // Event delegation for the bin button inside each panel header
+    const onRemoveClick = (e: MouseEvent) => {
+      const btn = (e.target as Element).closest<HTMLElement>('.tc-gs-remove-btn');
+      if (btn?.dataset.panelId) onRemovePanelRef.current(btn.dataset.panelId);
+    };
+    el.addEventListener('click', onRemoveClick);
+
     const checkMobile = () => gs.setStatic(window.innerWidth < 768);
     window.addEventListener('resize', checkMobile, { passive: true });
     checkMobile();
@@ -272,6 +287,7 @@ const DashboardGrid = ({ filteredTrades, hasData, hasQueried }: DashboardGridPro
     setGsReady(true);
 
     return () => {
+      el.removeEventListener('click', onRemoveClick);
       window.removeEventListener('resize', checkMobile);
       gs.destroy(false);
       gsRef.current = null;
@@ -372,6 +388,10 @@ const DashboardGrid = ({ filteredTrades, hasData, hasQueried }: DashboardGridPro
     });
   }, []);
 
+  // Keep the ref in sync so the event delegation in the init effect can call it
+  // without creating a stale closure over the original handleToggle.
+  onRemovePanelRef.current = handleToggle;
+
   const handleToggleSection = useCallback((panelIds: string[], checkAll: boolean) => {
     setVisiblePanelIds((prev) => {
       const next = new Set(prev);
@@ -408,7 +428,7 @@ const DashboardGrid = ({ filteredTrades, hasData, hasQueried }: DashboardGridPro
 
     switch (panelId) {
       case 'equity':
-        return <Suspense fallback={<PanelPlaceholder />}><EquityCurveChart trades={filteredTrades} /></Suspense>;
+        return <Suspense fallback={<PanelPlaceholder />}><EquityCurveChart stats={stats} /></Suspense>;
       case 'symbol':
         return <Suspense fallback={<PanelPlaceholder />}><PnlBySymbolChart trades={filteredTrades} /></Suspense>;
       case 'calendar':
