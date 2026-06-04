@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { CgSync, CgCheck } from 'react-icons/cg';
 import { Trade } from '../types/tradeTypes';
 import { normalizeJupiterTrades, JupiterTrade } from '../utils/normalizeJupiter';
@@ -99,8 +100,6 @@ const formatDateParam = (s: string): string => {
   return `${d}.${mo}.${y}`;
 };
 
-const _initParams = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
-
 type Platform = 'jupiter' | 'pacifica';
 
 interface WalletFormProps {
@@ -116,80 +115,61 @@ export const WalletForm = ({
   setWallet,
   addRecentWallet,
 }: WalletFormProps) => {
-  const [startDate, setStartDate] = useState(() => parseDateParam(_initParams.get('start_date')));
-  const [endDate, setEndDate] = useState(() => parseDateParam(_initParams.get('end_date')));
+  const [searchParams] = useSearchParams();
+
+  const [startDate, setStartDate] = useState(() => parseDateParam(searchParams.get('start_date')));
+  const [endDate, setEndDate] = useState(() => parseDateParam(searchParams.get('end_date')));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [trades, setTrades] = useState<Trade[]>([]);
   const [hasQueried, setHasQueried] = useState(false);
   const [platforms, setPlatforms] = useState<Platform[]>(() => {
-    const p = _initParams.get('platforms');
-    if (!p) {
-      return ['jupiter', 'pacifica'];
-    }
+    const p = searchParams.get('platforms');
+    if (!p) return ['jupiter', 'pacifica'];
     const valid = p.split(',').filter((x): x is Platform => x === 'jupiter' || x === 'pacifica');
     return valid.length ? valid : ['jupiter', 'pacifica'];
   });
-  const cacheRef = useRef<{ [key: string]: Trade[] }>({});
-  const cacheTsRef = useRef<{ [key: string]: number }>({});
-  const didAutoSubmit = useRef(false);
-  const dashboardRef = useRef<HTMLDivElement>(null);
+  const cacheRef      = useRef<{ [key: string]: Trade[] }>({});
+  const cacheTsRef    = useRef<{ [key: string]: number }>({});
+  const lastAutoKey   = useRef('');
+  const abortRef      = useRef<AbortController | null>(null);
+  const dashboardRef  = useRef<HTMLDivElement>(null);
 
   const scrollToDashboard = useCallback(() => {
     dashboardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, []);
 
-  // ── Pre-fill wallet from URL on mount ──
-  useEffect(() => {
-    const urlWallet = _initParams.get('wallet');
-    if (urlWallet) {
-      setWallet(urlWallet);
-    }
-  }, []);
-
-  // ── Live-sync filter changes to URL ──────────────────────────────────────
+  // ── Live-sync filter changes to URL (replaceState — does NOT trigger useSearchParams) ──
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (startDate) {
-      params.set('start_date', formatDateParam(startDate));
-    } else {
-      params.delete('start_date');
-    }
-    if (endDate) {
-      params.set('end_date', formatDateParam(endDate));
-    } else {
-      params.delete('end_date');
-    }
-    if (platforms.length > 0) {
-      params.set('platforms', platforms.join(','));
-    } else {
-      params.delete('platforms');
-    }
+    if (startDate) params.set('start_date', formatDateParam(startDate)); else params.delete('start_date');
+    if (endDate)   params.set('end_date',   formatDateParam(endDate));   else params.delete('end_date');
+    if (platforms.length > 0) params.set('platforms', platforms.join(',')); else params.delete('platforms');
     const qs = params.toString();
     window.history.replaceState(null, '', qs ? `?${qs}` : window.location.pathname);
   }, [startDate, endDate, platforms]);
 
-  const handleSubmit = useCallback(async (e: React.FormEvent | null, forceRefresh = false) => {
-    if (e) {
-      e.preventDefault();
-    }
-
-    if (!wallet || !SOLANA_ADDRESS_REGEX.test(wallet)) {
+  // ── Core fetch logic (wallet + platforms passed explicitly so callers don't wait for state) ──
+  const fetchTradesFor = useCallback(async (
+    w: string,
+    plats: Platform[],
+    forceRefresh = false,
+  ) => {
+    if (!w || !SOLANA_ADDRESS_REGEX.test(w)) {
       setError('Enter a valid Solana wallet address (32–44 Base58 characters).');
       return;
     }
-
-    if (platforms.length === 0) {
+    if (plats.length === 0) {
       setError('Select at least one platform.');
       return;
     }
 
-    // Write wallet to URL — filters are already kept in sync by the live-sync effect
+    // Write wallet to URL — filters are kept in sync by the live-sync effect
     const urlParams = new URLSearchParams(window.location.search);
-    urlParams.set('wallet', wallet);
+    urlParams.set('wallet', w);
     window.history.replaceState(null, '', `?${urlParams.toString()}`);
 
-    const cacheKey = JSON.stringify({ wallet, platforms: [...platforms].sort() });
+    const cacheKey = JSON.stringify({ wallet: w, platforms: [...plats].sort() });
 
     if (forceRefresh) {
       delete cacheRef.current[cacheKey];
@@ -222,51 +202,41 @@ export const WalletForm = ({
       return;
     }
 
+    // Cancel any in-flight request from a previous call
+    abortRef.current?.abort();
     const controller = new AbortController();
+    abortRef.current = controller;
     const fetchTimeout = setTimeout(() => controller.abort(), 30_000);
 
     try {
       const results = await Promise.all(
-        platforms.map(async (platform) => {
+        plats.map(async (platform) => {
           if (platform === 'jupiter') {
             const allEvents: JupiterTrade[] = [];
-            // Jupiter returns a stable `count` (total items) so the recursion is
-            // naturally bounded — no extra guard needed.
             const fetchPage = async (start: number, end: number): Promise<void> => {
-              const url = `https://perps-api.jup.ag/v1/trades?walletAddress=${wallet}&start=${start}&end=${end}`;
+              const url = `https://perps-api.jup.ag/v1/trades?walletAddress=${w}&start=${start}&end=${end}`;
               const res = await fetch(url, { signal: controller.signal });
-              if (!res.ok) {
-                throw new Error(`Error fetching Jupiter data: ${res.statusText}`);
-              }
+              if (!res.ok) throw new Error(`Error fetching Jupiter data: ${res.statusText}`);
               const data = await res.json();
               allEvents.push(...(data.dataList ?? []));
-              if (data.count > end) {
-                await fetchPage(end, end + 1000);
-              }
+              if (data.count > end) await fetchPage(end, end + 1000);
             };
             await fetchPage(0, 1000);
             return normalizeJupiterTrades(allEvents);
           }
           if (platform === 'pacifica') {
             const allFills: PacificaFill[] = [];
-            // Guard: only continue if the server actually returned items.
-            // This stops infinite loops when has_more is true but data is empty
-            // (e.g. a misbehaving or compromised endpoint).
             const fetchPage = async (cursor?: string): Promise<void> => {
               const cursorParam = cursor ? `&cursor=${encodeURIComponent(cursor)}` : '';
               const res = await fetch(
-                `https://api.pacifica.fi/api/v1/trades/history?account=${wallet}&limit=1000${cursorParam}`,
+                `https://api.pacifica.fi/api/v1/trades/history?account=${w}&limit=1000${cursorParam}`,
                 { signal: controller.signal }
               );
-              if (!res.ok) {
-                throw new Error(`Error fetching Pacifica data: ${res.statusText}`);
-              }
+              if (!res.ok) throw new Error(`Error fetching Pacifica data: ${res.statusText}`);
               const json = await res.json();
               const page: PacificaFill[] = json.data ?? [];
               allFills.push(...page);
-              if (json.has_more && page.length > 0) {
-                await fetchPage(json.next_cursor);
-              }
+              if (json.has_more && page.length > 0) await fetchPage(json.next_cursor);
             };
             await fetchPage();
             return normalizePacificaTrades(allFills);
@@ -277,15 +247,13 @@ export const WalletForm = ({
 
       const allTrades = results.flat();
       const cacheKeys = Object.keys(cacheRef.current);
-      if (cacheKeys.length >= MAX_CACHE_ENTRIES) {
-        delete cacheRef.current[cacheKeys[0]];
-      }
+      if (cacheKeys.length >= MAX_CACHE_ENTRIES) delete cacheRef.current[cacheKeys[0]];
       cacheRef.current[cacheKey] = allTrades;
       cacheTsRef.current[cacheKey] = Date.now();
       saveCachedTrades(cacheKey, allTrades);
       setTrades(allTrades);
       setHasQueried(true);
-      addRecentWallet(wallet);
+      addRecentWallet(w);
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') {
         setError('Request timed out after 30 s. Please check your connection and try again.');
@@ -297,19 +265,56 @@ export const WalletForm = ({
       clearTimeout(fetchTimeout);
       setLoading(false);
     }
-  }, [wallet, platforms, startDate, endDate, addRecentWallet, scrollToDashboard]);
+  }, [addRecentWallet, scrollToDashboard]);
 
+  // ── Form submit (reads from component state) ──
+  const handleSubmit = useCallback(async (e: React.FormEvent | null, forceRefresh = false) => {
+    if (e) e.preventDefault();
+    return fetchTradesFor(wallet, platforms, forceRefresh);
+  }, [wallet, platforms, fetchTradesFor]);
+
+  // ── Recent wallet selection — update wallet, URL, and fetch immediately ──
+  const handleSelectRecentWallet = useCallback((w: string) => {
+    setWallet(w);
+    // Keep existing filter params, just swap the wallet
+    const params = new URLSearchParams(window.location.search);
+    params.set('wallet', w);
+    window.history.replaceState(null, '', `?${params.toString()}`);
+    // Clear dedup key so same wallet can be re-fetched if reselected
+    lastAutoKey.current = '';
+    fetchTradesFor(w, platforms);
+  }, [platforms, fetchTradesFor, setWallet]);
+
+  // ── URL navigation listener — fires on back/forward/direct URL, NOT on replaceState ──
   useEffect(() => {
-    if (didAutoSubmit.current) return;
-    if (!_initParams.get('wallet') || !_initParams.get('start_date')) return;
-    if (!wallet || !startDate) return;
-    didAutoSubmit.current = true;
-    handleSubmit(null);
-  }, [wallet, startDate]);
+    const urlWallet = searchParams.get('wallet');
+    if (!urlWallet || !SOLANA_ADDRESS_REGEX.test(urlWallet)) return;
+
+    const pParam = searchParams.get('platforms');
+    const urlPlats: Platform[] = pParam
+      ? pParam.split(',').filter((x): x is Platform => x === 'jupiter' || x === 'pacifica')
+      : ['jupiter', 'pacifica'];
+    const plats = urlPlats.length ? urlPlats : (['jupiter', 'pacifica'] as Platform[]);
+
+    // Deduplicate: don't re-fetch if we already submitted for this exact wallet+platforms combo
+    const autoKey = `${urlWallet}|${[...plats].sort().join(',')}`;
+    if (autoKey === lastAutoKey.current) return;
+    lastAutoKey.current = autoKey;
+
+    // Sync all form fields from URL params
+    setWallet(urlWallet);
+    setStartDate(parseDateParam(searchParams.get('start_date')));
+    setEndDate(parseDateParam(searchParams.get('end_date')));
+    setPlatforms(plats);
+
+    // Fetch directly with URL params (don't wait for state to settle)
+    fetchTradesFor(urlWallet, plats);
+  }, [searchParams, fetchTradesFor, setWallet]);
 
   const filteredTrades = useMemo(() => {
     const startMs = startDate ? new Date(startDate).getTime() : 0;
-    const endMs = endDate ? new Date(endDate).getTime() : 0;
+    // Add 86 399 999 ms (23:59:59.999) so the end date is fully inclusive.
+    const endMs = endDate ? new Date(endDate).getTime() + 86_399_999 : 0;
     return trades.filter((trade) => {
       const t = trade.closed.getTime();
       const sourceKey = trade.source.toLowerCase() as Platform;
@@ -324,7 +329,7 @@ export const WalletForm = ({
     <div className="tc-wallet-root">
       {/* ── Above-fold: form, status ────────────────────────────────────────── */}
       <div className="tc-wallet-top">
-        <RecentWallets wallets={recentWallets} onSelect={(w) => setWallet(w)} />
+        <RecentWallets wallets={recentWallets} onSelect={handleSelectRecentWallet} />
 
         {/* ── Search bar ─────────────────────────────────────────────────────── */}
         <div className="tc-panel tc-search-pad">
@@ -410,7 +415,7 @@ export const WalletForm = ({
               </div>
 
               {/* Actions */}
-              <button type="submit" disabled={isDisabled} className="tc-btn-primary">
+              <button type="submit" disabled={isDisabled} aria-busy={loading} className="tc-btn-primary">
                 {loading && (
                   <span
                     className="spinner-border spinner-border-sm"
@@ -432,7 +437,8 @@ export const WalletForm = ({
               )}
             </div>
 
-            {/* Error */}
+            {/* Error — aria-live so screen readers announce it immediately */}
+            <div aria-live="polite" aria-atomic="true">
             {error && (
               <div className="tc-error-msg">
                 <span className="flex-fill">{error}</span>
@@ -441,6 +447,7 @@ export const WalletForm = ({
                 </button>
               </div>
             )}
+            </div>
           </form>
         </div>
 

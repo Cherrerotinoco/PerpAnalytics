@@ -62,9 +62,10 @@ const SectionDropdown = memo(({
       </button>
 
       {isOpen && (
-        <div className="tc-filter-menu" role="listbox" aria-multiselectable="true" aria-label={section.label}>
+        <div className="tc-filter-menu" role="menu" aria-label={section.label}>
           <button
             type="button"
+            role="menuitem"
             className="tc-filter-menu-item tc-filter-menu-item--check-all"
             onClick={() => onToggleSection(panels.map((p) => p.id), !allChecked)}
           >
@@ -80,8 +81,8 @@ const SectionDropdown = memo(({
               <button
                 key={panel.id}
                 type="button"
-                role="option"
-                aria-selected={checked}
+                role="menuitemcheckbox"
+                aria-checked={checked}
                 className={`tc-filter-menu-item${checked ? ' tc-filter-menu-item--checked' : ''}`}
                 onClick={() => onToggle(panel.id)}
               >
@@ -109,15 +110,18 @@ const OffCanvas = memo(({
   onApplyPreset: (id: string | null) => void;
   onClose: () => void;
 }) => {
-  // Close on Escape
+  // Close on Escape + body scroll lock (ref-counted so multiple overlays coexist)
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', handler);
-    // Prevent body scroll while open
-    document.body.style.overflow = 'hidden';
+    const locks = parseInt(document.body.dataset.overflowLocks ?? '0', 10);
+    document.body.dataset.overflowLocks = String(locks + 1);
+    if (locks === 0) document.body.style.overflow = 'hidden';
     return () => {
       document.removeEventListener('keydown', handler);
-      document.body.style.overflow = '';
+      const next = Math.max(0, parseInt(document.body.dataset.overflowLocks ?? '0', 10) - 1);
+      document.body.dataset.overflowLocks = String(next);
+      if (next === 0) document.body.style.overflow = '';
     };
   }, [onClose]);
 
@@ -282,13 +286,12 @@ export const FilterBar = memo(({ panels, visible, onToggle, onToggleSection, onA
           </button>
 
           {presetOpen && (
-            <div className="tc-filter-menu tc-filter-menu--right" role="listbox" aria-label="Layout presets">
+            <div className="tc-filter-menu tc-filter-menu--right" role="menu" aria-label="Layout presets">
               {LAYOUT_PRESETS.map((preset) => (
                 <button
                   key={preset.id}
                   type="button"
-                  role="option"
-                  aria-selected={false}
+                  role="menuitem"
                   className="tc-filter-menu-item"
                   onClick={() => { setPresetOpen(false); onApplyPreset(preset.id); }}
                 >
@@ -298,8 +301,7 @@ export const FilterBar = memo(({ panels, visible, onToggle, onToggleSection, onA
               <div className="tc-filter-menu-divider" />
               <button
                 type="button"
-                role="option"
-                aria-selected={false}
+                role="menuitem"
                 className="tc-filter-menu-item tc-filter-menu-item--muted"
                 onClick={() => { setPresetOpen(false); onApplyPreset(null); }}
               >

@@ -63,7 +63,9 @@ export const normalizePacificaTrades = (fills: PacificaFill[]): Trade[] => {
     const direction: Side = first.side.endsWith('_long') ? 'long' : 'short';
     const closed = new Date(first.created_at);
     const totalPnl = closeFills.reduce((s, f) => s + parseFloat(f.pnl), 0);
-    const totalFee = closeFills.reduce((s, f) => s + parseFloat(f.fee), 0);
+    // Use Math.abs so that rebates (negative fee values) don't produce a
+    // negative cost displayed as income in the modal.
+    const totalFee = closeFills.reduce((s, f) => s + Math.abs(parseFloat(f.fee)), 0);
     const totalSize = closeFills.reduce(
       (s, f) => s + parseFloat(f.amount) * parseFloat(f.entry_price),
       0
@@ -71,6 +73,11 @@ export const normalizePacificaTrades = (fills: PacificaFill[]): Trade[] => {
 
     const cause = (first.cause ?? 'normal').toLowerCase();
     const closeType: CloseType = cause.includes('liquidation') ? 'Liquidation' : 'Manual';
+
+    // Weighted-average entry price from the open fills we aggregated earlier,
+    // and the close price from the first close fill.
+    const entryPrice = parseFloat(first.entry_price) || undefined;
+    const exitPrice  = parseFloat(first.price) || undefined;
 
     trades.push({
       symbol: first.symbol,
@@ -82,6 +89,8 @@ export const normalizePacificaTrades = (fills: PacificaFill[]): Trade[] => {
       sizeUsd: totalSize,
       closeType,
       source: 'Pacifica',
+      entryPrice,
+      exitPrice,
     });
   }
 

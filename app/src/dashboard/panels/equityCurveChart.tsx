@@ -22,8 +22,14 @@ const fmtDate = (ts: number): string =>
     year: '2-digit',
   });
 
-const CustomTooltip = ({ active, payload, label }: any) => {
-  if (!active || !payload?.length) return null;
+interface TooltipProps {
+  active?: boolean;
+  payload?: Array<{ value: number }>;
+  label?: number;
+}
+
+const CustomTooltip = ({ active, payload, label }: TooltipProps) => {
+  if (!active || !payload?.length || label == null) return null;
   const val: number = payload[0].value;
   return (
     <div className="tc-chart-tooltip">
@@ -55,20 +61,28 @@ const EquityCurveChart = memo(({ stats }: { stats: TradeStats }) => {
   const yValues = data.map((d) => d.y);
   const yMin = Math.min(...yValues);
   const yMax = Math.max(...yValues);
-  // Fraction from the top where y=0 falls (0 = top, 1 = bottom)
+  // Fraction from the top where y=0 falls (0 = top, 1 = bottom).
+  // Guard: if yMax === yMin (single point or flat line), avoid division by zero.
+  const yRange = yMax - yMin;
   const zeroRatio =
-    yMax > 0 && yMin < 0
-      ? yMax / (yMax - yMin)
-      : yMax <= 0
-        ? 0   // all negative → full red
-        : 1;  // all positive → full green
+    yRange === 0
+      ? (yMax >= 0 ? 1 : 0)   // flat line: all green if ≥0, all red if <0
+      : yMax > 0 && yMin < 0
+        ? yMax / yRange
+        : yMax <= 0
+          ? 0                  // all negative → full red
+          : 1;                 // all positive → full green
 
   const xMin = data[0].x;
   const xMax = data[data.length - 1].x;
   const tickCount = Math.min(data.length, 6);
-  const ticks = Array.from({ length: tickCount }, (_, i) =>
-    Math.round(xMin + (i / (tickCount - 1)) * (xMax - xMin))
-  );
+  // Guard: if only one data point, avoid division by zero in tick spacing.
+  const ticks =
+    tickCount <= 1
+      ? [xMin]
+      : Array.from({ length: tickCount }, (_, i) =>
+          Math.round(xMin + (i / (tickCount - 1)) * (xMax - xMin))
+        );
 
   return (
     <>

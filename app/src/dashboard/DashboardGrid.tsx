@@ -200,11 +200,16 @@ const saveVisiblePanels = (ids: Set<string>): void => {
   } catch { /* quota exceeded */ }
 };
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+/** Escape user-supplied strings before injecting into innerHTML. */
+const escapeHTML = (s: string): string =>
+  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
 // ─── Panel shell ──────────────────────────────────────────────────────────────
 const panelHTML = (id: string, title: string, scroll = false): string => `
   <div class="tc-gs-panel${scroll ? ' tc-gs-panel--scroll' : ''}">
     <div class="tc-panel-header">
-      <span class="tc-panel-title">${title}</span>
+      <span class="tc-panel-title">${escapeHTML(title)}</span>
       <div class="tc-panel-header-actions">
         <button class="tc-gs-remove-btn" data-panel-id="${id}" title="Remove panel" aria-label="Remove panel">
           <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -254,7 +259,9 @@ const DashboardGrid = ({ filteredTrades, hasData, hasQueried }: DashboardGridPro
   const [gsReady, setGsReady]             = useState(false);
   const [mounts,  setMounts]              = useState<Map<string, HTMLElement>>(new Map());
   const [visiblePanelIds, setVisiblePanelIds] = useState<Set<string>>(loadVisiblePanels);
-  const onRemovePanelRef = useRef<(id: string) => void>(() => {});
+  const onRemovePanelRef    = useRef<(id: string) => void>(() => {});
+  // Loaded once per GridStack init (gsKey change) so sync effect doesn't hit localStorage repeatedly.
+  const savedPositionsRef   = useRef<Record<string, SavedItem>>({});
 
   const stats = useMemo(() => computeTradeStats(filteredTrades), [filteredTrades]);
 
@@ -283,6 +290,7 @@ const DashboardGrid = ({ filteredTrades, hasData, hasQueried }: DashboardGridPro
     window.addEventListener('resize', checkMobile, { passive: true });
     checkMobile();
 
+    savedPositionsRef.current = loadSavedPositions();
     gsRef.current = gs;
     setGsReady(true);
 
@@ -301,7 +309,7 @@ const DashboardGrid = ({ filteredTrades, hasData, hasQueried }: DashboardGridPro
     if (!gsReady || !gsRef.current || !containerRef.current) return;
     const gs        = gsRef.current;
     const container = containerRef.current;
-    const saved     = loadSavedPositions();
+    const saved     = savedPositionsRef.current;
 
     gs.batchUpdate(true);
     for (const panel of ALL_PANELS) {

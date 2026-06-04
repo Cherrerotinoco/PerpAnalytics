@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, memo } from 'react';
 import { Trade } from '../../types/tradeTypes';
+import { TradeModal } from '../TradeModal';
 
 // ─── Formatters ───────────────────────────────────────────────────────────────
 const fmtDateTime = (d: Date | null | undefined): string => {
@@ -88,8 +89,9 @@ const Th = ({
 
 // ─── Component ────────────────────────────────────────────────────────────────
 const TradeList = memo(({ trades }: { trades: Trade[] }) => {
-  const [sort, setSort] = useState<{ col: SortCol; dir: SortDir }>({ col: 'opened', dir: 'desc' });
-  const [page, setPage] = useState(1);
+  const [sort, setSort]           = useState<{ col: SortCol; dir: SortDir }>({ col: 'opened', dir: 'desc' });
+  const [page, setPage]           = useState(1);
+  const [selected, setSelected]   = useState<Trade | null>(null);
 
   // ── Sort (memoised — only recomputes when trades array or sort config changes) ──
   const sorted = useMemo(
@@ -113,6 +115,14 @@ const TradeList = memo(({ trades }: { trades: Trade[] }) => {
     [trades, sort]
   );
 
+  // ── All hooks must be declared before any conditional return ──
+  const handleSort = useCallback((col: SortCol) => {
+    setPage(1);
+    setSort((prev) =>
+      prev.col === col ? { col, dir: prev.dir === 'asc' ? 'desc' : 'asc' } : { col, dir: 'asc' }
+    );
+  }, []);
+
   if (!trades.length) {
     return null;
   }
@@ -120,13 +130,6 @@ const TradeList = memo(({ trades }: { trades: Trade[] }) => {
   // ── Pagination ──
   const totalPages = Math.ceil(sorted.length / PAGE_SIZE);
   const paginated = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-
-  const handleSort = useCallback((col: SortCol) => {
-    setPage(1);
-    setSort((prev) =>
-      prev.col === col ? { col, dir: prev.dir === 'asc' ? 'desc' : 'asc' } : { col, dir: 'asc' }
-    );
-  }, []);
 
   const startRow = (page - 1) * PAGE_SIZE + 1;
   const endRow = Math.min(page * PAGE_SIZE, sorted.length);
@@ -154,9 +157,12 @@ const TradeList = memo(({ trades }: { trades: Trade[] }) => {
             </tr>
           </thead>
           <tbody>
-            {paginated.map((t) => (
+            {paginated.map((t, i) => (
               <tr
-                key={`${t.source}-${t.symbol}-${t.side}-${t.opened?.getTime()}-${t.closed?.getTime()}`}
+                key={`${t.source}-${t.symbol}-${t.side}-${t.opened?.getTime()}-${t.closed?.getTime()}-${i}`}
+                className="tc-trade-row--clickable"
+                onClick={() => setSelected(t)}
+                title="View trade details"
               >
                 <td className="tc-muted-text text-nowrap">{fmtDateTime(t.opened)}</td>
                 <td className="tc-muted-text text-nowrap">{fmtDateTime(t.closed)}</td>
@@ -208,6 +214,8 @@ const TradeList = memo(({ trades }: { trades: Trade[] }) => {
           </div>
         </div>
       )}
+
+      {selected && <TradeModal trade={selected} onClose={() => setSelected(null)} />}
     </div>
   );
 });

@@ -11,4 +11,6 @@ export type Trade = {
   sizeUsd: number;
   closeType: CloseType;
   source: 'Jupiter' | 'Pacifica';
+  entryPrice?: number;
+  exitPrice?: number;
 };

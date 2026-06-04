@@ -49,6 +49,9 @@ export const normalizeJupiterTrades = (events: JupiterTrade[]): Trade[] => {
 
     let openedAt: Date | null = null;
     let liveSize = 0;
+    // Weighted-average entry: track total cost and total size across all increases.
+    let totalEntryCost = 0;
+    let totalEntrySize = 0;
 
     for (const e of list) {
       const ts = new Date(e.createdTime * 1000);
@@ -57,6 +60,7 @@ export const normalizeJupiterTrades = (events: JupiterTrade[]): Trade[] => {
       const size = parseFloat(e.size);
       const fee = parseFloat(e.fee);
       const pnl = e.pnl === null ? null : parseFloat(e.pnl);
+      const price = parseFloat(e.price) || undefined;
 
       const isIncrease = action.includes('increase') || action.includes('open');
       const isDecrease = action.includes('decrease') || action.includes('close');
@@ -67,43 +71,56 @@ export const normalizeJupiterTrades = (events: JupiterTrade[]): Trade[] => {
           openedAt = ts;
         }
         liveSize += size;
+        // Accumulate weighted entry price across DCA fills
+        if (price) {
+          totalEntryCost += price * size;
+          totalEntrySize += size;
+        }
         continue;
       }
 
       if (isDecrease || isLiquidate) {
-        if (pnl === null) {
-          continue;
-        }
-        if (!openedAt) {
-          openedAt = ts;
-        }
+        if (!openedAt) openedAt = ts;
 
-        let closeType: CloseType;
-        if (isLiquidate) {
-          closeType = 'Liquidation';
-        } else if (orderType.includes('trigger')) {
-          closeType = pnl > 0 ? 'TP' : 'SL';
-        } else {
-          closeType = 'Manual';
-        }
-
-        trades.push({
-          symbol: e.positionName.replace(/-PERP$/i, ''),
-          opened: openedAt,
-          closed: ts,
-          side: e.side,
-          pnl: pnl - fee,
-          fee,
-          sizeUsd: size,
-          closeType,
-          source: 'Jupiter',
-        });
-
+        // Always track position size, even if PnL is missing (partial close)
         liveSize = Math.max(0, liveSize - size);
+        const positionClosed = liveSize < 1e-6;
 
-        if (liveSize < 1e-6) {
+        // Skip creating a trade record when PnL is unavailable (e.g. partial fills
+        // that the API has not yet settled), but keep position state consistent.
+        if (pnl !== null) {
+          let closeType: CloseType;
+          if (isLiquidate) {
+            closeType = 'Liquidation';
+          } else if (orderType.includes('trigger')) {
+            closeType = pnl > 0 ? 'TP' : 'SL';
+          } else {
+            closeType = 'Manual';
+          }
+
+          const entryPrice =
+            totalEntrySize > 0 ? totalEntryCost / totalEntrySize : undefined;
+
+          trades.push({
+            symbol: e.positionName.replace(/-PERP$/i, ''),
+            opened: openedAt,
+            closed: ts,
+            side: e.side,
+            pnl: pnl - fee,
+            fee,
+            sizeUsd: size,
+            closeType,
+            source: 'Jupiter',
+            entryPrice,
+            exitPrice: price,
+          });
+        }
+
+        if (positionClosed) {
           liveSize = 0;
           openedAt = null;
+          totalEntryCost = 0;
+          totalEntrySize = 0;
         }
       }
     }
