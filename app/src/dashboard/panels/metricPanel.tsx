@@ -277,6 +277,99 @@ export const METRIC_PANEL_CONFIGS: MetricPanelConfig[] = [
     w: 3,
     render: (st) => <StreaksPanel stats={st} />,
   },
+  // ── Distribution ───────────────────────────────────────────────────────────
+  {
+    id: 'metric-avg-win',
+    title: 'Avg Winner',
+    section: 'performance',
+    defaultVisible: false,
+    w: 3,
+    render: (st) => (
+      <Metric
+        label="Avg Winner"
+        value={`+${fmtNum(st.avgWin)} $`}
+        colorClass="tc-green"
+        tooltip="Average PnL of all winning trades."
+      />
+    ),
+  },
+  {
+    id: 'metric-avg-loss',
+    title: 'Avg Loser',
+    section: 'performance',
+    defaultVisible: false,
+    w: 3,
+    render: (st) => (
+      <Metric
+        label="Avg Loser"
+        value={`-${fmtNum(st.avgLoss)} $`}
+        colorClass="tc-red"
+        tooltip="Average absolute PnL of all losing trades."
+      />
+    ),
+  },
+  {
+    id: 'metric-median-win',
+    title: 'Median Winner',
+    section: 'performance',
+    defaultVisible: false,
+    w: 3,
+    render: (st) => (
+      <Metric
+        label="Median Winner"
+        value={`+${fmtNum(st.medianWin)} $`}
+        colorClass="tc-green"
+        tooltip="The middle value of all winning trades, sorted by PnL. Less skewed by outliers than the average."
+      />
+    ),
+  },
+  {
+    id: 'metric-median-loss',
+    title: 'Median Loser',
+    section: 'performance',
+    defaultVisible: false,
+    w: 3,
+    render: (st) => (
+      <Metric
+        label="Median Loser"
+        value={`-${fmtNum(st.medianLoss)} $`}
+        colorClass="tc-red"
+        tooltip="The middle value of all losing trades by size. Less skewed by outliers than the average."
+      />
+    ),
+  },
+  {
+    id: 'metric-p90-win',
+    title: 'P90 Winner',
+    section: 'performance',
+    defaultVisible: false,
+    w: 3,
+    render: (st) => (
+      <Metric
+        label="P90 Winner"
+        value={`+${fmtNum(st.p90Win)} $`}
+        sub="90th percentile"
+        colorClass="tc-green"
+        tooltip="90% of winning trades are below this value. A very high P90 vs average suggests a few outlier wins are inflating your results."
+      />
+    ),
+  },
+  {
+    id: 'metric-p90-loss',
+    title: 'P90 Loser',
+    section: 'performance',
+    defaultVisible: false,
+    w: 3,
+    render: (st) => (
+      <Metric
+        label="P90 Loser"
+        value={`-${fmtNum(st.p90Loss)} $`}
+        sub="90th percentile"
+        colorClass="tc-red"
+        tooltip="90% of losing trades are below this size. A very high P90 vs average suggests a few large losses are damaging your overall results."
+      />
+    ),
+  },
 ];
 
 // ─── Special panels ───────────────────────────────────────────────────────────

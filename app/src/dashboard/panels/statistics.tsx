@@ -5,6 +5,15 @@ import { Trade } from '../../types/tradeTypes';
 export const MetricLabelContext = createContext(false);
 
 // ─── Types ────────────────────────────────────────────────────────────────────
+export interface SessionStats {
+  name: string;
+  trades: number;
+  wins: number;
+  winRate: number;
+  totalPnl: number;
+  avgPnl: number;
+}
+
 export interface TradeStats {
   totalPnl: number;
   equityCurve: number[];
@@ -17,6 +26,12 @@ export interface TradeStats {
   lossTrades: number;
   winRate: number;
   lossRate: number;
+  avgWin: number;
+  avgLoss: number;
+  medianWin: number;
+  medianLoss: number;
+  p90Win: number;
+  p90Loss: number;
   riskReward: number;
   expectancy: number;
   maxDrawdown: number;
@@ -31,9 +46,34 @@ export interface TradeStats {
   pnlList: number[];
   feesBySource: Record<string, number>;
   totalFees: number;
+  bySession: SessionStats[];
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+const median = (sorted: number[]): number => {
+  if (!sorted.length) return 0;
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+};
+
+const percentile = (sorted: number[], p: number): number => {
+  if (!sorted.length) return 0;
+  const idx = Math.ceil(p * sorted.length) - 1;
+  return sorted[Math.max(0, Math.min(idx, sorted.length - 1))];
+};
+
+/** UTC hour → market session name */
+const sessionOf = (date: Date): string => {
+  const h = date.getUTCHours();
+  if (h < 8)  return 'Asia';
+  if (h < 13) return 'London';
+  if (h < 17) return 'NY Open';
+  if (h < 21) return 'New York';
+  return 'Off Hours';
+};
+
+const SESSION_ORDER = ['Asia', 'London', 'NY Open', 'New York', 'Off Hours'];
+
 const stdDev = (values: number[]): number => {
   if (values.length === 0) return 0;
   const mean = values.reduce((a, b) => a + b, 0) / values.length;
@@ -165,6 +205,44 @@ export const computeTradeStats = (trades: Trade[]): TradeStats => {
   const var95 = sortedPnl.length > 0 ? (sortedPnl[var95Index] ?? 0) : 0;
   const totalFees = Object.values(feesBySource).reduce((a, b) => a + b, 0);
 
+  // ── Distribution stats ──────────────────────────────────────────────────────
+  const winPnls  = pnlList.filter((v) => v > 0).sort((a, b) => a - b);
+  const lossPnls = pnlList.filter((v) => v < 0).map(Math.abs).sort((a, b) => a - b);
+
+  const medianWin  = median(winPnls);
+  const medianLoss = median(lossPnls);
+  // p90Win: 90th percentile of wins — "top 10% wins are above this"
+  const p90Win  = percentile(winPnls,  0.9);
+  // p90Loss: 90th percentile of losses by size — "top 10% losses are above this"
+  const p90Loss = percentile(lossPnls, 0.9);
+
+  // ── Session breakdown ───────────────────────────────────────────────────────
+  const sessionMap = new Map<string, { wins: number; pnls: number[] }>();
+  SESSION_ORDER.forEach((s) => sessionMap.set(s, { wins: 0, pnls: [] }));
+
+  for (const t of sortedTrades) {
+    const ref = t.opened ?? t.closed;
+    if (!(ref instanceof Date) || isNaN(ref.getTime())) continue;
+    const s = sessionOf(ref);
+    const bucket = sessionMap.get(s)!;
+    bucket.pnls.push(t.pnl);
+    if (t.pnl > 0) bucket.wins++;
+  }
+
+  const bySession: SessionStats[] = SESSION_ORDER.map((name) => {
+    const { wins, pnls } = sessionMap.get(name)!;
+    const n = pnls.length;
+    const total = pnls.reduce((a, b) => a + b, 0);
+    return {
+      name,
+      trades: n,
+      wins,
+      winRate: n > 0 ? (wins / n) * 100 : 0,
+      totalPnl: total,
+      avgPnl: n > 0 ? total / n : 0,
+    };
+  }).filter((s) => s.trades > 0);
+
   return {
     totalPnl,
     equityCurve,
@@ -177,6 +255,12 @@ export const computeTradeStats = (trades: Trade[]): TradeStats => {
     lossTrades,
     winRate,
     lossRate,
+    avgWin,
+    avgLoss,
+    medianWin,
+    medianLoss,
+    p90Win,
+    p90Loss,
     riskReward,
     expectancy,
     maxDrawdown,
@@ -191,6 +275,7 @@ export const computeTradeStats = (trades: Trade[]): TradeStats => {
     pnlList,
     feesBySource,
     totalFees,
+    bySession,
   };
 };
 
