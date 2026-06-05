@@ -11,4 +11,4 @@ export const render = (url: string): string => {
       </StaticRouter>
     </React.StrictMode>
   );
-}
+};

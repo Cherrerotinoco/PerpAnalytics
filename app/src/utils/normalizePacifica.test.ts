@@ -136,12 +136,26 @@ describe('normalizePacificaTrades', () => {
     const closeTime = 2_000_000;
     const trades = normalizePacificaTrades([
       openLong({ amount: '10' }),
-      closeLong({ history_id: 1, created_at: closeTime, amount: '6', pnl: '3.00', fee: '0.30', entry_price: '150' }),
-      closeLong({ history_id: 2, created_at: closeTime, amount: '4', pnl: '2.00', fee: '0.20', entry_price: '150' }),
+      closeLong({
+        history_id: 1,
+        created_at: closeTime,
+        amount: '6',
+        pnl: '3.00',
+        fee: '0.30',
+        entry_price: '150',
+      }),
+      closeLong({
+        history_id: 2,
+        created_at: closeTime,
+        amount: '4',
+        pnl: '2.00',
+        fee: '0.20',
+        entry_price: '150',
+      }),
     ]);
     expect(trades).toHaveLength(1);
-    expect(trades[0].pnl).toBeCloseTo(5.0);   // 3.00 + 2.00
-    expect(trades[0].fee).toBeCloseTo(0.5);    // 0.30 + 0.20
+    expect(trades[0].pnl).toBeCloseTo(5.0); // 3.00 + 2.00
+    expect(trades[0].fee).toBeCloseTo(0.5); // 0.30 + 0.20
     expect(trades[0].sizeUsd).toBeCloseTo(1500); // (6 + 4) * 150
   });
 

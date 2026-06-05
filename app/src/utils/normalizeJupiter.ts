@@ -98,8 +98,7 @@ export const normalizeJupiterTrades = (events: JupiterTrade[]): Trade[] => {
             closeType = 'Manual';
           }
 
-          const entryPrice =
-            totalEntrySize > 0 ? totalEntryCost / totalEntrySize : undefined;
+          const entryPrice = totalEntrySize > 0 ? totalEntryCost / totalEntrySize : undefined;
 
           trades.push({
             symbol: e.positionName.replace(/-PERP$/i, ''),

@@ -1,8 +1,13 @@
 import { useEffect, useRef, Suspense, lazy, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
-  CgSearchFound, CgUserRemove, CgUnavailable,
-  CgTrending, CgPerformance, CgShield, CgPlug,
+  CgSearchFound,
+  CgUserRemove,
+  CgUnavailable,
+  CgTrending,
+  CgPerformance,
+  CgShield,
+  CgPlug,
 } from 'react-icons/cg';
 import type { ComponentType } from 'react';
 import { MOCK_TRADES } from '../utils/mockTrades';
@@ -11,7 +16,7 @@ import type { TradeStats } from '../dashboard/panels/statistics';
 import { MetricPanel } from '../dashboard/panels/metricPanel';
 
 const EquityCurveChart = lazy(() => import('../dashboard/panels/equityCurveChart'));
-const PnlCalendar      = lazy(() => import('../dashboard/panels/pnlCalendar'));
+const PnlCalendar = lazy(() => import('../dashboard/panels/pnlCalendar'));
 
 // ─── Fallback skeleton ────────────────────────────────────────────────────────
 const ChartSkeleton = () => <div className="tc-landing-chart-skeleton" />;
@@ -62,7 +67,7 @@ const SHOWCASE_METRICS = [
 // ─── Component ────────────────────────────────────────────────────────────────
 const HomePage = () => {
   const navigate = useNavigate();
-  const demoRef  = useRef<HTMLElement>(null);
+  const demoRef = useRef<HTMLElement>(null);
 
   // Redirect legacy shared links: /?wallet=xxx → /dashboard?wallet=xxx
   useEffect(() => {
@@ -80,13 +85,13 @@ const HomePage = () => {
 
   return (
     <div className="tc-home">
-
       {/* ── Hero ─────────────────────────────────────────────────────────── */}
       <section className="tc-hero">
         <div className="tc-hero-inner">
           <p className="tc-hero-eyebrow">Solana perpetuals analytics</p>
           <h1 className="tc-hero-headline">
-            Understand your trading,<br />
+            Understand your trading,
+            <br />
             <span className="tc-hero-headline-accent">not just your PnL.</span>
           </h1>
           <p className="tc-hero-subtitle">
@@ -106,7 +111,6 @@ const HomePage = () => {
               See demo ↓
             </button>
           </div>
-
         </div>
       </section>
 
@@ -203,7 +207,6 @@ const HomePage = () => {
           </Link>
         </div>
       </section>
-
     </div>
   );
 };

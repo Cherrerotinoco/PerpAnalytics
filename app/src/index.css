@@ -366,7 +366,9 @@ body {
   padding: 0.25rem 0.7rem;
   border: 1px solid var(--tc-border);
   border-radius: var(--tc-radius);
-  transition: color 0.15s, border-color 0.15s;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
 }
 .tc-header-app-link:hover {
   color: var(--tc-text);
@@ -599,7 +601,6 @@ body {
   grid-template-columns: 1fr 1fr;
   gap: 0.4rem;
 }
-
 
 .tc-metric-sub {
   font-size: 0.65rem;
@@ -1262,7 +1263,9 @@ body {
 }
 
 @media (max-width: 640px) {
-  .tc-trust-grid { grid-template-columns: 1fr; }
+  .tc-trust-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .tc-trust-card {
@@ -1339,7 +1342,6 @@ body {
   margin-bottom: 20px;
 }
 
-
 /* ── Chart showcase ─────────────────────────────────────────────────────────── */
 .tc-landing-charts {
   display: grid;
@@ -1380,8 +1382,13 @@ body {
 }
 
 @keyframes tc-pulse {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.45; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
 }
 
 /* ── Feature cards ──────────────────────────────────────────────────────────── */
@@ -1591,7 +1598,9 @@ body {
   color: var(--tc-muted);
   cursor: pointer;
   text-align: left;
-  transition: background 0.1s, color 0.1s;
+  transition:
+    background 0.1s,
+    color 0.1s;
   white-space: nowrap;
 }
 .tc-filter-menu-item:hover {
@@ -1614,7 +1623,9 @@ body {
   background: transparent;
   flex-shrink: 0;
   color: var(--tc-accent);
-  transition: border-color 0.1s, background 0.1s;
+  transition:
+    border-color 0.1s,
+    background 0.1s;
 }
 .tc-filter-menu-item--checked .tc-filter-menu-check {
   border-color: var(--tc-accent);
@@ -1685,7 +1696,9 @@ body {
     letter-spacing: 0.05em;
     text-transform: uppercase;
     cursor: pointer;
-    transition: color 0.12s, border-color 0.12s;
+    transition:
+      color 0.12s,
+      border-color 0.12s;
   }
   .tc-filter-mobile-btn:hover {
     color: var(--tc-text);
@@ -1730,13 +1743,21 @@ body {
 }
 
 @keyframes tc-fade-in {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes tc-slide-in {
-  from { transform: translateX(100%); }
-  to   { transform: translateX(0); }
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
 }
 
 .tc-offcanvas-header {
@@ -1767,7 +1788,9 @@ body {
   color: var(--tc-muted);
   font-size: 1rem;
   cursor: pointer;
-  transition: color 0.12s, border-color 0.12s;
+  transition:
+    color 0.12s,
+    border-color 0.12s;
 }
 .tc-offcanvas-close:hover {
   color: var(--tc-text);
@@ -1834,7 +1857,9 @@ body {
   font-family: inherit;
   cursor: pointer;
   text-align: left;
-  transition: background 0.1s, color 0.1s;
+  transition:
+    background 0.1s,
+    color 0.1s;
 }
 .tc-offcanvas-item:hover {
   background: var(--tc-surface-2);
@@ -1921,7 +1946,9 @@ body {
   cursor: pointer;
   color: var(--tc-border);
   border-radius: 3px;
-  transition: color 0.15s, background 0.15s;
+  transition:
+    color 0.15s,
+    background 0.15s;
   line-height: 1;
 }
 .tc-gs-remove-btn:hover {
@@ -1978,7 +2005,6 @@ body {
   flex-direction: column;
   gap: 6px;
 }
-
 
 /* Resize handle — GridStack uses .ui-resizable-se */
 .grid-stack-item > .ui-resizable-se {
@@ -2198,8 +2224,14 @@ body {
 }
 
 @keyframes tc-modal-in {
-  from { opacity: 0; transform: translate(-50%, -48%) scale(0.97); }
-  to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  from {
+    opacity: 0;
+    transform: translate(-50%, -48%) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
 }
 
 .tc-modal-header {
@@ -2226,7 +2258,9 @@ body {
   font-size: 0.8rem;
   cursor: pointer;
   flex-shrink: 0;
-  transition: color 0.12s, border-color 0.12s;
+  transition:
+    color 0.12s,
+    border-color 0.12s;
 }
 .tc-modal-close:hover {
   color: var(--tc-text);

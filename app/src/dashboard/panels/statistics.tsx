@@ -35,11 +35,9 @@ export interface TradeStats {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const stdDev = (values: number[]): number => {
-  if (values.length < 2) {
-    return 0;
-  }
+  if (values.length === 0) return 0;
   const mean = values.reduce((a, b) => a + b, 0) / values.length;
-  const variance = values.reduce((sum, v) => sum + (v - mean) ** 2, 0) / (values.length - 1);
+  const variance = values.reduce((sum, v) => sum + (v - mean) ** 2, 0) / values.length;
   return Math.sqrt(variance);
 };
 
@@ -140,7 +138,7 @@ export const computeTradeStats = (trades: Trade[]): TradeStats => {
   const avgWin = winTrades > 0 ? sumWin / winTrades : 0;
   const avgLoss = lossTrades > 0 ? sumLoss / lossTrades : 0;
   const riskReward = avgLoss > 0 ? avgWin / avgLoss : avgWin > 0 ? Infinity : 0;
-  const expectancy = totalTrades > 0 ? totalPnl / totalTrades : 0;
+  const expectancy = totalTrades > 0 ? (winRate / 100) * avgWin - (lossRate / 100) * avgLoss : 0;
   const std = stdDev(pnlList);
   const sharpeRatio = std > 0 ? expectancy / std : 0;
   const dStd = downsideStdDev(pnlList);

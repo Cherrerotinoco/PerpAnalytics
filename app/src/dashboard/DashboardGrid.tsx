@@ -13,9 +13,9 @@ import type { FilterPanelDef } from './FilterBar';
 import { PanelPlaceholder } from './PanelPlaceholder';
 
 const EquityCurveChart = lazy(() => import('./panels/equityCurveChart'));
-const PnlCalendar      = lazy(() => import('./panels/pnlCalendar'));
+const PnlCalendar = lazy(() => import('./panels/pnlCalendar'));
 const PnlBySymbolChart = lazy(() => import('./panels/pnlBySymbolChart'));
-const TradeList        = lazy(() => import('./panels/tradeList'));
+const TradeList = lazy(() => import('./panels/tradeList'));
 
 // ─── Panel registry ───────────────────────────────────────────────────────────
 interface PanelDef {
@@ -34,19 +34,57 @@ interface PanelDef {
 }
 
 const CHART_PANELS: PanelDef[] = [
-  { id: 'equity',   title: 'Equity Curve',  section: 'charts', defaultVisible: true,  w: 8,  h: 6, x: 0, y: 0, sizeToContent: true },
-  { id: 'symbol',   title: 'PnL by Symbol', section: 'charts', defaultVisible: false, w: 4,  h: 6, x: 8, y: 0, sizeToContent: true },
-  { id: 'calendar', title: 'PnL Calendar',  section: 'charts', defaultVisible: false, w: 5,  h: 6, sizeToContent: true },
-  { id: 'history',  title: 'Trade History', section: 'charts', defaultVisible: true,  w: 12, h: 6, x: 0, y: 6, sizeToContent: true },
+  {
+    id: 'equity',
+    title: 'Equity Curve',
+    section: 'charts',
+    defaultVisible: true,
+    w: 8,
+    h: 6,
+    x: 0,
+    y: 0,
+    sizeToContent: true,
+  },
+  {
+    id: 'symbol',
+    title: 'PnL by Symbol',
+    section: 'charts',
+    defaultVisible: false,
+    w: 4,
+    h: 6,
+    x: 8,
+    y: 0,
+    sizeToContent: true,
+  },
+  {
+    id: 'calendar',
+    title: 'PnL Calendar',
+    section: 'charts',
+    defaultVisible: false,
+    w: 5,
+    h: 6,
+    sizeToContent: true,
+  },
+  {
+    id: 'history',
+    title: 'Trade History',
+    section: 'charts',
+    defaultVisible: true,
+    w: 12,
+    h: 6,
+    x: 0,
+    y: 6,
+    sizeToContent: true,
+  },
 ];
 
 // Default positions for the metric panels visible on first load (Overview layout).
 // Non-visible panels use autoPosition when the user enables them.
 const METRIC_DEFAULT_POSITIONS: Record<string, { x: number; y: number; w: number }> = {
-  'metric-total-pnl':    { x: 8, y: 0, w: 2 },
+  'metric-total-pnl': { x: 8, y: 0, w: 2 },
   'metric-total-trades': { x: 10, y: 0, w: 2 },
-  'metric-win-rate':     { x: 8, y: 3, w: 2 },
-  'metric-streaks':      { x: 10, y: 3, w: 2 },
+  'metric-win-rate': { x: 8, y: 3, w: 2 },
+  'metric-streaks': { x: 10, y: 3, w: 2 },
 };
 
 const METRIC_PANELS: PanelDef[] = METRIC_PANEL_CONFIGS.map((c) => {
@@ -80,14 +118,21 @@ export const LAYOUT_PRESETS: LayoutPreset[] = [
   {
     id: 'overview',
     label: 'Overview',
-    visible: ['equity', 'history', 'metric-total-pnl', 'metric-total-trades', 'metric-win-rate', 'metric-streaks'],
+    visible: [
+      'equity',
+      'history',
+      'metric-total-pnl',
+      'metric-total-trades',
+      'metric-win-rate',
+      'metric-streaks',
+    ],
     positions: {
-      equity:                  { x: 0,  y: 0, w: 8,  h: 6 },
-      'metric-total-pnl':      { x: 8,  y: 0, w: 2,  h: 3 },
-      'metric-total-trades':   { x: 10, y: 0, w: 2,  h: 3 },
-      'metric-win-rate':       { x: 8,  y: 3, w: 2,  h: 3 },
-      'metric-streaks':        { x: 10, y: 3, w: 2,  h: 3 },
-      history:                 { x: 0,  y: 6, w: 12, h: 6 },
+      equity: { x: 0, y: 0, w: 8, h: 6 },
+      'metric-total-pnl': { x: 8, y: 0, w: 2, h: 3 },
+      'metric-total-trades': { x: 10, y: 0, w: 2, h: 3 },
+      'metric-win-rate': { x: 8, y: 3, w: 2, h: 3 },
+      'metric-streaks': { x: 10, y: 3, w: 2, h: 3 },
+      history: { x: 0, y: 6, w: 12, h: 6 },
     },
   },
   {
@@ -95,18 +140,23 @@ export const LAYOUT_PRESETS: LayoutPreset[] = [
     label: 'Performance',
     visible: [
       'equity',
-      'metric-total-pnl', 'metric-profit-factor', 'metric-expectancy',
-      'metric-risk-reward', 'metric-max-profit', 'metric-max-loss', 'metric-fees',
+      'metric-total-pnl',
+      'metric-profit-factor',
+      'metric-expectancy',
+      'metric-risk-reward',
+      'metric-max-profit',
+      'metric-max-loss',
+      'metric-fees',
     ],
     positions: {
-      equity:                  { x: 0, y: 0,  w: 12, h: 6 },
-      'metric-total-pnl':      { x: 0, y: 6,  w: 4,  h: 3 },
-      'metric-profit-factor':  { x: 4, y: 6,  w: 4,  h: 3 },
-      'metric-expectancy':     { x: 8, y: 6,  w: 4,  h: 3 },
-      'metric-risk-reward':    { x: 0, y: 9,  w: 4,  h: 3 },
-      'metric-max-profit':     { x: 4, y: 9,  w: 4,  h: 3 },
-      'metric-max-loss':       { x: 8, y: 9,  w: 4,  h: 3 },
-      'metric-fees':           { x: 0, y: 12, w: 4,  h: 3 },
+      equity: { x: 0, y: 0, w: 12, h: 6 },
+      'metric-total-pnl': { x: 0, y: 6, w: 4, h: 3 },
+      'metric-profit-factor': { x: 4, y: 6, w: 4, h: 3 },
+      'metric-expectancy': { x: 8, y: 6, w: 4, h: 3 },
+      'metric-risk-reward': { x: 0, y: 9, w: 4, h: 3 },
+      'metric-max-profit': { x: 4, y: 9, w: 4, h: 3 },
+      'metric-max-loss': { x: 8, y: 9, w: 4, h: 3 },
+      'metric-fees': { x: 0, y: 12, w: 4, h: 3 },
     },
   },
   {
@@ -114,35 +164,43 @@ export const LAYOUT_PRESETS: LayoutPreset[] = [
     label: 'Risk',
     visible: [
       'equity',
-      'metric-max-drawdown', 'metric-calmar', 'metric-sharpe',
-      'metric-sortino', 'metric-recovery-factor', 'metric-var95',
+      'metric-max-drawdown',
+      'metric-calmar',
+      'metric-sharpe',
+      'metric-sortino',
+      'metric-recovery-factor',
+      'metric-var95',
     ],
     positions: {
-      equity:                    { x: 0, y: 0, w: 12, h: 6 },
-      'metric-max-drawdown':     { x: 0, y: 6, w: 4,  h: 3 },
-      'metric-calmar':           { x: 4, y: 6, w: 4,  h: 3 },
-      'metric-sharpe':           { x: 8, y: 6, w: 4,  h: 3 },
-      'metric-sortino':          { x: 0, y: 9, w: 4,  h: 3 },
-      'metric-recovery-factor':  { x: 4, y: 9, w: 4,  h: 3 },
-      'metric-var95':            { x: 8, y: 9, w: 4,  h: 3 },
+      equity: { x: 0, y: 0, w: 12, h: 6 },
+      'metric-max-drawdown': { x: 0, y: 6, w: 4, h: 3 },
+      'metric-calmar': { x: 4, y: 6, w: 4, h: 3 },
+      'metric-sharpe': { x: 8, y: 6, w: 4, h: 3 },
+      'metric-sortino': { x: 0, y: 9, w: 4, h: 3 },
+      'metric-recovery-factor': { x: 4, y: 9, w: 4, h: 3 },
+      'metric-var95': { x: 8, y: 9, w: 4, h: 3 },
     },
   },
   {
     id: 'trade-stats',
     label: 'Trade Stats',
     visible: [
-      'symbol', 'calendar',
-      'metric-win-rate', 'metric-loss-rate', 'metric-total-trades', 'metric-streaks',
+      'symbol',
+      'calendar',
+      'metric-win-rate',
+      'metric-loss-rate',
+      'metric-total-trades',
+      'metric-streaks',
       'history',
     ],
     positions: {
-      symbol:                  { x: 0, y: 0, w: 6,  h: 6 },
-      calendar:                { x: 6, y: 0, w: 6,  h: 6 },
-      'metric-win-rate':       { x: 0, y: 6, w: 3,  h: 3 },
-      'metric-loss-rate':      { x: 3, y: 6, w: 3,  h: 3 },
-      'metric-total-trades':   { x: 6, y: 6, w: 3,  h: 3 },
-      'metric-streaks':        { x: 9, y: 6, w: 3,  h: 3 },
-      history:                 { x: 0, y: 9, w: 12, h: 6 },
+      symbol: { x: 0, y: 0, w: 6, h: 6 },
+      calendar: { x: 6, y: 0, w: 6, h: 6 },
+      'metric-win-rate': { x: 0, y: 6, w: 3, h: 3 },
+      'metric-loss-rate': { x: 3, y: 6, w: 3, h: 3 },
+      'metric-total-trades': { x: 6, y: 6, w: 3, h: 3 },
+      'metric-streaks': { x: 9, y: 6, w: 3, h: 3 },
+      history: { x: 0, y: 9, w: 12, h: 6 },
     },
   },
   {
@@ -150,16 +208,16 @@ export const LAYOUT_PRESETS: LayoutPreset[] = [
     label: 'Minimal',
     visible: ['metric-total-pnl', 'metric-win-rate', 'metric-max-drawdown', 'metric-profit-factor'],
     positions: {
-      'metric-total-pnl':      { x: 0, y: 0, w: 3, h: 3 },
-      'metric-win-rate':       { x: 3, y: 0, w: 3, h: 3 },
-      'metric-max-drawdown':   { x: 6, y: 0, w: 3, h: 3 },
-      'metric-profit-factor':  { x: 9, y: 0, w: 3, h: 3 },
+      'metric-total-pnl': { x: 0, y: 0, w: 3, h: 3 },
+      'metric-win-rate': { x: 3, y: 0, w: 3, h: 3 },
+      'metric-max-drawdown': { x: 6, y: 0, w: 3, h: 3 },
+      'metric-profit-factor': { x: 9, y: 0, w: 3, h: 3 },
     },
   },
 ];
 
 // ─── Persistence ──────────────────────────────────────────────────────────────
-const LAYOUT_KEY     = 'tc:gs-layout-v1';
+const LAYOUT_KEY = 'tc:gs-layout-v1';
 const VISIBILITY_KEY = 'tc:panel-visibility-v1';
 
 type SavedItem = { id: string; x: number; y: number; w: number; h: number };
@@ -178,10 +236,16 @@ const loadSavedPositions = (): Record<string, SavedItem> => {
 const saveLayout = (gs: GridStack): void => {
   try {
     const items = (gs.save(false) as GridStackWidget[]).map(({ id, x, y, w, h }) => ({
-      id, x: x ?? 0, y: y ?? 0, w: w ?? 1, h: h ?? 1,
+      id,
+      x: x ?? 0,
+      y: y ?? 0,
+      w: w ?? 1,
+      h: h ?? 1,
     }));
     localStorage.setItem(LAYOUT_KEY, JSON.stringify(items));
-  } catch { /* quota exceeded */ }
+  } catch {
+    /* quota exceeded */
+  }
 };
 
 const loadVisiblePanels = (): Set<string> => {
@@ -197,7 +261,9 @@ const loadVisiblePanels = (): Set<string> => {
 const saveVisiblePanels = (ids: Set<string>): void => {
   try {
     localStorage.setItem(VISIBILITY_KEY, JSON.stringify([...ids]));
-  } catch { /* quota exceeded */ }
+  } catch {
+    /* quota exceeded */
+  }
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -224,9 +290,13 @@ const panelHTML = (id: string, title: string, scroll = false): string => `
 `;
 
 // ─── Panel body wrapper ───────────────────────────────────────────────────────
-const PanelBody = ({ children, scroll = false }: { children: React.ReactNode; scroll?: boolean }) => (
-  <div className={`tc-gs-content${scroll ? ' tc-gs-content--scroll' : ''}`}>{children}</div>
-);
+const PanelBody = ({
+  children,
+  scroll = false,
+}: {
+  children: React.ReactNode;
+  scroll?: boolean;
+}) => <div className={`tc-gs-content${scroll ? ' tc-gs-content--scroll' : ''}`}>{children}</div>;
 
 // ─── GridStack options ────────────────────────────────────────────────────────
 const GS_OPTS: GridStackOptions = {
@@ -253,15 +323,15 @@ interface DashboardGridProps {
 // ─── Component ────────────────────────────────────────────────────────────────
 const DashboardGrid = ({ filteredTrades, hasData, hasQueried }: DashboardGridProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const gsRef        = useRef<GridStack | null>(null);
+  const gsRef = useRef<GridStack | null>(null);
 
-  const [gsKey,   setGsKey]               = useState(0);
-  const [gsReady, setGsReady]             = useState(false);
-  const [mounts,  setMounts]              = useState<Map<string, HTMLElement>>(new Map());
+  const [gsKey, setGsKey] = useState(0);
+  const [gsReady, setGsReady] = useState(false);
+  const [mounts, setMounts] = useState<Map<string, HTMLElement>>(new Map());
   const [visiblePanelIds, setVisiblePanelIds] = useState<Set<string>>(loadVisiblePanels);
-  const onRemovePanelRef    = useRef<(id: string) => void>(() => {});
+  const onRemovePanelRef = useRef<(id: string) => void>(() => {});
   // Loaded once per GridStack init (gsKey change) so sync effect doesn't hit localStorage repeatedly.
-  const savedPositionsRef   = useRef<Record<string, SavedItem>>({});
+  const savedPositionsRef = useRef<Record<string, SavedItem>>({});
 
   const stats = useMemo(() => computeTradeStats(filteredTrades), [filteredTrades]);
 
@@ -307,26 +377,26 @@ const DashboardGrid = ({ filteredTrades, hasData, hasQueried }: DashboardGridPro
   // ── 2. Sync visible panels into GridStack ──────────────────────────────────
   useEffect(() => {
     if (!gsReady || !gsRef.current || !containerRef.current) return;
-    const gs        = gsRef.current;
+    const gs = gsRef.current;
     const container = containerRef.current;
-    const saved     = savedPositionsRef.current;
+    const saved = savedPositionsRef.current;
 
     gs.batchUpdate(true);
     for (const panel of ALL_PANELS) {
-      const exists      = !!container.querySelector(`[gs-id="${panel.id}"]`);
+      const exists = !!container.querySelector(`[gs-id="${panel.id}"]`);
       const shouldExist = visiblePanelIds.has(panel.id);
 
       if (shouldExist && !exists) {
         const sp = saved[panel.id];
         gs.addWidget({
-          id:            panel.id,
-          w:             sp?.w ?? panel.w,
-          h:             sp?.h ?? panel.h,
-          x:             sp?.x ?? panel.x,
-          y:             sp?.y ?? panel.y,
-          autoPosition:  !sp && panel.x === undefined,
+          id: panel.id,
+          w: sp?.w ?? panel.w,
+          h: sp?.h ?? panel.h,
+          x: sp?.x ?? panel.x,
+          y: sp?.y ?? panel.y,
+          autoPosition: !sp && panel.x === undefined,
           sizeToContent: panel.sizeToContent ?? false,
-          content:       panelHTML(panel.id, panel.title, panel.scroll),
+          content: panelHTML(panel.id, panel.title, panel.scroll),
         });
       } else if (!shouldExist && exists) {
         const itemEl = container.querySelector<GridItemHTMLElement>(`[gs-id="${panel.id}"]`);
@@ -349,7 +419,7 @@ const DashboardGrid = ({ filteredTrades, hasData, hasQueried }: DashboardGridPro
   // ── 3. Auto-size heights after portals paint ───────────────────────────────
   useEffect(() => {
     if (!gsReady || !gsRef.current || !containerRef.current) return;
-    const gs        = gsRef.current;
+    const gs = gsRef.current;
     const container = containerRef.current;
 
     const CHART_IDS = CHART_PANELS.map((p) => p.id);
@@ -436,13 +506,29 @@ const DashboardGrid = ({ filteredTrades, hasData, hasQueried }: DashboardGridPro
 
     switch (panelId) {
       case 'equity':
-        return <Suspense fallback={<PanelPlaceholder />}><EquityCurveChart stats={stats} /></Suspense>;
+        return (
+          <Suspense fallback={<PanelPlaceholder />}>
+            <EquityCurveChart stats={stats} />
+          </Suspense>
+        );
       case 'symbol':
-        return <Suspense fallback={<PanelPlaceholder />}><PnlBySymbolChart trades={filteredTrades} /></Suspense>;
+        return (
+          <Suspense fallback={<PanelPlaceholder />}>
+            <PnlBySymbolChart trades={filteredTrades} />
+          </Suspense>
+        );
       case 'calendar':
-        return <Suspense fallback={<PanelPlaceholder />}><PnlCalendar trades={filteredTrades} /></Suspense>;
+        return (
+          <Suspense fallback={<PanelPlaceholder />}>
+            <PnlCalendar trades={filteredTrades} />
+          </Suspense>
+        );
       case 'history':
-        return <Suspense fallback={<PanelPlaceholder />}><TradeList trades={filteredTrades} /></Suspense>;
+        return (
+          <Suspense fallback={<PanelPlaceholder />}>
+            <TradeList trades={filteredTrades} />
+          </Suspense>
+        );
       default:
         return <MetricPanel panelId={panelId} stats={stats} />;
     }
@@ -451,12 +537,18 @@ const DashboardGrid = ({ filteredTrades, hasData, hasQueried }: DashboardGridPro
   // ── Filter bar data ────────────────────────────────────────────────────────
   const filterPanels = useMemo<FilterPanelDef[]>(
     () => ALL_PANELS.map(({ id, title, section }) => ({ id, title, section })),
-    [],
+    []
   );
 
   return (
     <div className="tc-gs-wrapper">
-      <FilterBar panels={filterPanels} visible={visiblePanelIds} onToggle={handleToggle} onToggleSection={handleToggleSection} onApplyPreset={onApplyPreset} />
+      <FilterBar
+        panels={filterPanels}
+        visible={visiblePanelIds}
+        onToggle={handleToggle}
+        onToggleSection={handleToggleSection}
+        onApplyPreset={onApplyPreset}
+      />
 
       {/* GridStack manages this div — React must not render children here directly */}
       <div ref={containerRef} className="grid-stack" />
@@ -465,14 +557,11 @@ const DashboardGrid = ({ filteredTrades, hasData, hasQueried }: DashboardGridPro
       {Array.from(mounts.entries()).map(([panelId, mountEl]) => {
         const def = ALL_PANELS.find((p) => p.id === panelId);
         return createPortal(
-          <PanelBody scroll={def?.scroll}>
-            {renderContent(panelId)}
-          </PanelBody>,
+          <PanelBody scroll={def?.scroll}>{renderContent(panelId)}</PanelBody>,
           mountEl,
-          panelId,
+          panelId
         );
       })}
-
     </div>
   );
 };

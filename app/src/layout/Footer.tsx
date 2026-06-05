@@ -18,15 +18,17 @@ const Footer = () => {
   return (
     <footer className="tc-footer">
       <div className="tc-footer-inner">
-
         {/* ── Three-column body ───────────────────────────────────────────── */}
         <div className="tc-footer-body">
-
           {/* Brand */}
           <div className="tc-footer-col">
-            <Link to="/" className="tc-footer-brand">PerpAnalytics</Link>
+            <Link to="/" className="tc-footer-brand">
+              PerpAnalytics
+            </Link>
             <p className="tc-footer-tagline">
-              Quantitative trade analytics<br />for Solana perpetuals.
+              Quantitative trade analytics
+              <br />
+              for Solana perpetuals.
             </p>
             <a
               href="https://github.com/Cherrerotinoco/PerpAnalytics"
@@ -43,8 +45,12 @@ const Footer = () => {
           <div className="tc-footer-col">
             <p className="tc-footer-col-title">Product</p>
             <nav className="tc-footer-nav">
-              <Link to="/dashboard" className="tc-footer-nav-link">Dashboard</Link>
-              <Link to="/cookie-policy" className="tc-footer-nav-link">Cookie Policy</Link>
+              <Link to="/dashboard" className="tc-footer-nav-link">
+                Dashboard
+              </Link>
+              <Link to="/cookie-policy" className="tc-footer-nav-link">
+                Cookie Policy
+              </Link>
             </nav>
           </div>
 
@@ -62,12 +68,9 @@ const Footer = () => {
               aria-label="Copy donation wallet address"
             >
               <code className="tc-footer-address-code">{SOL_ADDRESS}</code>
-              <span className="tc-footer-copy-badge">
-                {copied ? '✓ Copied' : 'Copy'}
-              </span>
+              <span className="tc-footer-copy-badge">{copied ? '✓ Copied' : 'Copy'}</span>
             </button>
           </div>
-
         </div>
 
         {/* ── Bottom bar ──────────────────────────────────────────────────── */}
@@ -76,7 +79,6 @@ const Footer = () => {
             © {new Date().getFullYear()} PerpAnalytics. All rights reserved.
           </p>
         </div>
-
       </div>
     </footer>
   );

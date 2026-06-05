@@ -73,7 +73,10 @@ describe('buildJupiterTrades', () => {
   });
 
   it('preserves symbol when no -PERP suffix', () => {
-    const trades = normalizeJupiterTrades([open({ positionName: 'BTC' }), close({ positionName: 'BTC' })]);
+    const trades = normalizeJupiterTrades([
+      open({ positionName: 'BTC' }),
+      close({ positionName: 'BTC' }),
+    ]);
     expect(trades[0].symbol).toBe('BTC');
   });
 
@@ -139,7 +142,12 @@ describe('buildJupiterTrades', () => {
       open({ positionPubkey: 'pos1', positionName: 'SOL-PERP' }),
       close({ positionPubkey: 'pos1', positionName: 'SOL-PERP' }),
       open({ positionPubkey: 'pos2', positionName: 'BTC-PERP', createdTime: 1_000_500 }),
-      close({ positionPubkey: 'pos2', positionName: 'BTC-PERP', createdTime: 1_001_500, txHash: 'tx2' }),
+      close({
+        positionPubkey: 'pos2',
+        positionName: 'BTC-PERP',
+        createdTime: 1_001_500,
+        txHash: 'tx2',
+      }),
     ]);
     expect(trades).toHaveLength(2);
     expect(trades.map((t) => t.symbol).sort()).toEqual(['BTC', 'SOL']);

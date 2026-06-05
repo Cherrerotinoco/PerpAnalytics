@@ -77,7 +77,7 @@ export const normalizePacificaTrades = (fills: PacificaFill[]): Trade[] => {
     // Weighted-average entry price from the open fills we aggregated earlier,
     // and the close price from the first close fill.
     const entryPrice = parseFloat(first.entry_price) || undefined;
-    const exitPrice  = parseFloat(first.price) || undefined;
+    const exitPrice = parseFloat(first.price) || undefined;
 
     trades.push({
       symbol: first.symbol,

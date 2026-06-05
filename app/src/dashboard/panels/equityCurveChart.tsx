@@ -53,9 +53,9 @@ const EquityCurveChart = memo(({ stats }: { stats: TradeStats }) => {
 
   const isPositive = stats.totalPnl >= 0;
   const greenColor = theme === 'dark' ? '#22c55e' : '#16a34a';
-  const redColor   = theme === 'dark' ? '#ef4444' : '#dc2626';
-  const gridColor  = theme === 'dark' ? '#2a2a2a' : '#e5e7eb';
-  const axisColor  = theme === 'dark' ? '#6b7280' : '#9ca3af';
+  const redColor = theme === 'dark' ? '#ef4444' : '#dc2626';
+  const gridColor = theme === 'dark' ? '#2a2a2a' : '#e5e7eb';
+  const axisColor = theme === 'dark' ? '#6b7280' : '#9ca3af';
   const refLineColor = theme === 'dark' ? '#374151' : '#d1d5db';
 
   const yValues = data.map((d) => d.y);
@@ -66,12 +66,14 @@ const EquityCurveChart = memo(({ stats }: { stats: TradeStats }) => {
   const yRange = yMax - yMin;
   const zeroRatio =
     yRange === 0
-      ? (yMax >= 0 ? 1 : 0)   // flat line: all green if ≥0, all red if <0
+      ? yMax >= 0
+        ? 1
+        : 0 // flat line: all green if ≥0, all red if <0
       : yMax > 0 && yMin < 0
         ? yMax / yRange
         : yMax <= 0
-          ? 0                  // all negative → full red
-          : 1;                 // all positive → full green
+          ? 0 // all negative → full red
+          : 1; // all positive → full green
 
   const xMin = data[0].x;
   const xMax = data[data.length - 1].x;
@@ -102,8 +104,8 @@ const EquityCurveChart = memo(({ stats }: { stats: TradeStats }) => {
         <LineChart data={data} margin={{ top: 8, right: 16, left: 8, bottom: 24 }}>
           <defs>
             <linearGradient id="equityLineGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset={zeroRatio}   stopColor={greenColor} />
-              <stop offset={zeroRatio}   stopColor={redColor}   />
+              <stop offset={zeroRatio} stopColor={greenColor} />
+              <stop offset={zeroRatio} stopColor={redColor} />
             </linearGradient>
           </defs>
           <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />

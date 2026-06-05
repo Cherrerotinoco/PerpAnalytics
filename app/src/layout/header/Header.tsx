@@ -41,9 +41,7 @@ const Header = () => {
           onClick={toggleTheme}
           title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
         >
-          {theme === 'dark'
-            ? <CgSun  aria-hidden="true" />
-            : <CgMoon aria-hidden="true" />}
+          {theme === 'dark' ? <CgSun aria-hidden="true" /> : <CgMoon aria-hidden="true" />}
         </button>
       </div>
     </header>

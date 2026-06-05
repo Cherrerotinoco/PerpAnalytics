@@ -89,9 +89,9 @@ const Th = ({
 
 // ─── Component ────────────────────────────────────────────────────────────────
 const TradeList = memo(({ trades }: { trades: Trade[] }) => {
-  const [sort, setSort]           = useState<{ col: SortCol; dir: SortDir }>({ col: 'opened', dir: 'desc' });
-  const [page, setPage]           = useState(1);
-  const [selected, setSelected]   = useState<Trade | null>(null);
+  const [sort, setSort] = useState<{ col: SortCol; dir: SortDir }>({ col: 'opened', dir: 'desc' });
+  const [page, setPage] = useState(1);
+  const [selected, setSelected] = useState<Trade | null>(null);
 
   // ── Sort (memoised — only recomputes when trades array or sort config changes) ──
   const sorted = useMemo(
@@ -146,14 +146,14 @@ const TradeList = memo(({ trades }: { trades: Trade[] }) => {
         <table className="tc-table w-100">
           <thead>
             <tr>
-              <Th label="Open"   col="opened"  sort={sort} onSort={handleSort} />
-              <Th label="Close"  col="closed"  sort={sort} onSort={handleSort} />
-              <Th label="Symbol" col="symbol"  sort={sort} onSort={handleSort} />
-              <Th label="Side"   col="side"    sort={sort} onSort={handleSort} />
-              <Th label="PnL"    col="pnl"     sort={sort} onSort={handleSort} />
-              <Th label="Fee"    col="fee"      sort={sort} onSort={handleSort} />
-              <Th label="Size"   col="sizeUsd" sort={sort} onSort={handleSort} />
-              <Th label="Source" col="source"  sort={sort} onSort={handleSort} />
+              <Th label="Open" col="opened" sort={sort} onSort={handleSort} />
+              <Th label="Close" col="closed" sort={sort} onSort={handleSort} />
+              <Th label="Symbol" col="symbol" sort={sort} onSort={handleSort} />
+              <Th label="Side" col="side" sort={sort} onSort={handleSort} />
+              <Th label="PnL" col="pnl" sort={sort} onSort={handleSort} />
+              <Th label="Fee" col="fee" sort={sort} onSort={handleSort} />
+              <Th label="Size" col="sizeUsd" sort={sort} onSort={handleSort} />
+              <Th label="Source" col="source" sort={sort} onSort={handleSort} />
             </tr>
           </thead>
           <tbody>

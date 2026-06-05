@@ -170,7 +170,7 @@ const MonthGrid = ({
 // ─── Main component ───────────────────────────────────────────────────────────
 const PnlCalendar = memo(({ trades }: { trades: Trade[] }) => {
   const dailyMap = useMemo(() => buildDailyMap(trades), [trades]);
-  const months   = useMemo(() => getMonthRange(trades), [trades]);
+  const months = useMemo(() => getMonthRange(trades), [trades]);
   const [idx, setIdx] = useState(0);
 
   // Jump to most recent month whenever the trade set changes

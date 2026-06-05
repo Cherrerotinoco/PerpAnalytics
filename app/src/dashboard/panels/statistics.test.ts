@@ -7,14 +7,14 @@ import type { Trade } from '../../types/tradeTypes';
 const day = (n: number) => new Date(Date.UTC(2025, 0, n)); // Jan n 2025
 
 const makeTrade = (overrides: Partial<Trade> & { pnl: number }): Trade => ({
-  symbol:    'BTC',
-  opened:    day(1),
-  closed:    day(2),
-  side:      'long',
-  fee:       0,
-  sizeUsd:   1000,
+  symbol: 'BTC',
+  opened: day(1),
+  closed: day(2),
+  side: 'long',
+  fee: 0,
+  sizeUsd: 1000,
   closeType: 'TP',
-  source:    'Jupiter',
+  source: 'Jupiter',
   ...overrides,
 });
 
@@ -56,11 +56,7 @@ describe('computeTradeStats — empty input', () => {
 // ─── Basic aggregation ────────────────────────────────────────────────────────
 
 describe('computeTradeStats — basic aggregation', () => {
-  const trades = [
-    makeTrade({ pnl: 10 }),
-    makeTrade({ pnl: -5 }),
-    makeTrade({ pnl: 20 }),
-  ];
+  const trades = [makeTrade({ pnl: 10 }), makeTrade({ pnl: -5 }), makeTrade({ pnl: 20 })];
   const stats = computeTradeStats(trades);
 
   it('sums totalPnl correctly', () => {
@@ -101,10 +97,7 @@ describe('computeTradeStats — basic aggregation', () => {
 
 describe('computeTradeStats — profitFactor', () => {
   it('calculates grossProfit / grossLoss', () => {
-    const stats = computeTradeStats([
-      makeTrade({ pnl: 30 }),
-      makeTrade({ pnl: -10 }),
-    ]);
+    const stats = computeTradeStats([makeTrade({ pnl: 30 }), makeTrade({ pnl: -10 })]);
     expect(stats.profitFactor).toBeCloseTo(3);
   });
 
@@ -169,10 +162,7 @@ describe('computeTradeStats — maxDrawdown', () => {
   });
 
   it('returns 0 drawdown when equity only goes up', () => {
-    const stats = computeTradeStats([
-      makeTrade({ pnl: 5 }),
-      makeTrade({ pnl: 5 }),
-    ]);
+    const stats = computeTradeStats([makeTrade({ pnl: 5 }), makeTrade({ pnl: 5 })]);
     expect(stats.maxDrawdown).toBe(0);
     expect(stats.maxDrawdownPct).toBe(0);
   });
@@ -183,32 +173,32 @@ describe('computeTradeStats — maxDrawdown', () => {
 describe('computeTradeStats — consecutive streaks', () => {
   it('tracks maxConsecWins', () => {
     const stats = computeTradeStats([
-      makeTrade({ pnl:  5 }),
-      makeTrade({ pnl:  5 }),
-      makeTrade({ pnl:  5 }),
+      makeTrade({ pnl: 5 }),
+      makeTrade({ pnl: 5 }),
+      makeTrade({ pnl: 5 }),
       makeTrade({ pnl: -1 }),
-      makeTrade({ pnl:  5 }),
+      makeTrade({ pnl: 5 }),
     ]);
     expect(stats.maxConsecWins).toBe(3);
   });
 
   it('tracks maxConsecLosses', () => {
     const stats = computeTradeStats([
-      makeTrade({ pnl:  5 }),
+      makeTrade({ pnl: 5 }),
       makeTrade({ pnl: -1 }),
       makeTrade({ pnl: -1 }),
       makeTrade({ pnl: -1 }),
-      makeTrade({ pnl:  5 }),
+      makeTrade({ pnl: 5 }),
     ]);
     expect(stats.maxConsecLosses).toBe(3);
   });
 
   it('resets streak on breakeven trade', () => {
     const stats = computeTradeStats([
-      makeTrade({ pnl:  5 }),
-      makeTrade({ pnl:  5 }),
-      makeTrade({ pnl:  0 }),  // breakeven resets streak
-      makeTrade({ pnl:  5 }),
+      makeTrade({ pnl: 5 }),
+      makeTrade({ pnl: 5 }),
+      makeTrade({ pnl: 0 }), // breakeven resets streak
+      makeTrade({ pnl: 5 }),
     ]);
     expect(stats.maxConsecWins).toBe(2);
   });
@@ -234,8 +224,9 @@ describe('computeTradeStats — fees', () => {
 describe('computeTradeStats — var95', () => {
   it('returns the 5th-percentile PnL', () => {
     // 20 trades, 5th percentile = worst 5% = 1st value when sorted asc
-    const trades = Array.from({ length: 20 }, (_, i) =>
-      makeTrade({ pnl: i + 1 }),  // pnl: 1..20
+    const trades = Array.from(
+      { length: 20 },
+      (_, i) => makeTrade({ pnl: i + 1 }) // pnl: 1..20
     );
     const stats = computeTradeStats(trades);
     // sorted: [1,2,...20], ceil(0.05*20)-1 = ceil(1)-1 = 0 → var95 = 1
@@ -271,18 +262,12 @@ describe('computeTradeStats — Sharpe ratio', () => {
 
 describe('computeTradeStats — Sortino ratio', () => {
   it('returns Infinity when there are no losing trades', () => {
-    const stats = computeTradeStats([
-      makeTrade({ pnl: 10 }),
-      makeTrade({ pnl: 20 }),
-    ]);
+    const stats = computeTradeStats([makeTrade({ pnl: 10 }), makeTrade({ pnl: 20 })]);
     expect(stats.sortino).toBe(Infinity);
   });
 
   it('returns a finite number when there are losing trades', () => {
-    const stats = computeTradeStats([
-      makeTrade({ pnl: 10 }),
-      makeTrade({ pnl: -5 }),
-    ]);
+    const stats = computeTradeStats([makeTrade({ pnl: 10 }), makeTrade({ pnl: -5 })]);
     expect(isFinite(stats.sortino)).toBe(true);
   });
 });
