@@ -12,11 +12,12 @@ import { FilterBar } from './FilterBar';
 import type { FilterPanelDef } from './FilterBar';
 import { PanelPlaceholder } from './PanelPlaceholder';
 
-const EquityCurveChart  = lazy(() => import('./panels/equityCurveChart'));
-const PnlCalendar       = lazy(() => import('./panels/pnlCalendar'));
-const PnlBySymbolChart  = lazy(() => import('./panels/pnlBySymbolChart'));
-const PnlBySessionChart = lazy(() => import('./panels/pnlBySessionChart'));
-const TradeList         = lazy(() => import('./panels/tradeList'));
+const EquityCurveChart    = lazy(() => import('./panels/equityCurveChart'));
+const PnlCalendar         = lazy(() => import('./panels/pnlCalendar'));
+const PnlBySymbolChart    = lazy(() => import('./panels/pnlBySymbolChart'));
+const PnlBySessionChart   = lazy(() => import('./panels/pnlBySessionChart'));
+const WinRateByHourChart  = lazy(() => import('./panels/winRateByHourChart'));
+const TradeList           = lazy(() => import('./panels/tradeList'));
 
 // ─── Panel registry ───────────────────────────────────────────────────────────
 interface PanelDef {
@@ -72,6 +73,15 @@ const CHART_PANELS: PanelDef[] = [
     section: 'charts',
     defaultVisible: false,
     w: 5,
+    h: 6,
+    sizeToContent: true,
+  },
+  {
+    id: 'winrate-by-hour',
+    title: 'Win Rate by Hour',
+    section: 'charts',
+    defaultVisible: false,
+    w: 6,
     h: 6,
     sizeToContent: true,
   },
@@ -537,6 +547,12 @@ const DashboardGrid = ({ filteredTrades, hasData, hasQueried }: DashboardGridPro
         return (
           <Suspense fallback={<PanelPlaceholder />}>
             <PnlBySessionChart stats={stats} />
+          </Suspense>
+        );
+      case 'winrate-by-hour':
+        return (
+          <Suspense fallback={<PanelPlaceholder />}>
+            <WinRateByHourChart trades={filteredTrades} />
           </Suspense>
         );
       case 'history':
