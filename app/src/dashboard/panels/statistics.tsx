@@ -65,7 +65,7 @@ const percentile = (sorted: number[], p: number): number => {
 /** UTC hour → market session name */
 const sessionOf = (date: Date): string => {
   const h = date.getUTCHours();
-  if (h < 8)  return 'Asia';
+  if (h < 8) return 'Asia';
   if (h < 13) return 'London';
   if (h < 17) return 'NY Open';
   if (h < 21) return 'New York';
@@ -206,13 +206,16 @@ export const computeTradeStats = (trades: Trade[]): TradeStats => {
   const totalFees = Object.values(feesBySource).reduce((a, b) => a + b, 0);
 
   // ── Distribution stats ──────────────────────────────────────────────────────
-  const winPnls  = pnlList.filter((v) => v > 0).sort((a, b) => a - b);
-  const lossPnls = pnlList.filter((v) => v < 0).map(Math.abs).sort((a, b) => a - b);
+  const winPnls = pnlList.filter((v) => v > 0).sort((a, b) => a - b);
+  const lossPnls = pnlList
+    .filter((v) => v < 0)
+    .map(Math.abs)
+    .sort((a, b) => a - b);
 
-  const medianWin  = median(winPnls);
+  const medianWin = median(winPnls);
   const medianLoss = median(lossPnls);
   // p90Win: 90th percentile of wins — "top 10% wins are above this"
-  const p90Win  = percentile(winPnls,  0.9);
+  const p90Win = percentile(winPnls, 0.9);
   // p90Loss: 90th percentile of losses by size — "top 10% losses are above this"
   const p90Loss = percentile(lossPnls, 0.9);
 

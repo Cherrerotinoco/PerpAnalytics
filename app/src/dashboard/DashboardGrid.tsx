@@ -12,12 +12,15 @@ import { FilterBar } from './FilterBar';
 import type { FilterPanelDef } from './FilterBar';
 import { PanelPlaceholder } from './PanelPlaceholder';
 
-const EquityCurveChart    = lazy(() => import('./panels/equityCurveChart'));
-const PnlCalendar         = lazy(() => import('./panels/pnlCalendar'));
-const PnlBySymbolChart    = lazy(() => import('./panels/pnlBySymbolChart'));
-const PnlBySessionChart   = lazy(() => import('./panels/pnlBySessionChart'));
-const WinRateByHourChart  = lazy(() => import('./panels/winRateByHourChart'));
-const TradeList           = lazy(() => import('./panels/tradeList'));
+const EquityCurveChart = lazy(() => import('./panels/equityCurveChart'));
+const PnlCalendar = lazy(() => import('./panels/pnlCalendar'));
+const PnlBySymbolChart = lazy(() => import('./panels/pnlBySymbolChart'));
+const PnlBySessionChart = lazy(() => import('./panels/pnlBySessionChart'));
+const WinRateByHourChart = lazy(() => import('./panels/winRateByHourChart'));
+const PnlByWeekdayChart = lazy(() => import('./panels/pnlByWeekdayChart'));
+const WinRateByWeekdayChart = lazy(() => import('./panels/winRateByWeekdayChart'));
+const PnlByHourChart = lazy(() => import('./panels/pnlByHourChart'));
+const TradeList = lazy(() => import('./panels/tradeList'));
 
 // ─── Panel registry ───────────────────────────────────────────────────────────
 interface PanelDef {
@@ -48,22 +51,11 @@ const CHART_PANELS: PanelDef[] = [
     sizeToContent: true,
   },
   {
-    id: 'symbol',
-    title: 'PnL by Symbol',
+    id: 'pnl-by-hour',
+    title: 'PnL by Hour',
     section: 'charts',
     defaultVisible: false,
-    w: 4,
-    h: 6,
-    x: 8,
-    y: 0,
-    sizeToContent: true,
-  },
-  {
-    id: 'calendar',
-    title: 'PnL Calendar',
-    section: 'charts',
-    defaultVisible: false,
-    w: 5,
+    w: 6,
     h: 6,
     sizeToContent: true,
   },
@@ -77,11 +69,31 @@ const CHART_PANELS: PanelDef[] = [
     sizeToContent: true,
   },
   {
-    id: 'winrate-by-hour',
-    title: 'Win Rate by Hour',
+    id: 'symbol',
+    title: 'PnL by Symbol',
+    section: 'charts',
+    defaultVisible: false,
+    w: 4,
+    h: 6,
+    x: 8,
+    y: 0,
+    sizeToContent: true,
+  },
+  {
+    id: 'pnl-by-weekday',
+    title: 'PnL by Weekday',
     section: 'charts',
     defaultVisible: false,
     w: 6,
+    h: 6,
+    sizeToContent: true,
+  },
+  {
+    id: 'calendar',
+    title: 'PnL Calendar',
+    section: 'charts',
+    defaultVisible: false,
+    w: 5,
     h: 6,
     sizeToContent: true,
   },
@@ -94,6 +106,24 @@ const CHART_PANELS: PanelDef[] = [
     h: 6,
     x: 0,
     y: 6,
+    sizeToContent: true,
+  },
+  {
+    id: 'winrate-by-hour',
+    title: 'Win Rate by Hour',
+    section: 'charts',
+    defaultVisible: false,
+    w: 6,
+    h: 6,
+    sizeToContent: true,
+  },
+  {
+    id: 'winrate-by-weekday',
+    title: 'Win Rate by Weekday',
+    section: 'charts',
+    defaultVisible: false,
+    w: 6,
+    h: 6,
     sizeToContent: true,
   },
 ];
@@ -166,7 +196,10 @@ export const LAYOUT_PRESETS: LayoutPreset[] = [
       'metric-risk-reward',
       'metric-max-profit',
       'metric-max-loss',
-      'metric-fees',
+      'pnl-by-hour',
+      'pnl-by-weekday',
+      'winrate-by-hour',
+      'winrate-by-weekday',
     ],
     positions: {
       equity: { x: 0, y: 0, w: 12, h: 6 },
@@ -176,7 +209,10 @@ export const LAYOUT_PRESETS: LayoutPreset[] = [
       'metric-risk-reward': { x: 0, y: 9, w: 4, h: 3 },
       'metric-max-profit': { x: 4, y: 9, w: 4, h: 3 },
       'metric-max-loss': { x: 8, y: 9, w: 4, h: 3 },
-      'metric-fees': { x: 0, y: 12, w: 4, h: 3 },
+      'pnl-by-hour': { x: 0, y: 15, w: 6, h: 6 },
+      'pnl-by-weekday': { x: 6, y: 15, w: 6, h: 6 },
+      'winrate-by-hour': { x: 0, y: 21, w: 6, h: 6 },
+      'winrate-by-weekday': { x: 6, y: 21, w: 6, h: 6 },
     },
   },
   {
@@ -553,6 +589,24 @@ const DashboardGrid = ({ filteredTrades, hasData, hasQueried }: DashboardGridPro
         return (
           <Suspense fallback={<PanelPlaceholder />}>
             <WinRateByHourChart trades={filteredTrades} />
+          </Suspense>
+        );
+      case 'pnl-by-weekday':
+        return (
+          <Suspense fallback={<PanelPlaceholder />}>
+            <PnlByWeekdayChart trades={filteredTrades} />
+          </Suspense>
+        );
+      case 'winrate-by-weekday':
+        return (
+          <Suspense fallback={<PanelPlaceholder />}>
+            <WinRateByWeekdayChart trades={filteredTrades} />
+          </Suspense>
+        );
+      case 'pnl-by-hour':
+        return (
+          <Suspense fallback={<PanelPlaceholder />}>
+            <PnlByHourChart trades={filteredTrades} />
           </Suspense>
         );
       case 'history':

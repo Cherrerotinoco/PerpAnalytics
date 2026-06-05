@@ -203,9 +203,9 @@ const HomePage = () => {
               <p className="tc-landing-eyebrow">New tool</p>
               <h2 className="tc-calc-promo-title">How long to reach your goal?</h2>
               <p className="tc-calc-promo-body">
-                Model your account growth trade-by-trade with the projection calculator. Set your win
-                rate, risk/reward and leverage — see exactly how many trades and days it takes to hit
-                your target.
+                Model your account growth trade-by-trade with the projection calculator. Set your
+                win rate, risk/reward and leverage — see exactly how many trades and days it takes
+                to hit your target.
               </p>
             </div>
             <Link to="/calculator" className="tc-btn-primary tc-calc-promo-cta">

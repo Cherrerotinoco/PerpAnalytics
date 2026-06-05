@@ -30,12 +30,16 @@ const CustomTooltip = ({ active, payload }: TooltipProps) => {
   const s = payload[0].payload;
   return (
     <div className="tc-chart-tooltip">
-      <p className="tc-chart-tooltip-date" style={{ fontWeight: 600 }}>{s.name}</p>
+      <p className="tc-chart-tooltip-date" style={{ fontWeight: 600 }}>
+        {s.name}
+      </p>
       <p className={`tc-chart-tooltip-val ${s.totalPnl >= 0 ? 'tc-green' : 'tc-red'}`}>
-        {s.totalPnl >= 0 ? '+' : ''}{fmtMoney(s.totalPnl)} $
+        {s.totalPnl >= 0 ? '+' : ''}
+        {fmtMoney(s.totalPnl)} $
       </p>
       <p className="tc-chart-tooltip-val" style={{ fontSize: 11 }}>
-        {s.trades} trades · {fmtPct(s.winRate)} WR · avg {s.avgPnl >= 0 ? '+' : ''}{fmtMoney(s.avgPnl)} $
+        {s.trades} trades · {fmtPct(s.winRate)} WR · avg {s.avgPnl >= 0 ? '+' : ''}
+        {fmtMoney(s.avgPnl)} $
       </p>
     </div>
   );
@@ -43,7 +47,9 @@ const CustomTooltip = ({ active, payload }: TooltipProps) => {
 
 // ─── Win-rate dots below each bar ─────────────────────────────────────────────
 const WinRateTick = (props: {
-  x?: number; y?: number; payload?: { value: string };
+  x?: number;
+  y?: number;
+  payload?: { value: string };
   data: SessionStats[];
 }) => {
   const { x = 0, y = 0, payload, data } = props;
@@ -70,11 +76,11 @@ const PnlBySessionChart = memo(({ stats }: { stats: TradeStats }) => {
   const { bySession } = stats;
   if (!bySession.length) return null;
 
-  const greenColor  = isDark ? '#22c55e' : '#16a34a';
-  const redColor    = isDark ? '#ef4444' : '#dc2626';
-  const gridColor   = isDark ? '#2a2a2a' : '#e5e7eb';
-  const axisColor   = isDark ? '#6b7280' : '#9ca3af';
-  const refColor    = isDark ? '#374151' : '#d1d5db';
+  const greenColor = isDark ? '#22c55e' : '#16a34a';
+  const redColor = isDark ? '#ef4444' : '#dc2626';
+  const gridColor = isDark ? '#2a2a2a' : '#e5e7eb';
+  const axisColor = isDark ? '#6b7280' : '#9ca3af';
+  const refColor = isDark ? '#374151' : '#d1d5db';
 
   return (
     <ResponsiveContainer width="100%" height={280}>
@@ -96,7 +102,10 @@ const PnlBySessionChart = memo(({ stats }: { stats: TradeStats }) => {
           }
           width={72}
         />
-        <Tooltip content={<CustomTooltip />} cursor={{ fill: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)' }} />
+        <Tooltip
+          content={<CustomTooltip />}
+          cursor={{ fill: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)' }}
+        />
         <ReferenceLine y={0} stroke={refColor} strokeDasharray="4 4" />
         <Bar dataKey="totalPnl" radius={[4, 4, 0, 0]} maxBarSize={64}>
           {bySession.map((s) => (

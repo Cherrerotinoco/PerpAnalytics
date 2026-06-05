@@ -46,11 +46,11 @@ const persistScenarios = (list: SavedScenario[]) => {
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Params {
-  winRate: number;   // 0–1
+  winRate: number; // 0–1
   rr: number;
   tpd: number;
   lev: number;
-  sl: number;        // fraction (0–1)
+  sl: number; // fraction (0–1)
 }
 
 interface ChartPoint {
@@ -115,8 +115,17 @@ const compute = (p: Params, initialCapital: number, target: number | null): Comp
     trajectory = sparse;
   }
 
-  return { riesgoReal, liqPct, expectancy, isLiquidated, isRentable, trajectory, milestoneHits, totalTrades };
-}
+  return {
+    riesgoReal,
+    liqPct,
+    expectancy,
+    isLiquidated,
+    isRentable,
+    trajectory,
+    milestoneHits,
+    totalTrades,
+  };
+};
 
 const deriveMilestones = (initial: number, target: number | null): number[] => {
   if (target === null) {
@@ -132,7 +141,7 @@ const deriveMilestones = (initial: number, target: number | null): number[] => {
     return parseFloat(v.toPrecision(3));
   });
   return checkpoints;
-}
+};
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 interface SliderRowProps {
@@ -164,7 +173,7 @@ const SliderRow = ({ label, min, max, step, value, display, onChange }: SliderRo
       />
     </div>
   );
-}
+};
 
 interface MetricBoxProps {
   label: string;
@@ -182,10 +191,18 @@ const MetricBox = ({ label, value, sub, color }: MetricBoxProps) => {
       {sub && <div className="calc-metric-sub">{sub}</div>}
     </div>
   );
-}
+};
 
 // ─── Tooltip customizado ──────────────────────────────────────────────────────
-const ChartTooltip = ({ active, payload, label }: { active?: boolean; payload?: { value: number }[]; label?: number }) => {
+const ChartTooltip = ({
+  active,
+  payload,
+  label,
+}: {
+  active?: boolean;
+  payload?: { value: number }[];
+  label?: number;
+}) => {
   if (!active || !payload?.length) return null;
   return (
     <div className="calc-tooltip">
@@ -193,7 +210,7 @@ const ChartTooltip = ({ active, payload, label }: { active?: boolean; payload?: 
       <div className="calc-tooltip-value">${payload[0].value.toFixed(2)}</div>
     </div>
   );
-}
+};
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function CalculatorPage() {
@@ -210,7 +227,10 @@ export default function CalculatorPage() {
   const [savedFlash, setSavedFlash] = useState(false);
 
   const initialCapital = Math.max(0.01, parseFloat(capitalStr) || 0.01);
-  const target = targetStr.trim() === '' ? null : Math.max(initialCapital + 0.01, parseFloat(targetStr) || initialCapital + 1);
+  const target =
+    targetStr.trim() === ''
+      ? null
+      : Math.max(initialCapital + 0.01, parseFloat(targetStr) || initialCapital + 1);
 
   const params: Params = {
     winRate: winRatePct / 100,
@@ -222,13 +242,15 @@ export default function CalculatorPage() {
 
   const r = useMemo(
     () => compute(params, initialCapital, target),
-    [winRatePct, rr, lev, slPct, initialCapital, target],
+    [winRatePct, rr, lev, slPct, initialCapital, target]
   );
 
   useEffect(() => {
     const prev = document.title;
     document.title = 'Account Growth Calculator — PerpsAnalytics';
-    return () => { document.title = prev; };
+    return () => {
+      document.title = prev;
+    };
   }, []);
 
   const handleOpenSave = useCallback(() => {
@@ -268,11 +290,14 @@ export default function CalculatorPage() {
     setTargetStr(s.targetStr);
   }, []);
 
-  const handleDelete = useCallback((id: string) => {
-    const updated = scenarios.filter((s) => s.id !== id);
-    setScenarios(updated);
-    persistScenarios(updated);
-  }, [scenarios]);
+  const handleDelete = useCallback(
+    (id: string) => {
+      const updated = scenarios.filter((s) => s.id !== id);
+      setScenarios(updated);
+      persistScenarios(updated);
+    },
+    [scenarios]
+  );
 
   const riesgoRealPct = r.riesgoReal * 100;
   const expPct = r.expectancy * 100;
@@ -292,7 +317,8 @@ export default function CalculatorPage() {
         ? 'calc-status--amber'
         : 'calc-status--green';
 
-  const riesgoColor: MetricBoxProps['color'] = riesgoRealPct > 2 ? 'red' : riesgoRealPct > 1 ? 'amber' : 'green';
+  const riesgoColor: MetricBoxProps['color'] =
+    riesgoRealPct > 2 ? 'red' : riesgoRealPct > 1 ? 'amber' : 'green';
   const expColor: MetricBoxProps['color'] = expPct > 5 ? 'green' : expPct > 0 ? 'amber' : 'red';
 
   const streakLoss = (1 - Math.pow(1 - r.riesgoReal, 3)) * 100;
@@ -304,7 +330,8 @@ export default function CalculatorPage() {
         <div className="calc-page-intro">
           <h1 className="calc-page-title">Projection Calculator</h1>
           <p className="calc-page-subtitle">
-            BTC futures account growth model · Compound trade-by-trade · Heatmap / Orderflow / Volume Profile
+            BTC futures account growth model · Compound trade-by-trade · Heatmap / Orderflow /
+            Volume Profile
           </p>
         </div>
 
@@ -322,7 +349,9 @@ export default function CalculatorPage() {
             />
           </label>
           <label className="calc-input-group">
-            <span className="calc-input-label">Target ($) <span className="calc-input-optional">optional</span></span>
+            <span className="calc-input-label">
+              Target ($) <span className="calc-input-optional">optional</span>
+            </span>
             <input
               type="number"
               className="calc-number-input"
@@ -333,112 +362,153 @@ export default function CalculatorPage() {
               placeholder="leave blank for open-ended"
             />
           </label>
-          <span className="calc-fixed-pill">Max recommended risk: <strong>2% / trade</strong></span>
+          <span className="calc-fixed-pill">
+            Max recommended risk: <strong>2% / trade</strong>
+          </span>
         </div>
 
         <div className="calc-layout">
           {/* LEFT — sliders + saved scenarios */}
           <div className="calc-left">
-          <div className="tc-card calc-controls">
-            <div className="calc-section-label">Parameters</div>
-            <div className="calc-sliders">
-              <SliderRow
-                label="Win Rate"
-                id="winrate"
-                min={30} max={65} step={1}
-                value={winRatePct}
-                display={`${winRatePct}%`}
-                onChange={setWinRatePct}
-              />
-              <SliderRow
-                label="Risk / Reward"
-                id="rr"
-                min={0.8} max={4.0} step={0.01}
-                value={rr}
-                display={rr.toFixed(2)}
-                onChange={setRr}
-              />
-              <SliderRow
-                label="Trades per day"
-                id="tpd"
-                min={1} max={5} step={1}
-                value={tpd}
-                display={String(tpd)}
-                onChange={setTpd}
-              />
-              <SliderRow
-                label="Leverage"
-                id="lev"
-                min={1} max={50} step={1}
-                value={lev}
-                display={`${lev}×`}
-                onChange={setLev}
-              />
-              <SliderRow
-                label="Stop Loss (% of price)"
-                id="sl"
-                min={0.1} max={5.0} step={0.1}
-                value={slPct}
-                display={`${slPct.toFixed(1)}%`}
-                onChange={setSlPct}
-              />
-              {/* Save section */}
-              <div className="calc-save-divider" />
-              {!saveMode ? (
-                <button
-                  type="button"
-                  className={`calc-save-btn${savedFlash ? ' calc-save-btn--flash' : ''}`}
-                  onClick={handleOpenSave}
-                  disabled={scenarios.length >= MAX_SCENARIOS}
-                  title={scenarios.length >= MAX_SCENARIOS ? `Max ${MAX_SCENARIOS} scenarios` : undefined}
-                >
-                  {savedFlash ? '✓ Saved' : '+ Save scenario'}
-                </button>
-              ) : (
-                <div className="calc-save-form">
-                  <input
-                    autoFocus
-                    type="text"
-                    className="calc-save-input"
-                    value={saveName}
-                    maxLength={40}
-                    onChange={(e) => setSaveName(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') handleConfirmSave();
-                      if (e.key === 'Escape') setSaveMode(false);
-                    }}
-                    placeholder="Scenario name"
-                  />
-                  <button type="button" className="calc-save-confirm" onClick={handleConfirmSave}>✓</button>
-                  <button type="button" className="calc-save-cancel" onClick={() => setSaveMode(false)}>✕</button>
-                </div>
-              )}
-            </div>
-          </div>{/* /tc-card calc-controls */}
-
-          {/* Saved scenarios list */}
-          {scenarios.length > 0 && (
-            <div className="tc-card calc-scenarios-card">
-              <div className="calc-section-label" style={{ marginBottom: 12 }}>Saved scenarios</div>
-              <div className="calc-scenarios-list">
-                {scenarios.map((s) => (
-                  <div key={s.id} className="calc-scenario-row">
-                    <div className="calc-scenario-info">
-                      <span className="calc-scenario-name">{s.name}</span>
-                      <span className="calc-scenario-meta">
-                        WR {s.winRatePct}% · RR {s.rr.toFixed(2)} · {s.lev}× · SL {s.slPct.toFixed(1)}%
-                      </span>
-                    </div>
-                    <div className="calc-scenario-actions">
-                      <button type="button" className="calc-scenario-load" onClick={() => handleLoad(s)}>Load</button>
-                      <button type="button" className="calc-scenario-delete" onClick={() => handleDelete(s.id)}>✕</button>
-                    </div>
+            <div className="tc-card calc-controls">
+              <div className="calc-section-label">Parameters</div>
+              <div className="calc-sliders">
+                <SliderRow
+                  label="Win Rate"
+                  id="winrate"
+                  min={30}
+                  max={65}
+                  step={1}
+                  value={winRatePct}
+                  display={`${winRatePct}%`}
+                  onChange={setWinRatePct}
+                />
+                <SliderRow
+                  label="Risk / Reward"
+                  id="rr"
+                  min={0.8}
+                  max={4.0}
+                  step={0.01}
+                  value={rr}
+                  display={rr.toFixed(2)}
+                  onChange={setRr}
+                />
+                <SliderRow
+                  label="Trades per day"
+                  id="tpd"
+                  min={1}
+                  max={5}
+                  step={1}
+                  value={tpd}
+                  display={String(tpd)}
+                  onChange={setTpd}
+                />
+                <SliderRow
+                  label="Leverage"
+                  id="lev"
+                  min={1}
+                  max={50}
+                  step={1}
+                  value={lev}
+                  display={`${lev}×`}
+                  onChange={setLev}
+                />
+                <SliderRow
+                  label="Stop Loss (% of price)"
+                  id="sl"
+                  min={0.1}
+                  max={5.0}
+                  step={0.1}
+                  value={slPct}
+                  display={`${slPct.toFixed(1)}%`}
+                  onChange={setSlPct}
+                />
+                {/* Save section */}
+                <div className="calc-save-divider" />
+                {!saveMode ? (
+                  <button
+                    type="button"
+                    className={`calc-save-btn${savedFlash ? ' calc-save-btn--flash' : ''}`}
+                    onClick={handleOpenSave}
+                    disabled={scenarios.length >= MAX_SCENARIOS}
+                    title={
+                      scenarios.length >= MAX_SCENARIOS
+                        ? `Max ${MAX_SCENARIOS} scenarios`
+                        : undefined
+                    }
+                  >
+                    {savedFlash ? '✓ Saved' : '+ Save scenario'}
+                  </button>
+                ) : (
+                  <div className="calc-save-form">
+                    <input
+                      autoFocus
+                      type="text"
+                      className="calc-save-input"
+                      value={saveName}
+                      maxLength={40}
+                      onChange={(e) => setSaveName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleConfirmSave();
+                        if (e.key === 'Escape') setSaveMode(false);
+                      }}
+                      placeholder="Scenario name"
+                    />
+                    <button type="button" className="calc-save-confirm" onClick={handleConfirmSave}>
+                      ✓
+                    </button>
+                    <button
+                      type="button"
+                      className="calc-save-cancel"
+                      onClick={() => setSaveMode(false)}
+                    >
+                      ✕
+                    </button>
                   </div>
-                ))}
+                )}
               </div>
             </div>
-          )}
-          </div>{/* /calc-left */}
+            {/* /tc-card calc-controls */}
+
+            {/* Saved scenarios list */}
+            {scenarios.length > 0 && (
+              <div className="tc-card calc-scenarios-card">
+                <div className="calc-section-label" style={{ marginBottom: 12 }}>
+                  Saved scenarios
+                </div>
+                <div className="calc-scenarios-list">
+                  {scenarios.map((s) => (
+                    <div key={s.id} className="calc-scenario-row">
+                      <div className="calc-scenario-info">
+                        <span className="calc-scenario-name">{s.name}</span>
+                        <span className="calc-scenario-meta">
+                          WR {s.winRatePct}% · RR {s.rr.toFixed(2)} · {s.lev}× · SL{' '}
+                          {s.slPct.toFixed(1)}%
+                        </span>
+                      </div>
+                      <div className="calc-scenario-actions">
+                        <button
+                          type="button"
+                          className="calc-scenario-load"
+                          onClick={() => handleLoad(s)}
+                        >
+                          Load
+                        </button>
+                        <button
+                          type="button"
+                          className="calc-scenario-delete"
+                          onClick={() => handleDelete(s.id)}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+          {/* /calc-left */}
 
           {/* RIGHT — results */}
           <div className="calc-right">
@@ -448,7 +518,8 @@ export default function CalculatorPage() {
                 <strong>⚠ Liquidated before stop</strong>
                 <br />
                 With {lev}× leverage and a {slPct.toFixed(1)}% SL, the price liquidates you{' '}
-                <strong>before the stop is hit</strong>. Only a {r.liqPct.toFixed(2)}% adverse move is needed.
+                <strong>before the stop is hit</strong>. Only a {r.liqPct.toFixed(2)}% adverse move
+                is needed.
               </div>
             )}
 
@@ -456,8 +527,8 @@ export default function CalculatorPage() {
               <div className="calc-alert calc-alert--error">
                 <strong>✗ System not profitable</strong>
                 <br />
-                With this win rate and RR, expectancy is negative (
-                {(expPct).toFixed(2)}%). The system loses money long-term.
+                With this win rate and RR, expectancy is negative ({expPct.toFixed(2)}%). The system
+                loses money long-term.
               </div>
             )}
 
@@ -465,8 +536,8 @@ export default function CalculatorPage() {
               <div className="calc-alert calc-alert--warning">
                 <strong>⚠ High leverage</strong>
                 <br />
-                You're risking {riesgoRealPct.toFixed(2)}% of your account per trade. A 3-loss streak
-                = {streakLoss.toFixed(1)}% drawdown. Proceed carefully.
+                You're risking {riesgoRealPct.toFixed(2)}% of your account per trade. A 3-loss
+                streak = {streakLoss.toFixed(1)}% drawdown. Proceed carefully.
               </div>
             )}
 
@@ -492,12 +563,24 @@ export default function CalculatorPage() {
                 />
                 <MetricBox
                   label="Trades needed"
-                  value={r.totalTrades !== null ? r.totalTrades.toLocaleString() : target === null ? '—' : '∞'}
+                  value={
+                    r.totalTrades !== null
+                      ? r.totalTrades.toLocaleString()
+                      : target === null
+                        ? '—'
+                        : '∞'
+                  }
                   sub={target !== null ? `to reach $${target.toFixed(2)}` : 'no target set'}
                 />
                 <MetricBox
                   label="Estimated days"
-                  value={r.totalTrades !== null ? Math.ceil(r.totalTrades / tpd).toLocaleString() : target === null ? '—' : '∞'}
+                  value={
+                    r.totalTrades !== null
+                      ? Math.ceil(r.totalTrades / tpd).toLocaleString()
+                      : target === null
+                        ? '—'
+                        : '∞'
+                  }
                   sub={`at ${tpd} trade${tpd > 1 ? 's' : ''}/day`}
                 />
                 <MetricBox
@@ -513,11 +596,16 @@ export default function CalculatorPage() {
               </div>
 
               {/* Chart */}
-              <div className="calc-section-label" style={{ marginBottom: 12 }}>Growth curve</div>
+              <div className="calc-section-label" style={{ marginBottom: 12 }}>
+                Growth curve
+              </div>
               <div className="calc-chart-wrap">
                 {r.isRentable && r.trajectory.length > 1 ? (
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={r.trajectory} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
+                    <AreaChart
+                      data={r.trajectory}
+                      margin={{ top: 4, right: 4, left: 0, bottom: 0 }}
+                    >
                       <defs>
                         <linearGradient id="calcGrad" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="0%" stopColor="var(--tc-green)" stopOpacity={0.2} />
@@ -562,7 +650,9 @@ export default function CalculatorPage() {
               </div>
 
               {/* Milestones */}
-              <div className="calc-section-label" style={{ marginBottom: 10 }}>Milestones</div>
+              <div className="calc-section-label" style={{ marginBottom: 10 }}>
+                Milestones
+              </div>
               <div className="calc-milestones">
                 {r.milestoneHits.map((mh) => {
                   if (mh.trades === null) {
@@ -577,8 +667,12 @@ export default function CalculatorPage() {
                   return (
                     <div key={mh.target} className="calc-milestone">
                       <span className="calc-milestone-target">${mh.target}</span>
-                      <span className="calc-milestone-sub">{mh.trades.toLocaleString()} trades</span>
-                      <span className="calc-milestone-days">~{days} day{days !== 1 ? 's' : ''}</span>
+                      <span className="calc-milestone-sub">
+                        {mh.trades.toLocaleString()} trades
+                      </span>
+                      <span className="calc-milestone-days">
+                        ~{days} day{days !== 1 ? 's' : ''}
+                      </span>
                     </div>
                   );
                 })}

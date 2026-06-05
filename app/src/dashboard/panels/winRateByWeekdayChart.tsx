@@ -13,29 +13,29 @@ import { Trade } from '../../types/tradeTypes';
 import { useTheme } from '../../context/ThemeContext';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-interface HourRow {
-  hour: number;
+interface WeekdayRow {
+  day: number;
   label: string;
   winRate: number;
   trades: number;
   wins: number;
 }
 
+const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
 // ─── Data computation ─────────────────────────────────────────────────────────
-const computeByHour = (trades: Trade[]): HourRow[] => {
-  const buckets = Array.from({ length: 24 }, (_, h) => ({ hour: h, wins: 0, total: 0 }));
-
+const computeByWeekday = (trades: Trade[]): WeekdayRow[] => {
+  const buckets = Array.from({ length: 7 }, (_, d) => ({ day: d, wins: 0, total: 0 }));
   for (const t of trades) {
-    const h = t.closed.getHours();
-    buckets[h].total++;
-    if (t.pnl > 0) buckets[h].wins++;
+    const d = t.closed.getDay();
+    buckets[d].total++;
+    if (t.pnl > 0) buckets[d].wins++;
   }
-
   return buckets
     .filter((b) => b.total > 0)
     .map((b) => ({
-      hour: b.hour,
-      label: `${String(b.hour).padStart(2, '0')}h`,
+      day: b.day,
+      label: DAY_LABELS[b.day],
       winRate: Math.round((b.wins / b.total) * 100),
       trades: b.total,
       wins: b.wins,
@@ -43,7 +43,7 @@ const computeByHour = (trades: Trade[]): HourRow[] => {
 };
 
 // ─── Tooltip ──────────────────────────────────────────────────────────────────
-const HourTooltip = ({
+const WRWeekdayTooltip = ({
   active,
   payload,
   textColor,
@@ -51,7 +51,7 @@ const HourTooltip = ({
   borderColor,
 }: {
   active?: boolean;
-  payload?: { payload: HourRow }[];
+  payload?: { payload: WeekdayRow }[];
   textColor: string;
   surfaceColor: string;
   borderColor: string;
@@ -81,10 +81,9 @@ const HourTooltip = ({
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────
-const WinRateByHourChart = memo(({ trades }: { trades: Trade[] }) => {
+const WinRateByWeekdayChart = memo(({ trades }: { trades: Trade[] }) => {
   const { theme } = useTheme();
-  const data = computeByHour(trades);
-
+  const data = computeByWeekday(trades);
   if (!data.length) return null;
 
   const isDark = theme === 'dark';
@@ -97,31 +96,24 @@ const WinRateByHourChart = memo(({ trades }: { trades: Trade[] }) => {
   const amberColor = isDark ? '#f59e0b' : '#d97706';
   const refLineColor = isDark ? '#3a3a3a' : '#d1d5db';
 
-  // Overall win rate as reference line
-  const totalTrades = trades.length;
   const totalWins = trades.filter((t) => t.pnl > 0).length;
-  const avgWinRate = totalTrades > 0 ? Math.round((totalWins / totalTrades) * 100) : 50;
-
-  const getColor = (wr: number) => {
-    if (wr >= avgWinRate + 10) return greenColor;
-    if (wr <= avgWinRate - 10) return redColor;
-    return amberColor;
-  };
+  const avgWinRate = trades.length > 0 ? Math.round((totalWins / trades.length) * 100) : 50;
+  const getColor = (wr: number) =>
+    wr >= avgWinRate + 10 ? greenColor : wr <= avgWinRate - 10 ? redColor : amberColor;
 
   return (
     <div style={{ width: '100%' }}>
       <ResponsiveContainer width="100%" height={190}>
         <BarChart
           data={data}
-          margin={{ top: 8, right: 8, left: -16, bottom: 0 }}
-          barCategoryGap="18%"
+          margin={{ top: 8, right: 8, left: -8, bottom: 0 }}
+          barCategoryGap="28%"
         >
           <XAxis
             dataKey="label"
-            tick={{ fill: axisColor, fontSize: 9 }}
+            tick={{ fill: axisColor, fontSize: 10 }}
             tickLine={false}
             axisLine={false}
-            interval={data.length > 16 ? 1 : 0}
           />
           <YAxis
             domain={[0, 100]}
@@ -145,7 +137,7 @@ const WinRateByHourChart = memo(({ trades }: { trades: Trade[] }) => {
           <Tooltip
             cursor={{ fill: 'rgba(255,255,255,0.04)' }}
             content={
-              <HourTooltip
+              <WRWeekdayTooltip
                 textColor={textColor}
                 surfaceColor={surfaceColor}
                 borderColor={borderColor}
@@ -154,13 +146,11 @@ const WinRateByHourChart = memo(({ trades }: { trades: Trade[] }) => {
           />
           <Bar dataKey="winRate" radius={[3, 3, 0, 0]}>
             {data.map((row) => (
-              <Cell key={row.hour} fill={getColor(row.winRate)} fillOpacity={0.85} />
+              <Cell key={row.day} fill={getColor(row.winRate)} fillOpacity={0.85} />
             ))}
           </Bar>
         </BarChart>
       </ResponsiveContainer>
-
-      {/* Legend */}
       <div
         style={{
           display: 'flex',
@@ -185,4 +175,4 @@ const WinRateByHourChart = memo(({ trades }: { trades: Trade[] }) => {
   );
 });
 
-export default WinRateByHourChart;
+export default WinRateByWeekdayChart;
