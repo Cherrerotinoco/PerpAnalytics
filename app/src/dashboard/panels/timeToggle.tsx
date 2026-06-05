@@ -7,7 +7,15 @@ interface TimeToggleProps {
 
 export const TimeToggle = ({ useOpen, onChange, axisColor }: TimeToggleProps) => (
   <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 6 }}>
-    <div style={{ display: 'flex', gap: 2, background: 'rgba(255,255,255,0.04)', borderRadius: 5, padding: 2 }}>
+    <div
+      style={{
+        display: 'flex',
+        gap: 2,
+        background: 'rgba(255,255,255,0.04)',
+        borderRadius: 5,
+        padding: 2,
+      }}
+    >
       {(['Open', 'Close'] as const).map((label) => {
         const active = label === 'Open' ? useOpen : !useOpen;
         return (

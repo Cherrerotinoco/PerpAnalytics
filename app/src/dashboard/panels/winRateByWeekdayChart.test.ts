@@ -52,7 +52,7 @@ describe('winRateByWeekdayChart — computeByWeekday', () => {
 
   it('uses opened time when useOpen is true', () => {
     const t = {
-      opened: new Date(2025, 0, 7),  // Tuesday
+      opened: new Date(2025, 0, 7), // Tuesday
       closed: new Date(2025, 0, 10), // Friday
       pnl: 50,
     } as unknown as Trade;
@@ -62,7 +62,7 @@ describe('winRateByWeekdayChart — computeByWeekday', () => {
 
   it('uses closed time when useOpen is false', () => {
     const t = {
-      opened: new Date(2025, 0, 7),  // Tuesday
+      opened: new Date(2025, 0, 7), // Tuesday
       closed: new Date(2025, 0, 10), // Friday
       pnl: 50,
     } as unknown as Trade;
@@ -79,8 +79,10 @@ describe('winRateByWeekdayChart — computeByWeekday', () => {
 
   it('handles multiple weekdays independently', () => {
     const trades = [
-      makeTrade(1, 10), makeTrade(1, -5),   // Mon: 1/2
-      makeTrade(4, 10), makeTrade(4, 10),   // Thu: 2/2
+      makeTrade(1, 10),
+      makeTrade(1, -5), // Mon: 1/2
+      makeTrade(4, 10),
+      makeTrade(4, 10), // Thu: 2/2
     ];
     const result = computeByWeekday(trades, true);
     expect(result).toHaveLength(2);

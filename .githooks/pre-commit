@@ -1,6 +1,6 @@
 #!/bin/sh
-# pre-push hook — runs format + lint before every push.
-# If either step fails the push is aborted.
+# pre-commit hook — runs format + lint before every commit.
+# If either step fails the commit is aborted.
 
 set -e
 
@@ -13,4 +13,4 @@ pnpm format
 echo "▶ pnpm lint..."
 pnpm lint
 
-echo "✓ pre-push checks passed"
+echo "✓ pre-commit checks passed"

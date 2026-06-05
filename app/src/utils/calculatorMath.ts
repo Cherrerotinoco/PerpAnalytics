@@ -37,7 +37,7 @@ export interface ComputeResult {
 export const computeCalc = (
   p: CalcParams,
   initialCapital: number,
-  target: number | null,
+  target: number | null
 ): ComputeResult => {
   const riesgoReal = p.sl * p.lev;
   const liqPct = (1 / p.lev) * 100;
@@ -76,7 +76,16 @@ export const computeCalc = (
     trajectory = sparse;
   }
 
-  return { riesgoReal, liqPct, expectancy, isLiquidated, isRentable, trajectory, milestoneHits, totalTrades };
+  return {
+    riesgoReal,
+    liqPct,
+    expectancy,
+    isLiquidated,
+    isRentable,
+    trajectory,
+    milestoneHits,
+    totalTrades,
+  };
 };
 
 export const deriveMilestones = (initial: number, target: number | null): number[] => {
@@ -86,6 +95,6 @@ export const deriveMilestones = (initial: number, target: number | null): number
   const ratio = target / initial;
   if (ratio <= 1) return [target];
   return [0.2, 0.4, 0.6, 0.8, 1.0].map((f) =>
-    parseFloat((initial * Math.pow(ratio, f)).toPrecision(3)),
+    parseFloat((initial * Math.pow(ratio, f)).toPrecision(3))
   );
 };

@@ -16,7 +16,7 @@ describe('deriveMilestones', () => {
   it('returns multiples of initial when target is null', () => {
     const ms = deriveMilestones(100, null);
     expect(ms).toHaveLength(5);
-    expect(ms[0]).toBeCloseTo(200);  // ×2
+    expect(ms[0]).toBeCloseTo(200); // ×2
     expect(ms[4]).toBeCloseTo(5000); // ×50
   });
 

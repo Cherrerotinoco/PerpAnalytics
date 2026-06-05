@@ -4,7 +4,15 @@ import type { Trade } from '../../types/tradeTypes';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 // Jan 6 2025 = Monday (day 1), Jan 5 = Sunday (day 0)
-const DAY_OFFSETS: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+const DAY_OFFSETS: Record<string, number> = {
+  Sun: 0,
+  Mon: 1,
+  Tue: 2,
+  Wed: 3,
+  Thu: 4,
+  Fri: 5,
+  Sat: 6,
+};
 
 const makeTrade = (dayOfWeek: number, pnl: number, openDow = dayOfWeek): Trade => {
   // Find a date in Jan 2025 matching dayOfWeek
@@ -55,7 +63,7 @@ describe('pnlByWeekdayChart — computeByWeekday', () => {
   it('uses opened time when useOpen is true', () => {
     // opened = Tuesday (day 2), closed = Friday (day 5)
     const t = {
-      opened: new Date(2025, 0, 7),  // Jan 7 2025 = Tuesday
+      opened: new Date(2025, 0, 7), // Jan 7 2025 = Tuesday
       closed: new Date(2025, 0, 10), // Jan 10 2025 = Friday
       pnl: 100,
     } as unknown as Trade;
@@ -65,7 +73,7 @@ describe('pnlByWeekdayChart — computeByWeekday', () => {
 
   it('uses closed time when useOpen is false', () => {
     const t = {
-      opened: new Date(2025, 0, 7),  // Tuesday
+      opened: new Date(2025, 0, 7), // Tuesday
       closed: new Date(2025, 0, 10), // Friday
       pnl: 100,
     } as unknown as Trade;
