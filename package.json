@@ -13,7 +13,8 @@
         "lint": "eslint app/src",
         "format": "prettier --write app/src",
         "test": "vitest run app/src",
-        "test:watch": "vitest app/src"
+        "test:watch": "vitest app/src",
+        "prepare": "git config core.hooksPath .githooks"
     },
     "engines": {
         "node": ">=18"

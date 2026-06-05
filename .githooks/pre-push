@@ -1,0 +1,16 @@
+#!/bin/sh
+# pre-push hook — runs format + lint before every push.
+# If either step fails the push is aborted.
+
+set -e
+
+ROOT="$(git rev-parse --show-toplevel)"
+cd "$ROOT"
+
+echo "▶ pnpm format..."
+pnpm format
+
+echo "▶ pnpm lint..."
+pnpm lint
+
+echo "✓ pre-push checks passed"

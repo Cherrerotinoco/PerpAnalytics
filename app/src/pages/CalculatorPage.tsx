@@ -1,4 +1,6 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
+import { computeCalc, deriveMilestones } from '../utils/calculatorMath';
+import type { CalcParams, ComputeResult, MilestoneHit, ChartPoint } from '../utils/calculatorMath';
 import {
   XAxis,
   YAxis,
@@ -44,104 +46,9 @@ const persistScenarios = (list: SavedScenario[]) => {
   localStorage.setItem(LS_KEY, JSON.stringify(list));
 };
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-interface Params {
-  winRate: number; // 0–1
-  rr: number;
-  tpd: number;
-  lev: number;
-  sl: number; // fraction (0–1)
-}
-
-interface ChartPoint {
-  trade: number;
-  capital: number;
-}
-
-interface MilestoneHit {
-  target: number;
-  trades: number | null;
-}
-
-interface ComputeResult {
-  riesgoReal: number;
-  liqPct: number;
-  expectancy: number;
-  isLiquidated: boolean;
-  isRentable: boolean;
-  trajectory: ChartPoint[];
-  milestoneHits: MilestoneHit[];
-  totalTrades: number | null;
-}
-
-// ─── Math core ────────────────────────────────────────────────────────────────
-const compute = (p: Params, initialCapital: number, target: number | null): ComputeResult => {
-  const riesgoReal = p.sl * p.lev;
-  const liqPct = (1 / p.lev) * 100;
-  const expectancy = p.winRate * p.rr - (1 - p.winRate);
-  const isLiquidated = riesgoReal >= 1;
-  const isRentable = expectancy > 0 && !isLiquidated;
-
-  // Milestones: derive sensible ones from initialCapital and target
-  const milestones = deriveMilestones(initialCapital, target);
-  const milestoneHits: MilestoneHit[] = milestones.map((m) => ({ target: m, trades: null }));
-  let totalTrades: number | null = null;
-  let trajectory: ChartPoint[] = [{ trade: 0, capital: initialCapital }];
-
-  if (isRentable) {
-    const growth = 1 + expectancy * riesgoReal;
-    let capital = initialCapital;
-    let trade = 0;
-
-    const stopAt = target ?? Infinity;
-    while (capital < stopAt && trade < MAX_ITER) {
-      capital *= growth;
-      trade++;
-      milestoneHits.forEach((mh) => {
-        if (mh.trades === null && capital >= mh.target) mh.trades = trade;
-      });
-    }
-    if (target !== null && capital >= target) totalTrades = trade;
-
-    // Sparse trajectory for chart (stop at target if set, else MAX_ITER trades shown)
-    const totalSteps = totalTrades ?? Math.min(trade, MAX_ITER);
-    const step = Math.max(1, Math.floor(totalSteps / MAX_CHART_POINTS));
-    capital = initialCapital;
-    const sparse: ChartPoint[] = [{ trade: 0, capital }];
-    for (let t = 1; t <= totalSteps; t++) {
-      capital *= growth;
-      if (t % step === 0 || t === totalSteps) sparse.push({ trade: t, capital });
-    }
-    trajectory = sparse;
-  }
-
-  return {
-    riesgoReal,
-    liqPct,
-    expectancy,
-    isLiquidated,
-    isRentable,
-    trajectory,
-    milestoneHits,
-    totalTrades,
-  };
-};
-
-const deriveMilestones = (initial: number, target: number | null): number[] => {
-  if (target === null) {
-    // No target: show 5 round multiples of the initial capital
-    const steps = [2, 5, 10, 20, 50].map((x) => parseFloat((initial * x).toPrecision(2)));
-    return steps;
-  }
-  // Split target into 5 evenly spaced checkpoints
-  const ratio = target / initial;
-  if (ratio <= 1) return [target];
-  const checkpoints = [0.2, 0.4, 0.6, 0.8, 1.0].map((f) => {
-    const v = initial * Math.pow(ratio, f);
-    return parseFloat(v.toPrecision(3));
-  });
-  return checkpoints;
-};
+// ─── Local types ──────────────────────────────────────────────────────────────
+// Re-exported from calculatorMath; listed here for component clarity.
+type Params = CalcParams & { tpd: number };
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 interface SliderRowProps {
@@ -241,7 +148,7 @@ export default function CalculatorPage() {
   };
 
   const r = useMemo(
-    () => compute(params, initialCapital, target),
+    () => computeCalc(params, initialCapital, target),
     [winRatePct, rr, lev, slPct, initialCapital, target]
   );
 
