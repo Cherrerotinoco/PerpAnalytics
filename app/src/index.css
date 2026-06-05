@@ -358,6 +358,17 @@ body {
   gap: 10px;
 }
 
+.tc-header-nav-link {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--tc-muted);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+.tc-header-nav-link:hover {
+  color: var(--tc-text);
+}
+
 .tc-header-app-link {
   font-size: 0.75rem;
   font-weight: 600;
@@ -1456,6 +1467,52 @@ body {
   font-size: 0.9rem;
   width: fit-content;
   margin: 0 auto;
+}
+
+/* ── Calculator promo banner ────────────────────────────────────────────────── */
+.tc-calc-promo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 32px;
+  background: var(--tc-surface);
+  border: 1px solid var(--tc-border);
+  border-radius: var(--tc-radius);
+  padding: 32px 36px;
+}
+
+@media (max-width: 640px) {
+  .tc-calc-promo {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 24px 20px;
+  }
+}
+
+.tc-calc-promo-text {
+  max-width: 520px;
+}
+
+.tc-calc-promo-title {
+  font-size: clamp(1.1rem, 2.5vw, 1.4rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--tc-text);
+  margin: 4px 0 8px;
+}
+
+.tc-calc-promo-body {
+  font-size: 0.85rem;
+  color: var(--tc-muted);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.tc-calc-promo-cta {
+  white-space: nowrap;
+  flex-shrink: 0;
+  padding: 0.55rem 1.4rem;
+  font-size: 0.875rem;
 }
 
 /* Title + recent wallets row — never grows */

@@ -32,6 +32,9 @@ const Header = () => {
       </Link>
 
       <div className="tc-header-right">
+        <Link to="/calculator" className="tc-header-nav-link">
+          Calculator
+        </Link>
         <Link to="/dashboard" className="tc-header-app-link">
           Open app →
         </Link>

@@ -24,11 +24,39 @@ const { render } = (await import(serverEntry)) as { render: (url: string) => str
 
 const template = fs.readFileSync(path.join(distPath, 'index.html'), 'utf-8');
 
-const routes = ['/', '/dashboard', '/cookie-policy'];
+interface RouteMeta {
+  title: string;
+  description: string;
+}
 
-for (const url of routes) {
+const routes: Record<string, RouteMeta> = {
+  '/': {
+    title: 'PerpsAnalytics — Free Solana Perps Trading Dashboard',
+    description:
+      'Free analytics dashboard for Solana perpetuals traders. Paste your wallet to instantly see your equity curve, PnL by symbol, win rate, and full trade history across Jupiter Perpetuals and Pacifica Finance. No sign-up required.',
+  },
+  '/dashboard': {
+    title: 'Dashboard — PerpsAnalytics',
+    description:
+      'Analyze your Solana perpetuals trading history. Enter any public wallet address to see your equity curve, win rate, PnL breakdown and full trade list across Jupiter Perpetuals and Pacifica Finance.',
+  },
+  '/calculator': {
+    title: 'Account Growth Calculator — PerpsAnalytics',
+    description:
+      'Interactive BTC futures account projection calculator. Model compound growth trade-by-trade with your real win rate, risk/reward, leverage and stop-loss parameters. See how long it takes to reach your target.',
+  },
+  '/cookie-policy': {
+    title: 'Cookie Policy — PerpsAnalytics',
+    description: 'Cookie policy for PerpsAnalytics.',
+  },
+};
+
+for (const [url, meta] of Object.entries(routes)) {
   const appHtml = render(url);
-  const html = template.replace('<!--app-html-->', appHtml);
+  const html = template
+    .replace('<!--app-html-->', appHtml)
+    .replace(/<!--app-title-->.*?<!--\/app-title-->/s, meta.title)
+    .replace(/<!--app-description-->.*?<!--\/app-description-->/s, meta.description);
 
   let outPath: string;
   if (url === '/') {
