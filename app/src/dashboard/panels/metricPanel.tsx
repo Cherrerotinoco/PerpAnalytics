@@ -9,6 +9,7 @@ import {
   ratioClass,
   sharpeLabel,
 } from './statistics';
+import { TOOLTIPS } from '../../utils/metricTooltips';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 export type PanelSection = 'charts' | 'performance' | 'risk' | 'trades';
@@ -37,7 +38,7 @@ export const METRIC_PANEL_CONFIGS: MetricPanelConfig[] = [
         label="Total PnL"
         value={`${sign(st.totalPnl)}${fmtNum(st.totalPnl)} $`}
         colorClass={posNegClass(st.totalPnl)}
-        tooltip="Sum of PnL across all closed trades."
+        tooltip={TOOLTIPS.totalPnl}
       />
     ),
   },
@@ -53,7 +54,7 @@ export const METRIC_PANEL_CONFIGS: MetricPanelConfig[] = [
         value={isFinite(st.profitFactor) ? fmtNum(st.profitFactor) : '∞'}
         sub={st.profitFactor >= 1 ? 'Profitable' : 'Unprofitable'}
         colorClass={st.profitFactor >= 1 ? 'tc-green' : 'tc-red'}
-        tooltip="Gross profit ÷ gross loss. A value above 1.0 means the strategy is net-profitable."
+        tooltip={TOOLTIPS.profitFactor}
       />
     ),
   },
@@ -68,7 +69,7 @@ export const METRIC_PANEL_CONFIGS: MetricPanelConfig[] = [
         label="Max Profit"
         value={`+${fmtNum(st.maxWin)} $`}
         colorClass="tc-green"
-        tooltip="PnL of the single largest winning trade."
+        tooltip={TOOLTIPS.maxProfit}
       />
     ),
   },
@@ -83,7 +84,7 @@ export const METRIC_PANEL_CONFIGS: MetricPanelConfig[] = [
         label="Max Loss"
         value={`-${fmtNum(st.maxLoss)} $`}
         colorClass="tc-red"
-        tooltip="Absolute PnL of the single largest losing trade."
+        tooltip={TOOLTIPS.maxLoss}
       />
     ),
   },
@@ -99,7 +100,7 @@ export const METRIC_PANEL_CONFIGS: MetricPanelConfig[] = [
         value={`${sign(st.expectancy)}${fmtNum(st.expectancy)} $`}
         sub="per trade"
         colorClass={posNegClass(st.expectancy)}
-        tooltip="Total PnL ÷ total trades. Average dollars earned (or lost) per trade."
+        tooltip={TOOLTIPS.expectancy}
       />
     ),
   },
@@ -115,7 +116,7 @@ export const METRIC_PANEL_CONFIGS: MetricPanelConfig[] = [
         value={isFinite(st.riskReward) ? fmtNum(st.riskReward) : '∞'}
         sub="avg win / avg loss"
         colorClass={st.riskReward >= 1 ? 'tc-green' : ''}
-        tooltip="Average winning trade ÷ average losing trade. A value > 1 means wins are larger than losses on average."
+        tooltip={TOOLTIPS.riskReward}
       />
     ),
   },
@@ -141,7 +142,7 @@ export const METRIC_PANEL_CONFIGS: MetricPanelConfig[] = [
         value={`-${fmtNum(st.maxDrawdown)} $`}
         sub={`${fmtNum(st.maxDrawdownPct, 1)}% from peak`}
         colorClass="tc-red"
-        tooltip="Largest peak-to-trough decline in the running equity curve."
+        tooltip={TOOLTIPS.maxDrawdown}
       />
     ),
   },
@@ -157,7 +158,7 @@ export const METRIC_PANEL_CONFIGS: MetricPanelConfig[] = [
         value={isFinite(st.calmarRatio) ? fmtNum(st.calmarRatio) : '∞'}
         sub="PnL / max drawdown"
         colorClass={ratioClass(st.calmarRatio)}
-        tooltip="Annualised PnL ÷ max drawdown. Higher values mean better annualised return relative to the worst drawdown."
+        tooltip={TOOLTIPS.calmarRatio}
       />
     ),
   },
@@ -173,7 +174,7 @@ export const METRIC_PANEL_CONFIGS: MetricPanelConfig[] = [
         value={fmtNum(st.sharpeRatio)}
         sub={sharpeLabel(st.sharpeRatio)}
         colorClass={ratioClass(st.sharpeRatio)}
-        tooltip="Mean PnL ÷ std deviation of all trade PnLs. Measures return per unit of total volatility."
+        tooltip={TOOLTIPS.sharpeRatio}
       />
     ),
   },
@@ -189,7 +190,7 @@ export const METRIC_PANEL_CONFIGS: MetricPanelConfig[] = [
         value={isFinite(st.sortino) ? fmtNum(st.sortino) : '∞'}
         sub="downside vol. only"
         colorClass={ratioClass(st.sortino)}
-        tooltip="Mean PnL ÷ downside deviation. Penalises downside risk exclusively."
+        tooltip={TOOLTIPS.sortino}
       />
     ),
   },
@@ -205,7 +206,7 @@ export const METRIC_PANEL_CONFIGS: MetricPanelConfig[] = [
         value={isFinite(st.recoveryFactor) ? fmtNum(st.recoveryFactor) : '∞'}
         sub="profit vs risk"
         colorClass={st.recoveryFactor >= 1 ? 'tc-green' : 'tc-red'}
-        tooltip="Total net PnL ÷ max drawdown. Indicates how well total profit covers the worst drawdown."
+        tooltip={TOOLTIPS.recoveryFactor}
       />
     ),
   },
@@ -221,7 +222,7 @@ export const METRIC_PANEL_CONFIGS: MetricPanelConfig[] = [
         value={`${st.var95 >= 0 ? '+' : ''}${fmtNum(st.var95)} $`}
         sub="worst loss in 95% of trades"
         colorClass={st.var95 >= 0 ? 'tc-green' : 'tc-red'}
-        tooltip="5th-percentile trade PnL. In 95% of trades, the loss will not exceed this value."
+        tooltip={TOOLTIPS.var95}
       />
     ),
   },
@@ -240,7 +241,7 @@ export const METRIC_PANEL_CONFIGS: MetricPanelConfig[] = [
           label="Total Trades"
           value={String(st.totalTrades)}
           sub={breakeven > 0 ? `${breakeven} breakeven` : undefined}
-          tooltip="Total number of closed trades in the selected period and platforms."
+          tooltip={TOOLTIPS.totalTrades}
         />
       );
     },
@@ -265,7 +266,7 @@ export const METRIC_PANEL_CONFIGS: MetricPanelConfig[] = [
         value={fmtPct(st.lossRate)}
         sub={`${st.lossTrades} losses`}
         colorClass="tc-red"
-        tooltip="(Losing trades ÷ total trades) × 100."
+        tooltip={TOOLTIPS.lossRate}
       />
     ),
   },
@@ -289,7 +290,7 @@ export const METRIC_PANEL_CONFIGS: MetricPanelConfig[] = [
         label="Avg Winner"
         value={`+${fmtNum(st.avgWin)} $`}
         colorClass="tc-green"
-        tooltip="Average PnL of all winning trades."
+        tooltip={TOOLTIPS.avgWin}
       />
     ),
   },
@@ -304,7 +305,7 @@ export const METRIC_PANEL_CONFIGS: MetricPanelConfig[] = [
         label="Avg Loser"
         value={`-${fmtNum(st.avgLoss)} $`}
         colorClass="tc-red"
-        tooltip="Average absolute PnL of all losing trades."
+        tooltip={TOOLTIPS.avgLoss}
       />
     ),
   },
@@ -319,7 +320,7 @@ export const METRIC_PANEL_CONFIGS: MetricPanelConfig[] = [
         label="Median Winner"
         value={`+${fmtNum(st.medianWin)} $`}
         colorClass="tc-green"
-        tooltip="The middle value of all winning trades, sorted by PnL. Less skewed by outliers than the average."
+        tooltip={TOOLTIPS.medianWin}
       />
     ),
   },
@@ -334,7 +335,7 @@ export const METRIC_PANEL_CONFIGS: MetricPanelConfig[] = [
         label="Median Loser"
         value={`-${fmtNum(st.medianLoss)} $`}
         colorClass="tc-red"
-        tooltip="The middle value of all losing trades by size. Less skewed by outliers than the average."
+        tooltip={TOOLTIPS.medianLoss}
       />
     ),
   },
@@ -350,7 +351,7 @@ export const METRIC_PANEL_CONFIGS: MetricPanelConfig[] = [
         value={`+${fmtNum(st.p90Win)} $`}
         sub="90th percentile"
         colorClass="tc-green"
-        tooltip="90% of winning trades are below this value. A very high P90 vs average suggests a few outlier wins are inflating your results."
+        tooltip={TOOLTIPS.p90Win}
       />
     ),
   },
@@ -366,7 +367,7 @@ export const METRIC_PANEL_CONFIGS: MetricPanelConfig[] = [
         value={`-${fmtNum(st.p90Loss)} $`}
         sub="90th percentile"
         colorClass="tc-red"
-        tooltip="90% of losing trades are below this size. A very high P90 vs average suggests a few large losses are damaging your overall results."
+        tooltip={TOOLTIPS.p90Loss}
       />
     ),
   },
@@ -380,7 +381,7 @@ const WinRatePanel = ({ stats: st }: { stats: TradeStats }) => (
     value={fmtPct(st.winRate)}
     sub={`${st.winTrades} wins`}
     colorClass={st.winRate >= 50 ? 'tc-green' : 'tc-red'}
-    tooltip="(Winning trades ÷ total trades) × 100. A trade is a win when PnL > 0."
+    tooltip={TOOLTIPS.winRate}
   />
 );
 

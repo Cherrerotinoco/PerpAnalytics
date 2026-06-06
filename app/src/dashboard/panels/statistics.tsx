@@ -1,5 +1,6 @@
 import { memo, useState, createContext, useContext } from 'react';
 import { Trade } from '../../types/tradeTypes';
+import { TOOLTIPS } from '../../utils/metricTooltips';
 
 // When true, Metric renders its label text inside the card (used on the landing page).
 export const MetricLabelContext = createContext(false);
@@ -406,40 +407,40 @@ export const PerformanceSection = memo(({ stats: st }: { stats: TradeStats }) =>
         label="Total PnL"
         value={`${sign(st.totalPnl)}${fmtNum(st.totalPnl)} $`}
         colorClass={posNegClass(st.totalPnl)}
-        tooltip="Sum of PnL across all closed trades."
+        tooltip={TOOLTIPS.totalPnl}
       />
       <Metric
         label="Profit Factor"
         value={isFinite(st.profitFactor) ? fmtNum(st.profitFactor) : '∞'}
         sub={st.profitFactor >= 1 ? 'Profitable' : 'Unprofitable'}
         colorClass={st.profitFactor >= 1 ? 'tc-green' : 'tc-red'}
-        tooltip="Gross profit ÷ gross loss. A value above 1.0 means the strategy is net-profitable."
+        tooltip={TOOLTIPS.profitFactor}
       />
       <Metric
         label="Max Profit"
         value={`+${fmtNum(st.maxWin)} $`}
         colorClass="tc-green"
-        tooltip="PnL of the single largest winning trade."
+        tooltip={TOOLTIPS.maxProfit}
       />
       <Metric
         label="Max Loss"
         value={`-${fmtNum(st.maxLoss)} $`}
         colorClass="tc-red"
-        tooltip="Absolute PnL of the single largest losing trade."
+        tooltip={TOOLTIPS.maxLoss}
       />
       <Metric
         label="Expectancy"
         value={`${sign(st.expectancy)}${fmtNum(st.expectancy)} $`}
         sub="per trade"
         colorClass={posNegClass(st.expectancy)}
-        tooltip="Total PnL ÷ total trades. Average dollars earned (or lost) per trade."
+        tooltip={TOOLTIPS.expectancy}
       />
       <Metric
         label="Risk / Reward"
         value={isFinite(st.riskReward) ? fmtNum(st.riskReward) : '∞'}
         sub="avg win / avg loss"
         colorClass={st.riskReward >= 1 ? 'tc-green' : ''}
-        tooltip="Average winning trade ÷ average losing trade. A value > 1 means wins are larger than losses on average."
+        tooltip={TOOLTIPS.riskReward}
       />
     </MetricGrid>
 
@@ -477,42 +478,42 @@ export const RiskSection = memo(({ stats: st }: { stats: TradeStats }) => (
         value={`-${fmtNum(st.maxDrawdown)} $`}
         sub={`${fmtNum(st.maxDrawdownPct, 1)}% from peak`}
         colorClass="tc-red"
-        tooltip="Largest peak-to-trough decline in the running equity curve."
+        tooltip={TOOLTIPS.maxDrawdown}
       />
       <Metric
         label="Calmar Ratio"
         value={isFinite(st.calmarRatio) ? fmtNum(st.calmarRatio) : '∞'}
         sub="PnL / max drawdown"
         colorClass={ratioClass(st.calmarRatio)}
-        tooltip="Annualised PnL ÷ max drawdown, based on the period spanned by the selected trades. Higher values mean better annualised return relative to the worst drawdown."
+        tooltip={TOOLTIPS.calmarRatio}
       />
       <Metric
         label="Sharpe Ratio"
         value={fmtNum(st.sharpeRatio)}
         sub={sharpeLabel(st.sharpeRatio)}
         colorClass={ratioClass(st.sharpeRatio)}
-        tooltip="Mean PnL ÷ std deviation of all trade PnLs (risk-free rate = 0, per-trade, non-annualised). Measures return per unit of total volatility."
+        tooltip={TOOLTIPS.sharpeRatio}
       />
       <Metric
         label="Sortino Ratio"
         value={isFinite(st.sortino) ? fmtNum(st.sortino) : '∞'}
         sub="downside vol. only"
         colorClass={ratioClass(st.sortino)}
-        tooltip="Mean PnL ÷ downside deviation (RMS of all returns clipped at zero, full trade count denominator). Penalises downside risk exclusively."
+        tooltip={TOOLTIPS.sortino}
       />
       <Metric
         label="Recovery Factor"
         value={isFinite(st.recoveryFactor) ? fmtNum(st.recoveryFactor) : '∞'}
         sub="profit vs risk"
         colorClass={st.recoveryFactor >= 1 ? 'tc-green' : 'tc-red'}
-        tooltip="Total net PnL ÷ max drawdown (non-annualised). Indicates how well total profit covers the worst drawdown experienced."
+        tooltip={TOOLTIPS.recoveryFactor}
       />
       <Metric
         label="VaR 95%"
         value={`${st.var95 >= 0 ? '+' : ''}${fmtNum(st.var95)} $`}
         sub="worst loss in 95% of trades"
         colorClass={st.var95 >= 0 ? 'tc-green' : 'tc-red'}
-        tooltip="5th-percentile trade PnL (sorted ascending). In 95% of trades, the loss will not exceed this value."
+        tooltip={TOOLTIPS.var95}
       />
     </MetricGrid>
   </div>
@@ -529,21 +530,21 @@ export const TradesSection = memo(({ stats: st }: { stats: TradeStats }) => {
           label="Total"
           value={String(st.totalTrades)}
           sub={breakeven > 0 ? `${breakeven} breakeven` : undefined}
-          tooltip="Total number of closed trades in the selected period and platforms."
+          tooltip={TOOLTIPS.totalTrades}
         />
         <Metric
           label="Win Rate"
           value={fmtPct(st.winRate)}
           sub={`${st.winTrades} wins`}
           colorClass={st.winRate >= 50 ? 'tc-green' : 'tc-red'}
-          tooltip="(Winning trades ÷ total trades) × 100. A trade is a win when PnL > 0."
+          tooltip={TOOLTIPS.winRate}
         />
         <Metric
           label="Loss Rate"
           value={fmtPct(st.lossRate)}
           sub={`${st.lossTrades} losses`}
           colorClass="tc-red"
-          tooltip="(Losing trades ÷ total trades) × 100. A trade is a loss when PnL < 0."
+          tooltip={TOOLTIPS.lossRate}
         />
         {/* Streaks card */}
         <div className="tc-card">
