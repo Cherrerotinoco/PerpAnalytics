@@ -14,13 +14,13 @@ export interface ChartColors {
 }
 
 export const getChartColors = (isDark: boolean): ChartColors => ({
-  axisColor:    isDark ? '#6b7280' : '#9ca3af',
-  textColor:    isDark ? '#e0e0e0' : '#111827',
+  axisColor: isDark ? '#6b7280' : '#9ca3af',
+  textColor: isDark ? '#e0e0e0' : '#111827',
   surfaceColor: isDark ? '#141414' : '#ffffff',
-  borderColor:  isDark ? '#2a2a2a' : '#e5e7eb',
-  greenColor:   isDark ? '#22c55e' : '#16a34a',
-  redColor:     isDark ? '#ef4444' : '#dc2626',
-  amberColor:   isDark ? '#f59e0b' : '#d97706',
+  borderColor: isDark ? '#2a2a2a' : '#e5e7eb',
+  greenColor: isDark ? '#22c55e' : '#16a34a',
+  redColor: isDark ? '#ef4444' : '#dc2626',
+  amberColor: isDark ? '#f59e0b' : '#d97706',
   refLineColor: isDark ? '#3a3a3a' : '#d1d5db',
 });
 
@@ -29,7 +29,7 @@ export const getChartColors = (isDark: boolean): ChartColors => ({
 export const getWinRateColor = (
   wr: number,
   avgWr: number,
-  colors: Pick<ChartColors, 'greenColor' | 'redColor' | 'amberColor'>,
+  colors: Pick<ChartColors, 'greenColor' | 'redColor' | 'amberColor'>
 ): string => {
   if (wr >= avgWr + 10) return colors.greenColor;
   if (wr <= avgWr - 10) return colors.redColor;
