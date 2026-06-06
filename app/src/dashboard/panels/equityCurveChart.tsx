@@ -40,7 +40,7 @@ const CustomTooltip = ({ active, payload, label }: TooltipProps) => {
   );
 };
 
-const EquityCurveChart = memo(({ stats }: { stats: TradeStats }) => {
+const EquityCurveChart = memo(({ stats, height = 280 }: { stats: TradeStats; height?: number }) => {
   const { theme } = useTheme();
 
   const data = stats.equityCurve
@@ -98,7 +98,7 @@ const EquityCurveChart = memo(({ stats }: { stats: TradeStats }) => {
         </span>
       </div>
 
-      <ResponsiveContainer width="100%" height={280}>
+      <ResponsiveContainer width="100%" height={height}>
         <LineChart data={data} margin={{ top: 8, right: 16, left: 8, bottom: 24 }}>
           <defs>
             <linearGradient id="equityLineGradient" x1="0" y1="0" x2="0" y2="1">

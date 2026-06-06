@@ -4,7 +4,7 @@ import { CgSync, CgCheck } from 'react-icons/cg';
 import { Trade } from '../types/tradeTypes';
 import { normalizeJupiterTrades, JupiterTrade } from '../utils/normalizeJupiter';
 import { normalizePacificaTrades, PacificaFill } from '../utils/normalizePacifica';
-import DashboardGrid from '../dashboard/DashboardGrid';
+import Dashboard from '../dashboard/Dashboard';
 import RecentWallets from './RecentWallets';
 
 const SOLANA_ADDRESS_REGEX = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
@@ -362,33 +362,6 @@ export const WalletForm = ({
                 />
               </div>
 
-              {/* Date range */}
-              <div>
-                <label className="tc-label" htmlFor="start-date">
-                  From
-                </label>
-                <input
-                  id="start-date"
-                  type="date"
-                  name="start-date"
-                  className="tc-input tc-date-input"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="tc-label" htmlFor="end-date">
-                  To
-                </label>
-                <input
-                  id="end-date"
-                  type="date"
-                  name="end-date"
-                  className="tc-input tc-date-input"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                />
-              </div>
               {/* Platform checkboxes */}
               <div className="tc-platform-group">
                 {(['jupiter', 'pacifica'] as Platform[]).map((p) => {
@@ -475,7 +448,15 @@ export const WalletForm = ({
 
       {/* ── Dashboard ──────────────────────────────────────────────────────── */}
       <div ref={dashboardRef}>
-        <DashboardGrid filteredTrades={filteredTrades} hasData={hasData} hasQueried={hasQueried} />
+        <Dashboard
+          filteredTrades={filteredTrades}
+          hasData={hasData}
+          hasQueried={hasQueried}
+          startDate={startDate}
+          endDate={endDate}
+          setStartDate={setStartDate}
+          setEndDate={setEndDate}
+        />
       </div>
     </div>
   );
