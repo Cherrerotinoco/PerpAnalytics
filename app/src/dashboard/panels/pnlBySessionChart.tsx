@@ -11,12 +11,9 @@ import {
   ReferenceLine,
 } from 'recharts';
 import { useTheme } from '../../context/ThemeContext';
+import { getChartColors, TOOLTIP_CURSOR } from '../../utils/chartColors';
+import { fmtMoney, fmtPct } from '../../utils/formatters';
 import type { TradeStats, SessionStats } from './statistics';
-
-const fmtMoney = (v: number): string =>
-  v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-const fmtPct = (v: number): string => `${v.toFixed(0)}%`;
 
 // ─── Tooltip ──────────────────────────────────────────────────────────────────
 interface TooltipProps {
@@ -76,10 +73,7 @@ const PnlBySessionChart = memo(({ stats }: { stats: TradeStats }) => {
   const { bySession } = stats;
   if (!bySession.length) return null;
 
-  const greenColor = isDark ? '#22c55e' : '#16a34a';
-  const redColor = isDark ? '#ef4444' : '#dc2626';
-  const gridColor = isDark ? '#2a2a2a' : '#e5e7eb';
-  const axisColor = isDark ? '#6b7280' : '#9ca3af';
+  const { greenColor, redColor, axisColor, borderColor: gridColor } = getChartColors(isDark);
   const refColor = isDark ? '#374151' : '#d1d5db';
 
   return (
@@ -102,10 +96,7 @@ const PnlBySessionChart = memo(({ stats }: { stats: TradeStats }) => {
           }
           width={72}
         />
-        <Tooltip
-          content={<CustomTooltip />}
-          cursor={{ fill: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)' }}
-        />
+        <Tooltip content={<CustomTooltip />} cursor={TOOLTIP_CURSOR} />
         <ReferenceLine y={0} stroke={refColor} strokeDasharray="4 4" />
         <Bar dataKey="totalPnl" radius={[4, 4, 0, 0]} maxBarSize={64}>
           {bySession.map((s) => (

@@ -11,6 +11,7 @@ import {
 } from 'recharts';
 import { Trade } from '../../types/tradeTypes';
 import { useTheme } from '../../context/ThemeContext';
+import { TOOLTIP_CURSOR } from '../../utils/chartColors';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 interface SymbolRow {
@@ -83,7 +84,7 @@ const PnlBySymbolChart = memo(({ trades }: { trades: Trade[] }) => {
           width={62}
         />
         <Tooltip
-          cursor={{ fill: 'rgba(255,255,255,0.04)' }}
+          cursor={TOOLTIP_CURSOR}
           contentStyle={{
             background: surfaceColor,
             border: `1px solid ${borderColor}`,

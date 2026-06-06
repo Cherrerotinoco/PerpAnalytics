@@ -10,10 +10,8 @@ import {
   ReferenceLine,
 } from 'recharts';
 import { useTheme } from '../../context/ThemeContext';
+import { fmtMoney } from '../../utils/formatters';
 import type { TradeStats } from './statistics';
-
-const fmtMoney = (v: number): string =>
-  v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 const fmtDate = (ts: number): string =>
   new Date(ts).toLocaleDateString('en-US', {

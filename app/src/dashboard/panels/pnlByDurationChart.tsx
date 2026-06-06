@@ -1,4 +1,4 @@
-import { memo, useState } from 'react';
+import { memo } from 'react';
 import {
   BarChart,
   Bar,
@@ -7,48 +7,18 @@ import {
   Tooltip,
   ResponsiveContainer,
   Cell,
-  ReferenceLine,
+  LabelList,
 } from 'recharts';
 import { Trade } from '../../types/tradeTypes';
 import { useTheme } from '../../context/ThemeContext';
 import { getChartColors, TOOLTIP_CURSOR } from '../../utils/chartColors';
 import { fmtUsd } from '../../utils/formatters';
-import { TimeToggle } from './timeToggle';
+import { computeByDuration } from './durationUtils';
+import type { DurationRow } from './durationUtils';
 import TooltipContainer from './TooltipContainer';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-interface HourRow {
-  hour: number;
-  label: string;
-  pnl: number;
-  trades: number;
-  wins: number;
-  winRate: number;
-}
-
-// ─── Data computation ─────────────────────────────────────────────────────────
-export const computeByHour = (trades: Trade[], useOpen: boolean): HourRow[] => {
-  const buckets = Array.from({ length: 24 }, (_, h) => ({ hour: h, pnl: 0, trades: 0, wins: 0 }));
-  for (const t of trades) {
-    const h = (useOpen ? t.opened : t.closed).getHours();
-    buckets[h].pnl += t.pnl;
-    buckets[h].trades++;
-    if (t.pnl > 0) buckets[h].wins++;
-  }
-  return buckets
-    .filter((b) => b.trades > 0)
-    .map((b) => ({
-      hour: b.hour,
-      label: `${String(b.hour).padStart(2, '0')}h`,
-      pnl: parseFloat(b.pnl.toFixed(2)),
-      trades: b.trades,
-      wins: b.wins,
-      winRate: Math.round((b.wins / b.trades) * 100),
-    }));
-};
-
 // ─── Tooltip ──────────────────────────────────────────────────────────────────
-const HourTooltip = ({
+const DurationTooltip = ({
   active,
   payload,
   textColor,
@@ -58,7 +28,7 @@ const HourTooltip = ({
   redColor,
 }: {
   active?: boolean;
-  payload?: { payload: HourRow }[];
+  payload?: { payload: DurationRow }[];
   textColor: string;
   surfaceColor: string;
   borderColor: string;
@@ -69,42 +39,45 @@ const HourTooltip = ({
   const d = payload[0].payload;
   return (
     <TooltipContainer surfaceColor={surfaceColor} borderColor={borderColor} textColor={textColor}>
-      <div style={{ fontWeight: 700, marginBottom: 4 }}>{d.label}</div>
+      <div style={{ fontWeight: 700, marginBottom: 4 }}>
+        {d.label} <span style={{ fontWeight: 400, opacity: 0.6 }}>({d.description})</span>
+      </div>
       <div>
         PnL: <strong style={{ color: d.pnl >= 0 ? greenColor : redColor }}>{fmtUsd(d.pnl)}</strong>
       </div>
+      <div>
+        Win rate: <strong>{d.winRate}%</strong>
+      </div>
       <div style={{ opacity: 0.7, marginTop: 2 }}>
-        {d.wins}W / {d.trades - d.wins}L &middot; {d.trades} trades &middot; {d.winRate}% WR
+        {d.wins}W / {d.trades - d.wins}L &middot; {d.trades} trades
       </div>
     </TooltipContainer>
   );
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────
-const PnlByHourChart = memo(({ trades }: { trades: Trade[] }) => {
+const PnlByDurationChart = memo(({ trades }: { trades: Trade[] }) => {
   const { theme } = useTheme();
-  const [useOpen, setUseOpen] = useState(true);
-  const data = computeByHour(trades, useOpen);
+  const data = computeByDuration(trades);
   if (!data.length) return null;
 
-  const { axisColor, textColor, surfaceColor, borderColor, greenColor, redColor, refLineColor } =
-    getChartColors(theme === 'dark');
+  const { axisColor, textColor, surfaceColor, borderColor, greenColor, redColor } = getChartColors(
+    theme === 'dark'
+  );
 
   return (
     <div style={{ width: '100%' }}>
-      <TimeToggle useOpen={useOpen} onChange={setUseOpen} axisColor={axisColor} />
       <ResponsiveContainer width="100%" height={190}>
         <BarChart
           data={data}
-          margin={{ top: 8, right: 8, left: -8, bottom: 0 }}
-          barCategoryGap="18%"
+          margin={{ top: 16, right: 8, left: -4, bottom: 0 }}
+          barCategoryGap="30%"
         >
           <XAxis
             dataKey="label"
-            tick={{ fill: axisColor, fontSize: 9 }}
+            tick={{ fill: axisColor, fontSize: 10 }}
             tickLine={false}
             axisLine={false}
-            interval={data.length > 16 ? 1 : 0}
           />
           <YAxis
             tick={{ fill: axisColor, fontSize: 9 }}
@@ -113,11 +86,10 @@ const PnlByHourChart = memo(({ trades }: { trades: Trade[] }) => {
             tickFormatter={fmtUsd}
             width={44}
           />
-          <ReferenceLine y={0} stroke={refLineColor} />
           <Tooltip
             cursor={TOOLTIP_CURSOR}
             content={
-              <HourTooltip
+              <DurationTooltip
                 textColor={textColor}
                 surfaceColor={surfaceColor}
                 borderColor={borderColor}
@@ -128,13 +100,35 @@ const PnlByHourChart = memo(({ trades }: { trades: Trade[] }) => {
           />
           <Bar dataKey="pnl" radius={[3, 3, 0, 0]}>
             {data.map((row) => (
-              <Cell key={row.hour} fill={row.pnl >= 0 ? greenColor : redColor} fillOpacity={0.82} />
+              <Cell key={row.key} fill={row.pnl >= 0 ? greenColor : redColor} fillOpacity={0.82} />
             ))}
+            <LabelList
+              dataKey="pnl"
+              position="top"
+              formatter={fmtUsd}
+              style={{ fontSize: 9, fill: axisColor }}
+            />
           </Bar>
         </BarChart>
       </ResponsiveContainer>
+      <div
+        style={{
+          display: 'flex',
+          gap: 16,
+          justifyContent: 'center',
+          marginTop: 6,
+          fontSize: '0.68rem',
+          color: axisColor,
+        }}
+      >
+        {data.map((row) => (
+          <span key={row.key}>
+            <strong>{row.label}</strong>: {row.trades} trades &middot; {row.description}
+          </span>
+        ))}
+      </div>
     </div>
   );
 });
 
-export default PnlByHourChart;
+export default PnlByDurationChart;
