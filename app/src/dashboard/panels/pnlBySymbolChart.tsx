@@ -11,7 +11,7 @@ import {
 } from 'recharts';
 import { Trade } from '../../types/tradeTypes';
 import { useTheme } from '../../context/ThemeContext';
-import { TOOLTIP_CURSOR } from '../../utils/chartColors';
+import { getChartColors, TOOLTIP_CURSOR } from '../../utils/chartColors';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 interface SymbolRow {
@@ -51,12 +51,9 @@ const PnlBySymbolChart = memo(({ trades }: { trades: Trade[] }) => {
 
   if (!data.length) return null;
 
-  const axisColor = theme === 'dark' ? '#6b7280' : '#9ca3af';
-  const textColor = theme === 'dark' ? '#e0e0e0' : '#111827';
-  const surfaceColor = theme === 'dark' ? '#141414' : '#ffffff';
-  const borderColor = theme === 'dark' ? '#2a2a2a' : '#e5e7eb';
-  const greenColor = theme === 'dark' ? '#22c55e' : '#16a34a';
-  const redColor = theme === 'dark' ? '#ef4444' : '#dc2626';
+  const { axisColor, textColor, surfaceColor, borderColor, greenColor, redColor } = getChartColors(
+    theme === 'dark'
+  );
 
   const chartHeight = Math.max(140, data.length * 32);
 

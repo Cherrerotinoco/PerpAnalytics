@@ -73,8 +73,13 @@ const PnlBySessionChart = memo(({ stats }: { stats: TradeStats }) => {
   const { bySession } = stats;
   if (!bySession.length) return null;
 
-  const { greenColor, redColor, axisColor, borderColor: gridColor } = getChartColors(isDark);
-  const refColor = isDark ? '#374151' : '#d1d5db';
+  const {
+    greenColor,
+    redColor,
+    axisColor,
+    gridColor,
+    refLineColor: refColor,
+  } = getChartColors(isDark);
 
   return (
     <ResponsiveContainer width="100%" height={280}>

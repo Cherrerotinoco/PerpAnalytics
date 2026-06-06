@@ -20,13 +20,13 @@ const buildKpis = (st: TradeStats): HeroKpi[] => [
     label: 'Win Rate',
     value: fmtPct(st.winRate),
     sub: `${st.winTrades} wins`,
-    colorClass: st.winRate >= 50 ? 'tc-green' : 'tc-red',
+    colorClass: 'tc-amber',
   },
   {
     label: 'Profit Factor',
     value: isFinite(st.profitFactor) ? fmtNum(st.profitFactor) : '∞',
     sub: st.profitFactor >= 1 ? 'Profitable' : 'Unprofitable',
-    colorClass: st.profitFactor >= 1 ? 'tc-green' : 'tc-red',
+    colorClass: 'tc-info',
   },
   {
     label: 'Max Drawdown',
@@ -43,19 +43,30 @@ const buildKpis = (st: TradeStats): HeroKpi[] => [
   {
     label: 'Total Trades',
     value: String(st.totalTrades),
+    colorClass: 'tc-neutral',
   },
 ];
 
-const HeroKpis = memo(({ stats }: { stats: TradeStats }) => (
-  <div className="tc-kpis">
-    {buildKpis(stats).map((k) => (
-      <div key={k.label} className="tc-kpi">
-        <p className="tc-kpi-label">{k.label}</p>
-        <p className={`tc-kpi-value ${k.colorClass ?? ''}`}>{k.value}</p>
-        {k.sub && <p className="tc-kpi-sub">{k.sub}</p>}
-      </div>
-    ))}
+const KpiCard = ({ k, hero }: { k: HeroKpi; hero?: boolean }) => (
+  <div className={`tc-kpi${hero ? ' tc-kpi--hero' : ''}`}>
+    <p className="tc-kpi-label">{k.label}</p>
+    <p className={`tc-kpi-value ${k.colorClass ?? ''}`}>{k.value}</p>
+    {k.sub && <p className="tc-kpi-sub">{k.sub}</p>}
   </div>
-));
+);
+
+const HeroKpis = memo(({ stats }: { stats: TradeStats }) => {
+  const [hero, ...rest] = buildKpis(stats);
+  return (
+    <div className="tc-kpis">
+      <KpiCard k={hero} hero />
+      <div className="tc-kpi-grid">
+        {rest.map((k) => (
+          <KpiCard key={k.label} k={k} />
+        ))}
+      </div>
+    </div>
+  );
+});
 
 export default HeroKpis;

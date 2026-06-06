@@ -17,20 +17,20 @@ const OverviewTab = ({ stats, trades }: TabProps) => (
     <HeroKpis stats={stats} />
 
     <Row>
-      <Panel title="Equity Curve" grow={8} centered>
+      <Panel title="Equity Curve" centered>
         <Suspense fallback={<PanelPlaceholder />}>
-          <EquityCurveChart stats={stats} height={200} />
-        </Suspense>
-      </Panel>
-      <Panel title="PnL by Symbol" grow={4} centered>
-        <Suspense fallback={<PanelPlaceholder />}>
-          <PnlBySymbolChart trades={trades} />
+          <EquityCurveChart stats={stats} height={300} />
         </Suspense>
       </Panel>
     </Row>
 
     <Row>
-      <Panel title="Trade Summary">
+      <Panel title="PnL by Symbol" grow={5} centered>
+        <Suspense fallback={<PanelPlaceholder />}>
+          <PnlBySymbolChart trades={trades} />
+        </Suspense>
+      </Panel>
+      <Panel title="Trade Summary" grow={7}>
         <TradesSection stats={stats} />
       </Panel>
     </Row>

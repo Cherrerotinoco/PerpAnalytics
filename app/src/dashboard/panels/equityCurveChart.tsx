@@ -10,6 +10,7 @@ import {
   ReferenceLine,
 } from 'recharts';
 import { useTheme } from '../../context/ThemeContext';
+import { getChartColors } from '../../utils/chartColors';
 import { fmtMoney } from '../../utils/formatters';
 import type { TradeStats } from './statistics';
 
@@ -50,11 +51,9 @@ const EquityCurveChart = memo(({ stats, height = 280 }: { stats: TradeStats; hei
   if (!data.length) return null;
 
   const isPositive = stats.totalPnl >= 0;
-  const greenColor = theme === 'dark' ? '#22c55e' : '#16a34a';
-  const redColor = theme === 'dark' ? '#ef4444' : '#dc2626';
-  const gridColor = theme === 'dark' ? '#2a2a2a' : '#e5e7eb';
-  const axisColor = theme === 'dark' ? '#6b7280' : '#9ca3af';
-  const refLineColor = theme === 'dark' ? '#374151' : '#d1d5db';
+  const { greenColor, redColor, gridColor, axisColor, refLineColor } = getChartColors(
+    theme === 'dark'
+  );
 
   const yValues = data.map((d) => d.y);
   const yMin = Math.min(...yValues);

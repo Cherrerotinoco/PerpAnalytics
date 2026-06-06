@@ -18,17 +18,34 @@ body {
 
 /* ─── Design tokens — dark (default) ────────────────────────────────────────── */
 :root {
-  --tc-bg: #0d0d0d;
-  --tc-surface: #141414;
-  --tc-surface-2: #1e1e1e;
-  --tc-surface-3: #1a1a1a; /* input / subtle bg */
-  --tc-border: #2a2a2a;
-  --tc-text: #e0e0e0;
-  --tc-muted: #6b7280;
-  --tc-green: #22c55e;
-  --tc-red: #ef4444;
-  --tc-amber: #f59e0b;
-  --tc-accent: #f59e0b; /* primary brand colour */
+  --tc-bg: #0b0b0d; /* bg-primary */
+  --tc-surface: #121316; /* cards */
+  --tc-surface-2: #181a1f; /* inner widgets */
+  --tc-surface-3: #181a1f; /* input / subtle bg */
+  --tc-bg-hover: #20232a; /* hover surface */
+  --tc-border: #2d313a; /* default border */
+  --tc-border-subtle: #24262d;
+  --tc-border-strong: #3b404b;
+  --tc-text: #f5f7fa; /* text-primary */
+  --tc-text-secondary: #b6bdc8;
+  --tc-muted: #7d8592; /* text-muted */
+  --tc-text-disabled: #555b66;
+  --tc-green: #22c55e; /* profit */
+  --tc-green-soft: rgba(34, 197, 94, 0.12);
+  --tc-red: #ef4444; /* loss */
+  --tc-red-soft: rgba(239, 68, 68, 0.12);
+  --tc-amber: #f4b942;
+  --tc-accent: #f4b942; /* primary brand colour */
+  --tc-accent-hover: #ffc95c;
+  --tc-accent-soft: rgba(244, 185, 66, 0.12);
+  --tc-accent-border: rgba(244, 185, 66, 0.35);
+  --tc-info: #60a5fa; /* analytical / informational */
+  --tc-neutral: #94a3b8; /* neutral state */
+  --tc-card-shadow: none; /* elevation reserved for light theme */
+  /* Chart-specific tokens (consumed by getChartColors via getComputedStyle) */
+  --tc-chart-axis: #7d8592;
+  --tc-chart-grid: rgba(255, 255, 255, 0.06);
+  --tc-chart-refline: #475569;
   --tc-radius: 6px;
   /* Tell the browser to render its own UI controls (scrollbars, form widgets,
      date-picker icon) using dark variants so they contrast with dark backgrounds. */
@@ -37,17 +54,33 @@ body {
 
 /* ─── Design tokens — light ──────────────────────────────────────────────────── */
 [data-theme='light'] {
-  --tc-bg: #f3f4f6;
-  --tc-surface: #ffffff;
-  --tc-surface-2: #f3f4f6;
+  --tc-bg: #f7f8fa; /* level 0 — app background */
+  --tc-surface: #ffffff; /* level 1 — cards float on the bg */
+  --tc-surface-2: #ffffff; /* KPI cards also white */
   --tc-surface-3: #ffffff;
+  --tc-bg-hover: #f1f3f6;
   --tc-border: #e5e7eb;
+  --tc-border-subtle: #eef0f3;
+  --tc-border-strong: #cbd0d8;
   --tc-text: #111827;
+  --tc-text-secondary: #374151;
   --tc-muted: #6b7280;
+  --tc-text-disabled: #9ca3af;
   --tc-green: #16a34a;
+  --tc-green-soft: rgba(22, 163, 74, 0.1);
   --tc-red: #dc2626;
+  --tc-red-soft: rgba(220, 38, 38, 0.1);
   --tc-amber: #d97706;
   --tc-accent: #d97706; /* slightly darker for contrast on white */
+  --tc-accent-hover: #b45309;
+  --tc-accent-soft: rgba(217, 119, 6, 0.12);
+  --tc-accent-border: rgba(217, 119, 6, 0.35);
+  --tc-info: #2563eb;
+  --tc-neutral: #64748b;
+  --tc-card-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 4px 12px rgba(0, 0, 0, 0.06);
+  --tc-chart-axis: #9ca3af;
+  --tc-chart-grid: rgba(0, 0, 0, 0.06);
+  --tc-chart-refline: #cbd5e1;
   color-scheme: light;
 }
 
@@ -90,6 +123,12 @@ body {
 }
 .tc-amber {
   color: var(--tc-amber) !important;
+}
+.tc-info {
+  color: var(--tc-info) !important;
+}
+.tc-neutral {
+  color: var(--tc-neutral) !important;
 }
 .tc-muted-text {
   color: var(--tc-muted) !important;
@@ -1977,33 +2016,30 @@ body {
 /* Tabs */
 .tc-tabs {
   display: flex;
-  gap: 2px;
-  background: var(--tc-surface-2);
-  border: 1px solid var(--tc-border);
-  border-radius: var(--tc-radius);
-  padding: 3px;
+  gap: 4px;
+  border-bottom: 1px solid var(--tc-border);
 }
 .tc-tab {
   background: transparent;
   border: none;
-  border-radius: calc(var(--tc-radius) - 2px);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px; /* overlap the container border */
   color: var(--tc-muted);
   font-family: inherit;
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   font-weight: 600;
-  padding: 6px 16px;
+  padding: 12px 16px;
   cursor: pointer;
   transition:
-    background 0.15s,
+    border-color 0.15s,
     color 0.15s;
 }
 .tc-tab:hover {
   color: var(--tc-text);
 }
 .tc-tab--active {
-  background: var(--tc-surface);
   color: var(--tc-text);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+  border-bottom-color: var(--tc-accent);
 }
 
 /* Timeframe selector */
@@ -2085,6 +2121,7 @@ body {
   border: 1px solid var(--tc-border);
   border-radius: var(--tc-radius);
   background: var(--tc-surface);
+  box-shadow: var(--tc-card-shadow);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -2114,17 +2151,40 @@ body {
   justify-content: center;
 }
 
-/* KPI row (dashboard hero) */
+/* KPI row (dashboard hero) — dominant Total PnL + secondary grid */
 .tc-kpis {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  display: flex;
+  flex-wrap: wrap;
   gap: 14px;
+  align-items: stretch;
 }
 .tc-kpi {
   border: 1px solid var(--tc-border);
   border-radius: var(--tc-radius);
   background: var(--tc-surface-2);
+  box-shadow: var(--tc-card-shadow);
   padding: 14px 16px;
+}
+.tc-kpi-grid {
+  flex: 1 1 480px;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 14px;
+}
+/* Hero KPI — Total PnL, the visual anchor of the dashboard */
+.tc-kpi--hero {
+  flex: 0 0 260px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.tc-kpi--hero .tc-kpi-label {
+  font-size: 0.78rem;
+}
+.tc-kpi--hero .tc-kpi-value {
+  font-size: 2.6rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
 }
 .tc-kpi-label {
   font-size: 0.7rem;
@@ -2146,16 +2206,19 @@ body {
   margin: 4px 0 0;
 }
 
-/* Tablet — collapse KPIs to 3 columns */
+/* Tablet — hero spans full width, secondary grid to 3 columns */
 @media (max-width: 1024px) {
-  .tc-kpis {
+  .tc-kpi--hero {
+    flex: 1 1 100%;
+  }
+  .tc-kpi-grid {
     grid-template-columns: repeat(3, 1fr);
   }
 }
 
-/* Mobile — KPIs to 2 columns, toolbar centred (rows wrap on their own) */
+/* Mobile — secondary grid to 2 columns, toolbar centred */
 @media (max-width: 768px) {
-  .tc-kpis {
+  .tc-kpi-grid {
     grid-template-columns: repeat(2, 1fr);
   }
   .tc-dash-toolbar {
