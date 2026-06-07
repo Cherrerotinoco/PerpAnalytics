@@ -40,10 +40,11 @@ const App = () => {
   useCookieConsent();
 
   const [wallet, setWallet] = useState('');
-  const [recentWallets, setRecentWallets] = useState<string[]>(loadRecentWallets);
+  const [recentWallets, setRecentWallets] = useState<string[]>([]);
 
-  // Re-sync on storage events so multiple tabs stay consistent
+  // Load from localStorage after hydration, then keep in sync across tabs
   useEffect(() => {
+    setRecentWallets(loadRecentWallets());
     const onStorage = (e: StorageEvent) => {
       if (e.key === 'recentWallets') {
         setRecentWallets(loadRecentWallets());

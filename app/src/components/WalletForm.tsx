@@ -456,6 +456,8 @@ export const WalletForm = ({
           endDate={endDate}
           setStartDate={setStartDate}
           setEndDate={setEndDate}
+          wallet={wallet}
+          platforms={platforms}
         />
       </div>
     </div>

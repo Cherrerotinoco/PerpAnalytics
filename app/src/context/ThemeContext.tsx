@@ -9,23 +9,19 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType>({
   theme: 'dark',
-  toggleTheme: () => {},
+  toggleTheme: () => { },
 });
 
 export const useTheme = () => useContext(ThemeContext);
 
 export const ThemeProvider = ({ children }: { children: ReactNode }) => {
-  const [theme, setTheme] = useState<Theme>(() => {
-    // SSR guard — localStorage and document are not available in Node
-    if (typeof window === 'undefined') {
-      return 'dark';
-    }
+  // Always start with 'dark' to match SSR — apply stored preference after hydration
+  const [theme, setTheme] = useState<Theme>('dark');
+
+  useEffect(() => {
     const stored = localStorage.getItem('tc-theme') as Theme | null;
-    const initial = stored ?? 'dark';
-    // Set eagerly to avoid a flash of the wrong theme on first paint
-    document.documentElement.setAttribute('data-theme', initial);
-    return initial;
-  });
+    if (stored && stored !== theme) setTheme(stored);
+  }, []);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);

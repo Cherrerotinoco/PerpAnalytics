@@ -2076,6 +2076,57 @@ body {
   color: var(--tc-accent);
 }
 
+/* Toolbar right group (download button + date range) */
+.tc-dash-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Export PDF button */
+.tc-btn-download {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: color-mix(in srgb, var(--tc-accent) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--tc-accent) 40%, transparent);
+  border-radius: var(--tc-radius);
+  color: var(--tc-accent);
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    opacity 0.15s;
+  white-space: nowrap;
+}
+.tc-btn-download:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--tc-accent) 22%, transparent);
+  border-color: color-mix(in srgb, var(--tc-accent) 60%, transparent);
+}
+.tc-btn-download:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.tc-btn-download-spinner {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid color-mix(in srgb, var(--tc-accent) 30%, transparent);
+  border-top-color: var(--tc-accent);
+  border-radius: 50%;
+  animation: tc-spin 0.7s linear infinite;
+}
+@keyframes tc-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 /* Date-range group (selector + custom inputs) */
 .tc-dash-daterange {
   display: flex;

@@ -10,6 +10,7 @@ import OverviewTab from './tabs/OverviewTab';
 import PerformanceTab from './tabs/PerformanceTab';
 import RiskTab from './tabs/RiskTab';
 import TradesTab from './tabs/TradesTab';
+import { generateReport } from '../utils/generateReport';
 
 // ─── URL state helpers ────────────────────────────────────────────────────────
 const readTab = (): DashboardTab => {
@@ -35,6 +36,8 @@ interface DashboardProps {
   endDate: string;
   setStartDate: (v: string) => void;
   setEndDate: (v: string) => void;
+  wallet: string;
+  platforms: string[];
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -46,8 +49,11 @@ const Dashboard = ({
   endDate,
   setStartDate,
   setEndDate,
+  wallet,
+  platforms,
 }: DashboardProps) => {
   const [activeTab, setActiveTab] = useState<DashboardTab>(readTab);
+  const [downloading, setDownloading] = useState(false);
 
   // Date-range mode. Read once from URL, falling back to CUSTOM when a date is
   // already present (e.g. shared link) or ALL otherwise.
@@ -70,6 +76,18 @@ const Dashboard = ({
   }, [range]);
 
   const onChangeTab = useCallback((tab: DashboardTab) => setActiveTab(tab), []);
+
+  const onDownload = useCallback(() => {
+    if (!hasData || downloading) return;
+    setDownloading(true);
+    try {
+      generateReport(wallet, filteredTrades, stats, startDate, endDate, platforms);
+    } catch (err) {
+      console.error('[Export PDF] Error generating report:', err);
+    } finally {
+      setDownloading(false);
+    }
+  }, [hasData, downloading, wallet, filteredTrades, stats, startDate, endDate, platforms]);
 
   // Selecting a range preset rewrites the single date filter (WalletForm state).
   const onChangeRange = useCallback(
@@ -101,27 +119,50 @@ const Dashboard = ({
     <div className="tc-dash">
       <div className="tc-dash-toolbar">
         <TabNav active={activeTab} onChange={onChangeTab} />
-        <div className="tc-dash-daterange">
-          <TimeframeSelector value={range} onChange={onChangeRange} />
-          {range === 'CUSTOM' && (
-            <div className="tc-dash-custom-dates">
-              <input
-                type="date"
-                aria-label="From"
-                className="tc-input tc-date-input"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-              />
-              <span className="tc-dash-date-sep">—</span>
-              <input
-                type="date"
-                aria-label="To"
-                className="tc-input tc-date-input"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-              />
-            </div>
-          )}
+        <div className="tc-dash-toolbar-right">
+          <button
+            className="tc-btn-download"
+            onClick={onDownload}
+            disabled={!hasData || downloading}
+            title="Download PDF report"
+          >
+            {downloading ? (
+              <span className="tc-btn-download-spinner" />
+            ) : (
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                <path
+                  d="M7 1v8M4 6l3 3 3-3M2 11h10"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            )}
+            <span>{downloading ? 'Generating…' : 'Export PDF'}</span>
+          </button>
+          <div className="tc-dash-daterange">
+            <TimeframeSelector value={range} onChange={onChangeRange} />
+            {range === 'CUSTOM' && (
+              <div className="tc-dash-custom-dates">
+                <input
+                  type="date"
+                  aria-label="From"
+                  className="tc-input tc-date-input"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                />
+                <span className="tc-dash-date-sep">—</span>
+                <input
+                  type="date"
+                  aria-label="To"
+                  className="tc-input tc-date-input"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                />
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
