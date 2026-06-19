@@ -68,9 +68,45 @@ describe('normalizePacificaTrades', () => {
     expect(trades[0].pnl).toBeCloseTo(-3.5);
   });
 
-  it('records fee from the close fill', () => {
-    const trades = normalizePacificaTrades([openLong(), closeLong({ fee: '0.75' })]);
-    expect(trades[0].fee).toBeCloseTo(0.75);
+  it('sums open and close fees into the round-trip fee', () => {
+    // openLong fee 0.50 (from BASE) + close fee 0.75 = 1.25
+    const trades = normalizePacificaTrades([openLong({ fee: '0.50' }), closeLong({ fee: '0.75' })]);
+    expect(trades[0].fee).toBeCloseTo(1.25);
+  });
+
+  it('subtracts the open fee from the net pnl', () => {
+    // Pacifica books the open fee as a negative pnl on the open fill; the
+    // close fill pnl (5.00) is already net of the close fee only.
+    const trades = normalizePacificaTrades([
+      openLong({ fee: '0.50', pnl: '-0.50' }),
+      closeLong({ pnl: '5.00' }),
+    ]);
+    expect(trades[0].pnl).toBeCloseTo(4.5); // 5.00 + (-0.50)
+  });
+
+  it('aggregates fees across multiple open fills of one position', () => {
+    const trades = normalizePacificaTrades([
+      openLong({ amount: '6', fee: '0.30', pnl: '-0.30', created_at: 1_000_000 }),
+      openLong({ amount: '4', fee: '0.20', pnl: '-0.20', created_at: 1_000_100 }),
+      closeLong({ amount: '10', fee: '0.50', pnl: '5.00', created_at: 2_000_000 }),
+    ]);
+    expect(trades).toHaveLength(1);
+    expect(trades[0].fee).toBeCloseTo(1.0); // 0.30 + 0.20 + 0.50
+    expect(trades[0].pnl).toBeCloseTo(4.5); // 5.00 - 0.30 - 0.20
+  });
+
+  it('splits open fees proportionally across partial closes', () => {
+    const trades = normalizePacificaTrades([
+      openLong({ amount: '10', fee: '1.00', pnl: '-1.00', created_at: 1_000_000 }),
+      closeLong({ history_id: 1, amount: '5', fee: '0.25', pnl: '2.00', created_at: 2_000_000 }),
+      closeLong({ history_id: 2, amount: '5', fee: '0.25', pnl: '3.00', created_at: 3_000_000 }),
+    ]);
+    expect(trades).toHaveLength(2);
+    // Each partial close gets half of the 1.00 open fee.
+    expect(trades[0].fee).toBeCloseTo(0.75); // 0.25 close + 0.50 open share
+    expect(trades[1].fee).toBeCloseTo(0.75);
+    expect(trades[0].pnl).toBeCloseTo(1.5); // 2.00 - 0.50
+    expect(trades[1].pnl).toBeCloseTo(2.5); // 3.00 - 0.50
   });
 
   it('sets closeType to Manual for cause normal', () => {
@@ -154,8 +190,8 @@ describe('normalizePacificaTrades', () => {
       }),
     ]);
     expect(trades).toHaveLength(1);
-    expect(trades[0].pnl).toBeCloseTo(5.0); // 3.00 + 2.00
-    expect(trades[0].fee).toBeCloseTo(0.5); // 0.30 + 0.20
+    expect(trades[0].pnl).toBeCloseTo(5.0); // 3.00 + 2.00 (open pnl is 0 here)
+    expect(trades[0].fee).toBeCloseTo(1.0); // 0.30 + 0.20 close + 0.50 open (BASE)
     expect(trades[0].sizeUsd).toBeCloseTo(1500); // (6 + 4) * 150
   });
 
