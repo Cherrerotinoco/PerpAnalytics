@@ -19,16 +19,30 @@ const MONTH_NAMES = [
 ];
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-type DailyMap = Map<string, number>; // "YYYY-MM-DD" → total PnL
+// equityStart = cumulative PnL of all prior days (the account equity at the
+// start of this day), used to express the day's PnL as an equity-based % that
+// compounds like the equity curve.
+type DayStat = { pnl: number; equityStart: number };
+type DailyMap = Map<string, DayStat>; // "YYYY-MM-DD" → day stats
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const buildDailyMap = (trades: Trade[]): DailyMap => {
-  const map: DailyMap = new Map();
+  // First aggregate PnL per day.
+  const totals = new Map<string, number>();
   for (const t of trades) {
     const d = t.closed ?? t.opened;
     if (!d) continue;
     const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    map.set(key, (map.get(key) ?? 0) + t.pnl);
+    totals.set(key, (totals.get(key) ?? 0) + t.pnl);
+  }
+  // Walk days chronologically, recording the running equity before each day.
+  // Keys are "YYYY-MM-DD" so lexical sort is chronological.
+  const map: DailyMap = new Map();
+  let equity = 0;
+  for (const key of [...totals.keys()].sort()) {
+    const pnl = totals.get(key)!;
+    map.set(key, { pnl, equityStart: equity });
+    equity += pnl;
   }
   return map;
 };
@@ -73,6 +87,17 @@ const fmtCell = (v: number): string => {
 const fmtTotal = (v: number): string => {
   const s = v >= 0 ? '+' : '';
   return `${s}${v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} $`;
+};
+
+// Equity-based return: PnL as a % of the account equity at the start of the
+// period. Uses the magnitude of equity as the base so a negative equity (account
+// underwater) still yields a correctly-signed % — a gain shows +, a loss shows −.
+// Only a base of exactly 0 (the very first trading day) is undefined and hidden.
+const fmtPct = (pnl: number, equityStart: number): string | null => {
+  if (equityStart === 0) return null;
+  const pct = (pnl / Math.abs(equityStart)) * 100;
+  const s = pct >= 0 ? '+' : '';
+  return `${s}${pct.toFixed(1)}%`;
 };
 
 // ─── Nav button ───────────────────────────────────────────────────────────────
@@ -131,30 +156,42 @@ const MonthGrid = ({
               if (!day) {
                 return <td key={di} className="tc-cal-cell" />;
               }
-              const pnl = dailyMap.get(dayKey(year, month, day));
-              const hasTrade = pnl !== undefined;
+              const stat = dailyMap.get(dayKey(year, month, day));
+              const hasTrade = stat !== undefined;
+              const pnl = stat?.pnl ?? 0;
+              const pct = hasTrade ? fmtPct(pnl, stat!.equityStart) : null;
+              const dateStr = `${String(day).padStart(2, '0')}/${String(month + 1).padStart(2, '0')}/${year}`;
               return (
                 <td
                   key={di}
                   title={
                     hasTrade
-                      ? `${String(day).padStart(2, '0')}/${String(month + 1).padStart(2, '0')}/${year}: ${pnl! >= 0 ? '+' : ''}${pnl!.toFixed(2)} $`
-                      : `${String(day).padStart(2, '0')}/${String(month + 1).padStart(2, '0')}/${year}`
+                      ? `${dateStr}: ${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)} $${pct ? ` (${pct})` : ''}`
+                      : dateStr
                   }
-                  className={`tc-cal-cell ${hasTrade ? (pnl! > 0 ? 'tc-cal-cell--win' : pnl! < 0 ? 'tc-cal-cell--loss' : 'tc-cal-cell--zero') : ''}`}
+                  className={`tc-cal-cell ${hasTrade ? (pnl > 0 ? 'tc-cal-cell--win' : pnl < 0 ? 'tc-cal-cell--loss' : 'tc-cal-cell--zero') : ''}`}
                 >
                   <div className="tc-cal-cell-inner">
                     <span
-                      className={`tc-cal-day-num ${hasTrade ? (pnl! >= 0 ? 'tc-cal-day-num--win' : 'tc-cal-day-num--loss') : 'tc-cal-day-num--empty'}`}
+                      className={`tc-cal-day-num ${hasTrade ? (pnl >= 0 ? 'tc-cal-day-num--win' : 'tc-cal-day-num--loss') : 'tc-cal-day-num--empty'}`}
                     >
                       {day}
                     </span>
                     {hasTrade && (
-                      <span
-                        className={`tc-cal-day-pnl ${pnl! >= 0 ? 'tc-cal-day-pnl--win' : 'tc-cal-day-pnl--loss'}`}
-                      >
-                        {fmtCell(pnl!)}
-                      </span>
+                      <>
+                        <span
+                          className={`tc-cal-day-pnl ${pnl >= 0 ? 'tc-cal-day-pnl--win' : 'tc-cal-day-pnl--loss'}`}
+                        >
+                          {fmtCell(pnl)}
+                        </span>
+                        {pct && (
+                          <span
+                            className={`tc-cal-day-pct ${pnl >= 0 ? 'tc-cal-day-pnl--win' : 'tc-cal-day-pnl--loss'}`}
+                          >
+                            {pct}
+                          </span>
+                        )}
+                      </>
                     )}
                   </div>
                 </td>
@@ -183,12 +220,19 @@ const PnlCalendar = memo(({ trades }: { trades: Trade[] }) => {
   const safeIdx = Math.min(idx, months.length - 1);
   const { year, month } = months[safeIdx];
 
-  // Month total
+  // Month total, with % relative to the equity at the start of the month
+  // (equityStart of the first trading day of the month).
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   let monthTotal = 0;
+  let monthEquityStart: number | null = null;
   for (let d = 1; d <= daysInMonth; d++) {
-    monthTotal += dailyMap.get(dayKey(year, month, d)) ?? 0;
+    const stat = dailyMap.get(dayKey(year, month, d));
+    if (stat) {
+      if (monthEquityStart === null) monthEquityStart = stat.equityStart;
+      monthTotal += stat.pnl;
+    }
   }
+  const monthPct = monthEquityStart !== null ? fmtPct(monthTotal, monthEquityStart) : null;
 
   return (
     <div>
@@ -205,6 +249,7 @@ const PnlCalendar = memo(({ trades }: { trades: Trade[] }) => {
           {monthTotal !== 0 && (
             <span className={`tc-cal-total ${monthTotal >= 0 ? 'tc-green' : 'tc-red'}`}>
               {fmtTotal(monthTotal)}
+              {monthPct && <span className="tc-cal-total-pct">{monthPct}</span>}
             </span>
           )}
         </div>
