@@ -95,6 +95,52 @@ describe('normalizePacificaTrades', () => {
     expect(trades[0].pnl).toBeCloseTo(4.5); // 5.00 - 0.30 - 0.20
   });
 
+  // Classification is by effective fee rate (fee / notional), not event_type.
+  // Factory notional = amount(10) * price(150) = 1500.
+  //   taker ~0.04% → 1500 * 0.0004 = 0.60
+  //   maker ~0.01% → 1500 * 0.0001 = 0.15
+  const TAKER_FEE = '0.60';
+  const MAKER_FEE = '0.15';
+
+  it('classifies a fully-taker round-trip fee as taker', () => {
+    const trades = normalizePacificaTrades([
+      openLong({ fee: TAKER_FEE, pnl: '-0.60' }),
+      closeLong({ fee: TAKER_FEE, pnl: '5.00' }),
+    ]);
+    expect(trades[0].takerFee).toBeCloseTo(1.2);
+    expect(trades[0].makerFee).toBeCloseTo(0);
+  });
+
+  it('classifies a fully-maker round-trip fee as maker', () => {
+    const trades = normalizePacificaTrades([
+      openLong({ fee: MAKER_FEE, pnl: '-0.15' }),
+      closeLong({ fee: MAKER_FEE, pnl: '5.00' }),
+    ]);
+    expect(trades[0].makerFee).toBeCloseTo(0.3);
+    expect(trades[0].takerFee).toBeCloseTo(0);
+  });
+
+  it('splits maker open and taker close into the right buckets', () => {
+    const trades = normalizePacificaTrades([
+      openLong({ fee: MAKER_FEE, pnl: '-0.15' }),
+      closeLong({ fee: TAKER_FEE, pnl: '5.00' }),
+    ]);
+    expect(trades[0].takerFee).toBeCloseTo(0.6);
+    expect(trades[0].makerFee).toBeCloseTo(0.15);
+    expect(trades[0].fee).toBeCloseTo(0.75);
+  });
+
+  it('classifies by fee rate, not the (unreliable) event_type', () => {
+    // Pacifica stamps maker fills as "fulfill_taker"; a maker-rate fee must
+    // still be counted as maker.
+    const trades = normalizePacificaTrades([
+      openLong({ fee: MAKER_FEE, pnl: '-0.15', event_type: 'fulfill_taker' }),
+      closeLong({ fee: MAKER_FEE, pnl: '5.00', event_type: 'fulfill_taker' }),
+    ]);
+    expect(trades[0].makerFee).toBeCloseTo(0.3);
+    expect(trades[0].takerFee).toBeCloseTo(0);
+  });
+
   it('splits open fees proportionally across partial closes', () => {
     const trades = normalizePacificaTrades([
       openLong({ amount: '10', fee: '1.00', pnl: '-1.00', created_at: 1_000_000 }),
@@ -160,12 +206,13 @@ describe('normalizePacificaTrades', () => {
     expect(trades[0].closed).toEqual(new Date(closeTime));
   });
 
-  it('computes sizeUsd as amount * entry_price', () => {
+  it('computes sizeUsd as amount * close price (exit notional)', () => {
     const trades = normalizePacificaTrades([
       openLong(),
-      closeLong({ amount: '10', entry_price: '150' }), // 10 * 150 = 1500
+      // price (exit) 160 ≠ entry_price 150 → size must use the exit price
+      closeLong({ amount: '10', price: '160', entry_price: '150' }), // 10 * 160 = 1600
     ]);
-    expect(trades[0].sizeUsd).toBeCloseTo(1500);
+    expect(trades[0].sizeUsd).toBeCloseTo(1600);
   });
 
   it('aggregates multiple fills at the same timestamp into one trade', () => {

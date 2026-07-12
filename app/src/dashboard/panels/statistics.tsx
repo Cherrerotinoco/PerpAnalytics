@@ -47,6 +47,11 @@ export interface TradeStats {
   pnlList: number[];
   feesBySource: Record<string, number>;
   totalFees: number;
+  // Maker/taker split — only counts trades from venues that report it (Pacifica).
+  takerFees: number;
+  makerFees: number;
+  feesWithRole: number; // total fee from trades that have a maker/taker split
+  takerFeePct: number;
   bySession: SessionStats[];
 }
 
@@ -112,6 +117,8 @@ export const computeTradeStats = (trades: Trade[]): TradeStats => {
   let sumLoss = 0;
   const pnlList: number[] = [];
   const feesBySource: Record<string, number> = {};
+  let takerFees = 0;
+  let makerFees = 0;
 
   let peak = 0;
   let maxDrawdown = 0;
@@ -128,6 +135,8 @@ export const computeTradeStats = (trades: Trade[]): TradeStats => {
     if (t.source) {
       feesBySource[t.source] = (feesBySource[t.source] ?? 0) + (t.fee ?? 0);
     }
+    if (t.takerFee !== undefined) takerFees += t.takerFee;
+    if (t.makerFee !== undefined) makerFees += t.makerFee;
 
     const dateRef = t.closed ?? t.opened;
     const ts = dateRef instanceof Date && !isNaN(dateRef.getTime()) ? dateRef.getTime() : null;
@@ -205,6 +214,8 @@ export const computeTradeStats = (trades: Trade[]): TradeStats => {
   const var95Index = Math.max(0, Math.ceil(0.05 * sortedPnl.length) - 1);
   const var95 = sortedPnl.length > 0 ? (sortedPnl[var95Index] ?? 0) : 0;
   const totalFees = Object.values(feesBySource).reduce((a, b) => a + b, 0);
+  const feesWithRole = takerFees + makerFees;
+  const takerFeePct = feesWithRole > 0 ? (takerFees / feesWithRole) * 100 : 0;
 
   // ── Distribution stats ──────────────────────────────────────────────────────
   const winPnls = pnlList.filter((v) => v > 0).sort((a, b) => a - b);
@@ -279,6 +290,10 @@ export const computeTradeStats = (trades: Trade[]): TradeStats => {
     pnlList,
     feesBySource,
     totalFees,
+    takerFees,
+    makerFees,
+    feesWithRole,
+    takerFeePct,
     bySession,
   };
 };
@@ -462,6 +477,23 @@ export const PerformanceSection = memo(({ stats: st }: { stats: TradeStats }) =>
           <div className="tc-fees-total">
             <span className="tc-metric-sub fw-semibold">Total</span>
             <span className="tc-fees-amount">-{fmtNum(st.totalFees)} $</span>
+          </div>
+        )}
+
+        {st.feesWithRole > 0 && (
+          <div className="tc-fees-role">
+            <div className="tc-fees-row">
+              <span className="tc-metric-sub">Taker</span>
+              <span className="tc-fees-amount">-{fmtNum(st.takerFees)} $</span>
+            </div>
+            <div className="tc-fees-row">
+              <span className="tc-metric-sub">Maker</span>
+              <span className="tc-fees-amount">-{fmtNum(st.makerFees)} $</span>
+            </div>
+            <p className="tc-metric-sub mt-1">
+              {fmtPct(st.takerFeePct)} of fees paid as taker
+              {st.takerFeePct >= 99 ? ' — using limit (maker) orders could cut this.' : ''}
+            </p>
           </div>
         )}
       </div>

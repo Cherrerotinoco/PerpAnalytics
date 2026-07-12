@@ -715,6 +715,12 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+.tc-fees-role {
+  margin-top: 0.3rem;
+  padding-top: 0.3rem;
+  border-top: 1px solid var(--tc-border);
+}
+
 /* ─── Form controls ──────────────────────────────────────────────────────────── */
 .tc-search-pad {
   padding: 0.6rem 0.75rem;
