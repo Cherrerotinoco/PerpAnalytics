@@ -10,6 +10,7 @@ import OverviewTab from './tabs/OverviewTab';
 import PerformanceTab from './tabs/PerformanceTab';
 import RiskTab from './tabs/RiskTab';
 import TradesTab from './tabs/TradesTab';
+import CalendarTab from './tabs/CalendarTab';
 import { generateReport } from '../utils/generateReport';
 
 // ─── URL state helpers ────────────────────────────────────────────────────────
@@ -110,6 +111,8 @@ const Dashboard = ({
         return <RiskTab stats={stats} trades={filteredTrades} />;
       case 'trades':
         return <TradesTab stats={stats} trades={filteredTrades} />;
+      case 'calendar':
+        return <CalendarTab stats={stats} trades={filteredTrades} />;
       default:
         return <OverviewTab stats={stats} trades={filteredTrades} />;
     }

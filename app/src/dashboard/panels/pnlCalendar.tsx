@@ -47,7 +47,7 @@ const buildDailyMap = (trades: Trade[]): DailyMap => {
   return map;
 };
 
-const getMonthRange = (trades: Trade[]): Array<{ year: number; month: number }> => {
+const getYearRange = (trades: Trade[]): number[] => {
   const dates = trades.map((t) => t.closed ?? t.opened).filter(Boolean) as Date[];
   if (!dates.length) return [];
 
@@ -55,22 +55,34 @@ const getMonthRange = (trades: Trade[]): Array<{ year: number; month: number }> 
   // (~65 k) which would cause a stack overflow for power users with large histories.
   const minTs = dates.reduce((m, d) => Math.min(m, d.getTime()), Infinity);
   const maxTs = dates.reduce((m, d) => Math.max(m, d.getTime()), -Infinity);
-  const minDate = new Date(minTs);
-  const maxDate = new Date(maxTs);
+  const minYear = new Date(minTs).getFullYear();
+  const maxYear = new Date(maxTs).getFullYear();
 
-  const result: Array<{ year: number; month: number }> = [];
-  let y = minDate.getFullYear();
-  let m = minDate.getMonth();
+  const result: number[] = [];
+  for (let y = minYear; y <= maxYear; y++) result.push(y);
+  return result;
+};
 
-  while (y < maxDate.getFullYear() || (y === maxDate.getFullYear() && m <= maxDate.getMonth())) {
-    result.push({ year: y, month: m });
-    m++;
-    if (m > 11) {
-      m = 0;
-      y++;
+// Aggregate a single month's PnL and the equity at the start of its first
+// trading day (used for the equity-based %).
+const monthSummary = (
+  dailyMap: DailyMap,
+  year: number,
+  month: number
+): { total: number; equityStart: number | null; hasTrades: boolean } => {
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  let total = 0;
+  let equityStart: number | null = null;
+  let hasTrades = false;
+  for (let d = 1; d <= daysInMonth; d++) {
+    const stat = dailyMap.get(dayKey(year, month, d));
+    if (stat) {
+      hasTrades = true;
+      if (equityStart === null) equityStart = stat.equityStart;
+      total += stat.pnl;
     }
   }
-  return result;
+  return { total, equityStart, hasTrades };
 };
 
 const dayKey = (year: number, month: number, day: number): string =>
@@ -205,37 +217,38 @@ const MonthGrid = ({
 };
 
 // ─── Main component ───────────────────────────────────────────────────────────
+// Full-year view: renders all twelve months of the selected year, navigable one
+// whole year at a time.
 const PnlCalendar = memo(({ trades }: { trades: Trade[] }) => {
   const dailyMap = useMemo(() => buildDailyMap(trades), [trades]);
-  const months = useMemo(() => getMonthRange(trades), [trades]);
+  const years = useMemo(() => getYearRange(trades), [trades]);
   const [idx, setIdx] = useState(0);
 
-  // Jump to most recent month whenever the trade set changes
+  // Jump to most recent year whenever the trade set changes
   useEffect(() => {
-    setIdx(Math.max(0, months.length - 1));
-  }, [months.length]);
+    setIdx(Math.max(0, years.length - 1));
+  }, [years.length]);
 
-  if (!months.length) return null;
+  if (!years.length) return null;
 
-  const safeIdx = Math.min(idx, months.length - 1);
-  const { year, month } = months[safeIdx];
+  const safeIdx = Math.min(idx, years.length - 1);
+  const year = years[safeIdx];
 
-  // Month total, with % relative to the equity at the start of the month
-  // (equityStart of the first trading day of the month).
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  let monthTotal = 0;
-  let monthEquityStart: number | null = null;
-  for (let d = 1; d <= daysInMonth; d++) {
-    const stat = dailyMap.get(dayKey(year, month, d));
-    if (stat) {
-      if (monthEquityStart === null) monthEquityStart = stat.equityStart;
-      monthTotal += stat.pnl;
+  // Year total, with % relative to the equity at the start of the year
+  // (equityStart of the first trading day of the year).
+  let yearTotal = 0;
+  let yearEquityStart: number | null = null;
+  for (let m = 0; m < 12; m++) {
+    const { total, equityStart, hasTrades } = monthSummary(dailyMap, year, m);
+    if (hasTrades) {
+      if (yearEquityStart === null) yearEquityStart = equityStart;
+      yearTotal += total;
     }
   }
-  const monthPct = monthEquityStart !== null ? fmtPct(monthTotal, monthEquityStart) : null;
+  const yearPct = yearEquityStart !== null ? fmtPct(yearTotal, yearEquityStart) : null;
 
   return (
-    <div>
+    <div className="tc-cal-year">
       {/* ── Navigation header ── */}
       <div className="tc-cal-nav">
         <NavBtn onClick={() => setIdx((i) => Math.max(0, i - 1))} disabled={safeIdx === 0}>
@@ -243,27 +256,44 @@ const PnlCalendar = memo(({ trades }: { trades: Trade[] }) => {
         </NavBtn>
 
         <div className="text-center flex-fill">
-          <span className="tc-cal-month">
-            {MONTH_NAMES[month]} {year}
-          </span>
-          {monthTotal !== 0 && (
-            <span className={`tc-cal-total ${monthTotal >= 0 ? 'tc-green' : 'tc-red'}`}>
-              {fmtTotal(monthTotal)}
-              {monthPct && <span className="tc-cal-total-pct">{monthPct}</span>}
+          <span className="tc-cal-month">{year}</span>
+          {yearTotal !== 0 && (
+            <span className={`tc-cal-total ${yearTotal >= 0 ? 'tc-green' : 'tc-red'}`}>
+              {fmtTotal(yearTotal)}
+              {yearPct && <span className="tc-cal-total-pct">{yearPct}</span>}
             </span>
           )}
         </div>
 
         <NavBtn
-          onClick={() => setIdx((i) => Math.min(months.length - 1, i + 1))}
-          disabled={safeIdx === months.length - 1}
+          onClick={() => setIdx((i) => Math.min(years.length - 1, i + 1))}
+          disabled={safeIdx === years.length - 1}
         >
           ▶
         </NavBtn>
       </div>
 
-      {/* ── Calendar grid ── */}
-      <MonthGrid year={year} month={month} dailyMap={dailyMap} />
+      {/* ── Twelve-month grid ── */}
+      <div className="tc-cal-year-grid">
+        {MONTH_NAMES.map((name, m) => {
+          const { total, equityStart, hasTrades } = monthSummary(dailyMap, year, m);
+          const pct = hasTrades && equityStart !== null ? fmtPct(total, equityStart) : null;
+          return (
+            <div key={name} className="tc-cal-month-card">
+              <div className="tc-cal-month-card-head">
+                <span className="tc-cal-month-name">{name}</span>
+                {hasTrades && total !== 0 && (
+                  <span className={`tc-cal-month-total ${total >= 0 ? 'tc-green' : 'tc-red'}`}>
+                    {fmtCell(total)}
+                    {pct && <span className="tc-cal-total-pct">{pct}</span>}
+                  </span>
+                )}
+              </div>
+              <MonthGrid year={year} month={m} dailyMap={dailyMap} />
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 });

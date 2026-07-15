@@ -4,7 +4,7 @@ import type { TradeStats } from '../panels/statistics';
 import { TradesSection } from '../panels/statistics';
 import Panel, { Row } from '../Panel';
 import { PanelPlaceholder } from '../PanelPlaceholder';
-import { PnlBySymbolChart, PnlCalendar, TradeList } from '../lazyCharts';
+import { PnlBySymbolChart, TradeList } from '../lazyCharts';
 
 interface TabProps {
   stats: TradeStats;
@@ -23,11 +23,6 @@ const TradesTab = ({ stats, trades }: TabProps) => (
       <Panel title="PnL by Symbol" centered>
         <Suspense fallback={<PanelPlaceholder />}>
           <PnlBySymbolChart trades={trades} />
-        </Suspense>
-      </Panel>
-      <Panel title="PnL Calendar" centered>
-        <Suspense fallback={<PanelPlaceholder />}>
-          <PnlCalendar trades={trades} />
         </Suspense>
       </Panel>
     </Row>
