@@ -1082,16 +1082,32 @@ body {
 }
 
 /* ─── PnL Calendar — full-year view ──────────────────────────────────────────── */
+/* container-type lets the month grid respond to the panel's actual rendered
+   width (it's resizable via GridStack), not the viewport. */
+.tc-cal-year {
+  container-type: inline-size;
+}
+
 .tc-cal-year-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-  gap: 1.25rem 1rem;
-  justify-items: center;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.5rem 1.25rem;
+}
+
+@container (max-width: 720px) {
+  .tc-cal-year-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container (max-width: 420px) {
+  .tc-cal-year-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .tc-cal-month-card {
   width: 100%;
-  max-width: 260px;
 }
 
 .tc-cal-month-card-head {
@@ -1099,42 +1115,42 @@ body {
   align-items: baseline;
   justify-content: space-between;
   gap: 0.5rem;
-  margin-bottom: 0.4rem;
+  margin-bottom: 0.5rem;
   padding: 0 3px;
 }
 
 .tc-cal-month-name {
-  font-size: 0.78rem;
+  font-size: 0.92rem;
   font-weight: 700;
   color: var(--tc-text);
 }
 
 .tc-cal-month-total {
-  font-size: 0.66rem;
+  font-size: 0.76rem;
   font-weight: 700;
   white-space: nowrap;
 }
 
-/* Compact cells so a whole year fits comfortably. Day-level % is hidden here to
-   keep each month legible; hover the cell for the exact figure. */
+/* Day-level % is hidden here to keep each month legible; hover the cell for
+   the exact figure. */
 .tc-cal-year .tc-cal-table {
-  border-spacing: 2px;
+  border-spacing: 3px;
   width: 100%;
 }
 .tc-cal-year .tc-cal-weekday {
   width: auto;
-  font-size: 0.58rem;
-  padding-bottom: 3px;
+  font-size: 0.68rem;
+  padding-bottom: 4px;
 }
 .tc-cal-year .tc-cal-cell {
   width: auto;
-  height: 30px;
+  height: 44px;
 }
 .tc-cal-year .tc-cal-day-num {
-  font-size: 0.58rem;
+  font-size: 0.7rem;
 }
 .tc-cal-year .tc-cal-day-pnl {
-  font-size: 0.55rem;
+  font-size: 0.66rem;
 }
 .tc-cal-year .tc-cal-day-pct {
   display: none;
@@ -1516,6 +1532,52 @@ body {
   }
   50% {
     opacity: 0.45;
+  }
+}
+
+/* Homepage-only: PnlCalendar is truncated to 4 months here (see maxMonths prop)
+   and shown at shrunk cell/font sizes so the showcase card doesn't tower over
+   its neighbours. Default lays the 4 months out in a single row; narrower
+   containers (the card sits next to the equity chart) wrap to 2x2. */
+.tc-landing-calendar-compact .tc-cal-year-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem 0.6rem;
+}
+.tc-landing-calendar-compact .tc-cal-month-card-head {
+  margin-bottom: 0.25rem;
+}
+.tc-landing-calendar-compact .tc-cal-month-name {
+  font-size: 0.68rem;
+}
+.tc-landing-calendar-compact .tc-cal-month-total {
+  font-size: 0.6rem;
+}
+.tc-landing-calendar-compact .tc-cal-year .tc-cal-table {
+  border-spacing: 1px;
+}
+.tc-landing-calendar-compact .tc-cal-year .tc-cal-weekday {
+  font-size: 0.5rem;
+  padding-bottom: 2px;
+}
+.tc-landing-calendar-compact .tc-cal-year .tc-cal-cell {
+  height: 20px;
+}
+.tc-landing-calendar-compact .tc-cal-year .tc-cal-day-num {
+  font-size: 0.52rem;
+}
+.tc-landing-calendar-compact .tc-cal-year .tc-cal-day-pnl {
+  font-size: 0.46rem;
+}
+
+@container (max-width: 480px) {
+  .tc-landing-calendar-compact .tc-cal-year-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container (max-width: 260px) {
+  .tc-landing-calendar-compact .tc-cal-year-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 

@@ -218,8 +218,9 @@ const MonthGrid = ({
 
 // ─── Main component ───────────────────────────────────────────────────────────
 // Full-year view: renders all twelve months of the selected year, navigable one
-// whole year at a time.
-const PnlCalendar = memo(({ trades }: { trades: Trade[] }) => {
+// whole year at a time. `maxMonths` (homepage showcase) truncates the grid to
+// the first N months instead of all twelve.
+const PnlCalendar = memo(({ trades, maxMonths = 12 }: { trades: Trade[]; maxMonths?: number }) => {
   const dailyMap = useMemo(() => buildDailyMap(trades), [trades]);
   const years = useMemo(() => getYearRange(trades), [trades]);
   const [idx, setIdx] = useState(0);
@@ -273,9 +274,9 @@ const PnlCalendar = memo(({ trades }: { trades: Trade[] }) => {
         </NavBtn>
       </div>
 
-      {/* ── Twelve-month grid ── */}
+      {/* ── Month grid ── */}
       <div className="tc-cal-year-grid">
-        {MONTH_NAMES.map((name, m) => {
+        {MONTH_NAMES.slice(0, maxMonths).map((name, m) => {
           const { total, equityStart, hasTrades } = monthSummary(dailyMap, year, m);
           const pct = hasTrades && equityStart !== null ? fmtPct(total, equityStart) : null;
           return (

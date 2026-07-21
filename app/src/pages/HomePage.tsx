@@ -168,10 +168,10 @@ const HomePage = () => {
                 <EquityCurveChart stats={stats} />
               </Suspense>
             </div>
-            <div className="tc-landing-chart-card">
+            <div className="tc-landing-chart-card tc-landing-calendar-compact">
               <p className="tc-landing-chart-label">PnL calendar</p>
               <Suspense fallback={<ChartSkeleton />}>
-                <PnlCalendar trades={MOCK_TRADES} />
+                <PnlCalendar trades={MOCK_TRADES} maxMonths={4} />
               </Suspense>
             </div>
           </div>
