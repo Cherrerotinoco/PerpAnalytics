@@ -35,6 +35,9 @@ const Header = () => {
         <Link to="/calculator" className="tc-header-nav-link">
           Calculator
         </Link>
+        <Link to="/intraday" className="tc-header-nav-link">
+          Intraday
+        </Link>
         <Link to="/dashboard" className="tc-header-app-link">
           Open app →
         </Link>

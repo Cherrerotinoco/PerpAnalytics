@@ -45,6 +45,11 @@ const routes: Record<string, RouteMeta> = {
     description:
       'Interactive BTC futures account projection calculator. Model compound growth trade-by-trade with your real win rate, risk/reward, leverage and stop-loss parameters. See how long it takes to reach your target.',
   },
+  '/intraday': {
+    title: 'Intraday BTC Order Flow — PerpsAnalytics',
+    description:
+      'Live BTC intraday order flow: multi-timeframe aggressor delta (CVD) for Binance spot and perpetuals, absorption and price-vs-CVD divergence detection, multi-day aggressor trend and Deribit gamma exposure regime. Computed in your browser, no sign-up.',
+  },
   '/cookie-policy': {
     title: 'Cookie Policy — PerpsAnalytics',
     description: 'Cookie policy for PerpsAnalytics.',
