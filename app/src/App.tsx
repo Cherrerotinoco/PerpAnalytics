@@ -6,6 +6,7 @@ import RecentWallets from './components/RecentWallets';
 import CookiePolicyPage from './pages/CookiePolicyPage';
 import HomePage from './pages/HomePage';
 import CalculatorPage from './pages/CalculatorPage';
+import IntradayPage from './pages/IntradayPage';
 import { ThemeProvider } from './context/ThemeContext';
 import { useCookieConsent } from './hooks/useCookieConsent';
 
@@ -98,6 +99,8 @@ const App = () => {
           />
 
           <Route path="/calculator" element={<CalculatorPage />} />
+
+          <Route path="/intraday" element={<IntradayPage />} />
 
           <Route path="/cookie-policy" element={<CookiePolicyPage />} />
         </Routes>

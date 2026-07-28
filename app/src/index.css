@@ -2419,3 +2419,265 @@ body {
     justify-content: center;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   INTRADAY PAGE  (/intraday — BTC order flow)
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+.tc-intraday-page {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 1rem 0 2.5rem;
+}
+
+/* ─── Toolbar ────────────────────────────────────────────────────────────────── */
+.tc-intraday-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.tc-intraday-auto {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: var(--tc-muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+.tc-intraday-auto input {
+  accent-color: var(--tc-accent);
+  cursor: pointer;
+}
+
+.tc-intraday-timestamp {
+  margin-left: auto;
+  font-size: 0.75rem;
+  color: var(--tc-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ─── Degraded-API banner ────────────────────────────────────────────────────── */
+.tc-intraday-errors {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--tc-accent-border);
+  border-radius: var(--tc-radius);
+  background: var(--tc-accent-soft);
+  font-size: 0.78rem;
+  color: var(--tc-text-secondary);
+}
+
+/* ─── Headline stat ──────────────────────────────────────────────────────────── */
+.tc-intraday-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tc-intraday-stat-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--tc-muted);
+}
+
+.tc-intraday-stat-value {
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.tc-intraday-stat-sub {
+  font-size: 0.72rem;
+  color: var(--tc-muted);
+}
+
+/* ─── Data tables ────────────────────────────────────────────────────────────── */
+.tc-intraday-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.tc-intraday-th {
+  padding: 4px 8px;
+  text-align: right;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--tc-muted);
+  border-bottom: 1px solid var(--tc-border);
+}
+
+.tc-intraday-th-row {
+  padding: 5px 8px 5px 0;
+  text-align: left;
+  font-weight: 600;
+  color: var(--tc-text-secondary);
+  white-space: nowrap;
+}
+
+.tc-intraday-td {
+  padding: 5px 8px;
+  text-align: right;
+  font-weight: 600;
+}
+
+.tc-intraday-td--session {
+  border-left: 1px solid var(--tc-border);
+}
+
+.tc-intraday-tr--now {
+  background: var(--tc-accent-soft);
+}
+
+/* Absorption flag next to a timeframe delta */
+.tc-intraday-abs-dot {
+  margin-left: 4px;
+  color: var(--tc-amber);
+  cursor: help;
+}
+
+/* ─── Key/value grid ─────────────────────────────────────────────────────────── */
+.tc-intraday-kv-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 2px 16px;
+}
+
+.tc-intraday-kv {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 3px 0;
+  font-size: 0.78rem;
+  border-bottom: 1px solid var(--tc-border-subtle);
+}
+
+.tc-intraday-kv-key {
+  color: var(--tc-muted);
+}
+
+.tc-intraday-kv-val {
+  font-weight: 600;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ─── Regime / verdict headline inside a panel ───────────────────────────────── */
+.tc-intraday-regime {
+  font-size: 0.85rem;
+  font-weight: 600;
+  line-height: 1.35;
+  margin-bottom: 8px;
+}
+
+/* ─── Capitulation checklist ─────────────────────────────────────────────────── */
+.tc-intraday-checks {
+  list-style: none;
+  margin: 0 0 4px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.tc-intraday-check {
+  display: flex;
+  gap: 8px;
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.tc-intraday-check-mark {
+  flex-shrink: 0;
+}
+
+.tc-intraday-check-detail {
+  color: var(--tc-muted);
+}
+
+/* ─── Explanatory notes ──────────────────────────────────────────────────────── */
+.tc-intraday-note {
+  font-size: 0.73rem;
+  line-height: 1.45;
+  color: var(--tc-muted);
+  margin: 8px 0 0;
+}
+
+.tc-intraday-note--warn {
+  color: var(--tc-amber);
+}
+
+.tc-intraday-history-foot {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* Reserve the chart's height so the lazy chunk doesn't shift the layout */
+.tc-intraday-chart-fallback {
+  height: 260px;
+}
+
+/* ─── Raw text report ────────────────────────────────────────────────────────── */
+.tc-intraday-raw {
+  border: 1px solid var(--tc-border);
+  border-radius: var(--tc-radius);
+  background: var(--tc-surface);
+}
+
+.tc-intraday-raw-summary {
+  padding: 10px 12px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--tc-text-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+
+.tc-intraday-raw-body {
+  padding: 0 12px 12px;
+}
+
+.tc-intraday-pre {
+  margin: 10px 0 0;
+  padding: 12px;
+  max-height: 60vh;
+  overflow: auto;
+  border-radius: var(--tc-radius);
+  background: var(--tc-surface-2);
+  border: 1px solid var(--tc-border-subtle);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.7rem;
+  line-height: 1.45;
+  white-space: pre;
+  color: var(--tc-text-secondary);
+}
+
+/* ─── Mobile ─────────────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .tc-intraday-timestamp {
+    margin-left: 0;
+    width: 100%;
+  }
+  .tc-intraday-kv-grid {
+    grid-template-columns: 1fr;
+  }
+  .tc-intraday-pre {
+    font-size: 0.6rem;
+  }
+}

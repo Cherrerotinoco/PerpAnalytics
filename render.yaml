@@ -22,7 +22,9 @@ services:
           script-src 'self' https://www.googletagmanager.com 'unsafe-inline';
           style-src 'self' https://fonts.googleapis.com;
           font-src https://fonts.gstatic.com;
-          connect-src 'self' https://perps-api.jup.ag https://api.pacifica.fi https://www.google-analytics.com https://analytics.google.com;
+          connect-src 'self' https://perps-api.jup.ag https://api.pacifica.fi
+          https://api.binance.com https://fapi.binance.com https://api.bybit.com
+          https://cryptogamma.io https://www.google-analytics.com https://analytics.google.com;
           img-src 'self' data: https://www.google-analytics.com https://www.googletagmanager.com;
           frame-src https://www.googletagmanager.com;
           object-src 'none';
