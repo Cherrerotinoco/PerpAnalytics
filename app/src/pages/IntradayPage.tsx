@@ -280,11 +280,65 @@ const IntradayPage = () => {
       <div className="tc-page-intro">
         <h1 className="tc-page-title">Intraday — BTC order flow</h1>
         <p className="tc-page-subtitle">
-          Multi-timeframe aggressor delta from Binance (spot and perpetual) plus Deribit gamma
-          exposure, computed in your browser.{' '}
-          <span className="tc-page-highlight">No whale flow</span>: Whale Alert blocks CORS, so that
-          part only exists in the desktop crawler.
+          Multi-timeframe aggressor delta (CVD) for Binance spot and perpetuals, plus Deribit gamma
+          exposure. Every request is made{' '}
+          <span className="tc-page-highlight">straight from your browser</span> — no account, no
+          server of ours in the middle, nothing about you stored anywhere.
         </p>
+      </div>
+
+      <div className="tc-intraday-about">
+        <section className="tc-intraday-about-card">
+          <h2 className="tc-intraday-about-title">Where the data comes from</h2>
+          <ul className="tc-intraday-about-list">
+            <li>
+              <strong>Binance spot</strong> — 5m and 1d candles for BTCUSDT. Each candle already
+              reports its taker-buy volume, so the aggressor delta is derived from it directly
+              rather than from individual trades.
+            </li>
+            <li>
+              <strong>Binance USDT-M perpetual</strong> — the same candles for the BTCUSDT perp.
+              Reading it next to spot is what exposes leverage pulling against cash.
+            </li>
+            <li>
+              <strong>Deribit gamma exposure</strong> — options snapshot (net gamma, put/call,
+              support, resistance, breakout, implied vs realized vol) via cryptogamma.io.
+            </li>
+          </ul>
+          <p className="tc-intraday-about-note">
+            All three are public endpoints and need no API key. Responses are cached for 15 minutes
+            so refreshing does not hammer them; the reading history lives in this browser&apos;s
+            localStorage and never leaves your device.
+          </p>
+        </section>
+
+        <section className="tc-intraday-about-card">
+          <h2 className="tc-intraday-about-title">Using the report with your AI</h2>
+          <ol className="tc-intraday-about-list">
+            <li>
+              Open <strong>Raw report</strong> at the bottom of this page and press{' '}
+              <strong>Copy to clipboard</strong>.
+            </li>
+            <li>
+              Paste it into ChatGPT, Claude or any assistant, ideally in a{' '}
+              <strong>fresh chat</strong>. Send it on its own — you do not need to write a question
+              around it.
+            </li>
+            <li>
+              The text already carries the numbers, a full interpretation guide, the weighting rules
+              and the required output format, so the assistant needs no other context.
+            </li>
+            <li>
+              You get back a <strong>scenario table</strong> — bullish, bearish and sideways with
+              probabilities summing to 100% — plus the drivers behind each one and LONG/SHORT setups
+              derived from the gamma levels.
+            </li>
+          </ol>
+          <p className="tc-intraday-about-note">
+            The report is a snapshot of the moment you copied it. For a fresh read, hit Refresh and
+            paste it again. It is automated analysis over public data, not financial advice.
+          </p>
+        </section>
       </div>
 
       <div className="tc-intraday-toolbar">
@@ -534,8 +588,7 @@ const IntradayPage = () => {
               </ul>
               <p className="tc-intraday-note">
                 A convergence of exhaustion signals, not a verdict: a bottom is only confirmed in
-                hindsight. The two whale-based rules (realized profit and net flow) are not
-                available in the browser.
+                hindsight. Read it as support for a thesis, never as the thesis itself.
               </p>
             </Panel>
 

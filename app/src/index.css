@@ -425,6 +425,27 @@ body {
   border-color: var(--tc-muted);
 }
 
+/* Mobile — there is no burger menu, so every header item has to fit on one line.
+   Without this the row runs out of room: the logo butts against the first nav
+   link and "Open app" wraps onto three lines. */
+@media (max-width: 520px) {
+  .tc-header {
+    padding: 0.5rem 0.75rem;
+    gap: 8px;
+  }
+  .tc-header-right {
+    gap: 8px;
+  }
+  .tc-header-nav-link,
+  .tc-header-app-link {
+    font-size: 0.7rem;
+    white-space: nowrap;
+  }
+  .tc-header-app-link {
+    padding: 0.25rem 0.5rem;
+  }
+}
+
 .tc-theme-btn {
   background: transparent;
   border: 1px solid var(--tc-border);
@@ -2424,11 +2445,61 @@ body {
    INTRADAY PAGE  (/intraday — BTC order flow)
    ═══════════════════════════════════════════════════════════════════════════════ */
 
+/* Horizontal padding matches .tc-page-top so the panels line up with the rest of
+   the app instead of running edge to edge. */
 .tc-intraday-page {
   display: flex;
   flex-direction: column;
   gap: 14px;
-  padding: 1rem 0 2.5rem;
+  padding: 1rem 1.25rem 2.5rem;
+}
+
+/* ─── Intro: data sources + how to use the AI prompt ─────────────────────────── */
+.tc-intraday-about {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 14px;
+}
+
+.tc-intraday-about-card {
+  border: 1px solid var(--tc-border);
+  border-radius: var(--tc-radius);
+  background: var(--tc-surface);
+  padding: 12px 14px;
+}
+
+.tc-intraday-about-title {
+  margin: 0 0 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--tc-muted);
+}
+
+.tc-intraday-about-list {
+  margin: 0;
+  padding-left: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--tc-text-secondary);
+}
+
+.tc-intraday-about-list strong {
+  color: var(--tc-text);
+  font-weight: 600;
+}
+
+.tc-intraday-about-note {
+  margin: 10px 0 0;
+  padding-top: 8px;
+  border-top: 1px solid var(--tc-border-subtle);
+  font-size: 0.73rem;
+  line-height: 1.45;
+  color: var(--tc-muted);
 }
 
 /* ─── Toolbar ────────────────────────────────────────────────────────────────── */
@@ -2670,6 +2741,9 @@ body {
 
 /* ─── Mobile ─────────────────────────────────────────────────────────────────── */
 @media (max-width: 768px) {
+  .tc-intraday-page {
+    padding: 0.75rem 1rem 2rem;
+  }
   .tc-intraday-timestamp {
     margin-left: 0;
     width: 100%;

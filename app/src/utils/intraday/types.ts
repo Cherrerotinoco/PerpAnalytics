@@ -1,7 +1,7 @@
 // ─── Intraday report types ────────────────────────────────────────────────────
-// Ported from the `bitcoinAnalizer` CLI crawler (src/intraday/). Only the parts
-// that a browser can compute are here: Whale Alert blocks CORS, so whale flows,
-// realized/potential profit, HODL and news are out of scope for the web version.
+// Ported from the `bitcoinAnalizer` CLI crawler (src/intraday/). Only the parts a
+// browser can compute are here — see fetchers.ts for which sources are reachable
+// and why.
 
 /** One Binance 5m/1d kline reduced to its aggressor-flow figures. */
 export interface KlineBucket {

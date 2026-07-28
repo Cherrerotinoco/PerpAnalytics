@@ -293,10 +293,10 @@ export const analyzeGamma = (g: GammaResult | null): GammaRegime | null => {
  * convergence marker. Each condition returns met=true/false, or null when the data
  * to evaluate it is missing (counts neither for nor against).
  *
- * Two rules from the CLI version are absent here because they need Whale Alert,
- * which blocks CORS: the realized-profit sequence (Rule 7) and net whale flow. The
- * first is stood in for by the session-CVD sequence across consecutive pulls, which
- * is the closest signal a browser can accumulate on its own.
+ * Four conditions rather than the CLI's six: the two that depend on a source this
+ * edition cannot reach (see fetchers.ts) are dropped, and the CLI's realized-profit
+ * sequence is stood in for by the session-CVD sequence across consecutive pulls —
+ * the closest signal a browser can accumulate on its own.
  */
 export const assessCapitulation = ({
   history = [],

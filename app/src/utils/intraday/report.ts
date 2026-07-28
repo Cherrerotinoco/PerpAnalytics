@@ -4,11 +4,10 @@ import type { CvdAnalysis, Divergence, IntradaySnapshot } from './types';
 // needed to turn it into a probabilistic scenario table, so a fresh agent with no
 // prior context can work from this single paste.
 //
-// The methodology is the one in bitcoinAnalizer/AGENT.md, reweighted for this
-// edition: Whale Alert blocks CORS, so the whale-flow driver (weighted highest in
-// the CLI) is absent and its weight moves to the order-flow blocks. Markdown rather
-// than box-drawing separators — it parses better as a prompt and still renders fine
-// in a <pre>.
+// The methodology is the one in bitcoinAnalizer/AGENT.md, reweighted around the
+// sources this edition actually has (see fetchers.ts): order flow carries the weight.
+// Markdown rather than box-drawing separators — it parses better as a prompt and
+// still renders fine in a <pre>.
 
 const usd = (n: number | null | undefined, digits = 0): string =>
   n == null ? 'N/A' : '$' + n.toLocaleString('en-US', { maximumFractionDigits: digits });
@@ -45,11 +44,10 @@ This data is raw figures plus deterministic signals already computed for you. Yo
 is the JOINT READING of those signals and the translation into scenarios — not
 recomputing numbers.
 
-⚠️ SCOPE OF THIS EDITION: there is no whale-flow data (Whale Alert blocks CORS from the
-browser). Missing as a result: on-chain transfers, net BTC balance, stablecoin flows,
-realized/potential profit, average buy price, HODL and news. Do NOT assume them, do NOT
-refer to them as if they existed and do NOT invent a whale section. The analysis rests
-exclusively on aggressor order flow (CVD) and gamma.`;
+⚠️ SCOPE: the DATA block below is the complete set of inputs. Base the analysis exclusively
+on aggressor order flow (CVD) and gamma exposure. If your usual methodology would weight a
+metric that does not appear below, leave it out — do not estimate it, do not assume it and
+do not write a section about it.`;
 
 const GUIDE = `# HOW TO INTERPRET THE DATA
 
@@ -157,9 +155,8 @@ Gamma warns about the VOLATILITY REGIME and sets the real PIVOT LEVEL.
 Counts how many exhaustion conditions hold. It is NOT a verdict: a bottom is only confirmed
 in hindsight. The more simultaneous ✅, the more confidence. A "·" means the data is missing
 and that condition counts neither for nor against.
-⚠️ The two whale-based rules of the original crawler (realized-profit sequence and net flow)
-are absent here, so this marker is weaker than its desktop version: do not treat it as
-equivalent.
+⚠️ It runs on the order-flow conditions listed in the block: treat it as a partial marker
+that supports a read, never as the read itself.
 
 ## E) Reading history
 Sequence of pulls stored in the user's browser. Use it to read the EVOLUTION between readings
@@ -183,9 +180,8 @@ Allocation rules:
 - The three probabilities must sum to exactly 100%.
 - If signals contradict each other, reflect it with spread probabilities (e.g. 45/45/10)
   instead of forcing conviction.
-- Without whale flow your conviction ceiling is LOWER than with the full crawler: avoid
-  assigning more than 60% to a single scenario unless order flow, daily context and gamma all
-  point the same way with no absorption against it.
+- Cap your conviction: avoid assigning more than 60% to a single scenario unless order flow,
+  daily context and gamma all point the same way with no absorption against it.
 - Early in the UTC session (few 5m candles) the sample is small: move towards a neutral split
   and say so explicitly.`;
 
@@ -238,8 +234,8 @@ const STRICT_RULES = `# STRICT RULES
 1. NEVER invent data: use ONLY what appears in the DATA block of this run.
 2. If a source failed (listed under "Issues" or its section says no data), say so explicitly
    and do not fabricate that part.
-3. There is no whale, on-chain, stablecoin, realized-profit or news data in this edition: do
-   not mention or infer it.
+3. Never introduce a metric that is absent from the DATA block, even if your usual
+   methodology would weight it. Work with what is there.
 4. The scenario table probabilities must sum to exactly 100%.
 5. Do not compare absolute CVD magnitudes between spot and perp, only sign and direction.
 6. If the sample is small (session just opened, history < 3 readings), flag it and spread the
