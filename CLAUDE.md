@@ -1,7 +1,7 @@
 # PerpAnalytics — Project Context
 
 ## What this is
-A Solana perpetuals trade analytics dashboard. Users paste a public wallet address and the app fetches their closed trade history from **Jupiter Perpetuals** and **Pacifica Finance**, then renders a fully customisable metrics dashboard.
+A Solana perpetuals trade analytics dashboard. Users paste a public wallet address and the app fetches their closed trade history from **Jupiter Perpetuals**, **Pacifica Finance** (Solana addresses) and **Hyperliquid** (EVM `0x…` addresses), then renders a fully customisable metrics dashboard.
 
 Live domain: **perpAnalytics.app**
 
@@ -121,6 +121,7 @@ WalletForm.tsx
        ├─ check localStorage cache (5 min TTL, key = wallet+platforms)
        └─ fetch Jupiter API  (paginated, 1000/page)
           fetch Pacifica API (paginated, cursor-based)
+          fetch Hyperliquid info API (userFillsByTime, time-paged)
                │
                ▼
           normalizeJupiter / normalizePacifica → Trade[]
@@ -142,10 +143,15 @@ The dashboard URL encodes all search state so links are shareable:
 
 | Param | Format | Example |
 |---|---|---|
-| `wallet` | Base58, 32–44 chars | `?wallet=ABC...` |
+| `wallet` | Base58, 32–44 chars, or EVM `0x` + 40 hex | `?wallet=ABC...` |
 | `start_date` | DD.MM.YYYY | `&start_date=01.01.2025` |
 | `end_date` | DD.MM.YYYY | `&end_date=31.05.2025` |
-| `platforms` | comma-separated | `&platforms=jupiter,pacifica` |
+| `platforms` | comma-separated (`jupiter`, `pacifica`, `hyperliquid`) | `&platforms=jupiter,pacifica` |
+| `user` | FOMO handle (search-by-username mode) | `&user=christianti96` |
+
+**FOMO username search:** the form toggles between *Wallet* and *FOMO user*. A handle is resolved via the Node server's `GET /api/fomo/wallet` (`utils/fetchFomoWallet.ts`, metered upstream, cached server-side), then `pickAddressForPlatforms` chooses the EVM or Solana address and the normal wallet fetch runs. The URL keeps both `user` and the resolved `wallet`, so shared links skip the lookup; a `?user=` link alone triggers it. In dev, Vite proxies `/api` to `localhost:3000` — run `pnpm dev:server` alongside `pnpm dev:app`.
+
+Platforms are chain-bound (`utils/platforms.ts`): Solana addresses query Jupiter/Pacifica, EVM addresses query Hyperliquid. `resolvePlatformsForAddress` drops off-chain selections (falling back to all platforms on the address's chain) and the form's chips for the other chain are disabled.
 
 ### URL sync behaviour
 - **Live-sync** (`useEffect` on `[startDate, endDate, platforms]`): writes filter changes to URL via `window.history.replaceState` — does NOT trigger `useSearchParams`.
@@ -262,11 +268,12 @@ Mock data: `utils/mockTrades.ts` — 55 hardcoded trades (Jan–May 2025), SOL/E
 ```
 Jupiter:  https://perps-api.jup.ag/v1/trades?walletAddress={addr}&start={n}&end={n}
 Pacifica: https://api.pacifica.fi/api/v1/trades/history?account={addr}&limit=1000&cursor={c}
+Hyperliquid: POST https://api.hyperliquid.xyz/info {"type":"userFillsByTime","user":{addr},"startTime":{ms}}
 Binance:  https://api.binance.com/api/v3/klines?symbol={sym}USDT&interval={iv}&startTime={s}&endTime={e}&limit=1000
 Bybit:    https://api.bybit.com/v5/market/kline?category=linear&symbol={sym}USDT&interval={iv}&start={s}&end={e}&limit=1000
 ```
 
-All public, no auth required. Jupiter/Pacifica responses validated by normalizers. Binance is tried first for OHLCV; Bybit is the fallback (and primary for tokens in `BYBIT_SYMBOLS`: WIF, JTO, BONK, PYTH, JUP, RNDR, TIA, SEI, SUI, APT).
+All public, no auth required. Jupiter/Pacifica/Hyperliquid responses validated by normalizers. Binance is tried first for OHLCV; Bybit is the fallback (and primary for tokens in `BYBIT_SYMBOLS`: WIF, JTO, BONK, PYTH, JUP, RNDR, TIA, SEI, SUI, APT).
 
 ---
 

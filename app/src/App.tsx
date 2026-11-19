@@ -9,8 +9,8 @@ import CalculatorPage from './pages/CalculatorPage';
 import IntradayPage from './pages/IntradayPage';
 import { ThemeProvider } from './context/ThemeContext';
 import { useCookieConsent } from './hooks/useCookieConsent';
+import { isValidWalletAddress } from './utils/platforms';
 
-const SOLANA_ADDRESS_REGEX = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 const MAX_RECENT = 5;
 
 // ─── localStorage helpers ──────────────────────────────────────────────────────
@@ -29,7 +29,7 @@ const loadRecentWallets = (): string[] => {
       return [];
     }
     return parsed
-      .filter((w): w is string => typeof w === 'string' && SOLANA_ADDRESS_REGEX.test(w))
+      .filter((w): w is string => typeof w === 'string' && isValidWalletAddress(w))
       .slice(0, MAX_RECENT);
   } catch {
     return [];
@@ -56,7 +56,7 @@ const App = () => {
   }, []);
 
   const addRecentWallet = useCallback((w: string) => {
-    if (!w || !SOLANA_ADDRESS_REGEX.test(w)) {
+    if (!w || !isValidWalletAddress(w)) {
       return;
     }
     setRecentWallets((prev) => {
@@ -80,11 +80,12 @@ const App = () => {
               <>
                 <div className="tc-page-top">
                   <div className="tc-page-intro">
-                    <h1 className="tc-page-title">Analyze your Solana trades</h1>
+                    <h1 className="tc-page-title">Analyze your perps trades</h1>
                     <p className="tc-page-subtitle">
                       Quantitative statistics for your positions on{' '}
-                      <span className="tc-page-highlight">Jupiter Perpetuals</span> and{' '}
-                      <span className="tc-page-highlight">Pacifica Finance</span>.
+                      <span className="tc-page-highlight">Jupiter Perpetuals</span>,{' '}
+                      <span className="tc-page-highlight">Pacifica Finance</span> and{' '}
+                      <span className="tc-page-highlight">Hyperliquid</span>.
                     </p>
                   </div>
                 </div>

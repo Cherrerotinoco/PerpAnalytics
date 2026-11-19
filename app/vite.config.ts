@@ -4,6 +4,10 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
     root: __dirname,
     plugins: [react()],
+    server: {
+        // The FOMO handle lookup lives on the Node server (`pnpm dev:server`)
+        proxy: { '/api': 'http://localhost:3000' },
+    },
     build: {
         outDir: '../dist',
         emptyOutDir: true,

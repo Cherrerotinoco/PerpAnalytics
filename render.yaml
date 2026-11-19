@@ -1,20 +1,49 @@
 services:
+  # Was a static site. It is now a Node service because the fomoapi key is
+  # metered and billed and therefore cannot ship to a browser. The same process
+  # serves the built SPA, so there is still one origin and no CORS.
   - type: web
     name: perpsanalytics
-    env: static
+    runtime: node
+    plan: starter
     buildCommand: pnpm install && pnpm build
-    staticPublishPath: ./dist
+    startCommand: pnpm start
+    healthCheckPath: /api/health
 
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html
+    envVars:
+      - key: NODE_VERSION
+        value: '22'
+      # Render's proxy overwrites x-forwarded-for, so it can be trusted here to
+      # identify callers for rate limiting. Must stay off anywhere the server is
+      # exposed directly, where the header is caller-controlled.
+      - key: TRUST_PROXY
+        value: '1'
+      # Secrets and tuning are set in the Render dashboard, not in this file.
+      - key: DATABASE_URL
+        sync: false
+      - key: FOMOAPI_KEY
+        sync: false
+      # Must be a fresh random value in production — the one in .env is marked
+      # development-only. Changing it resets every client's daily quota once.
+      - key: CLIENT_HASH_SALT
+        generateValue: true
+      - key: FOMOAPI_MONTHLY_CREDIT_CAP
+        value: '200000'
+      - key: RATE_REQUESTS_PER_MINUTE
+        value: '60'
+      - key: RATE_NEW_RESOLUTIONS_PER_CLIENT_DAILY
+        value: '3'
+      - key: RATE_NEW_RESOLUTIONS_GLOBAL_DAILY
+        value: '3'
 
     headers:
       - path: /*.html
         name: Content-Type
         value: text/html; charset=utf-8
 
+      # connect-src lists every host the browser itself calls. Jupiter, Pacifica
+      # and Hyperliquid are public APIs hit directly from the page; only the
+      # FOMO handle lookup goes through 'self'.
       - path: /*
         name: Content-Security-Policy
         value: >-
@@ -23,6 +52,7 @@ services:
           style-src 'self' https://fonts.googleapis.com;
           font-src https://fonts.gstatic.com;
           connect-src 'self' https://perps-api.jup.ag https://api.pacifica.fi
+          https://api.hyperliquid.xyz
           https://api.binance.com https://fapi.binance.com https://api.bybit.com
           https://cryptogamma.io https://www.google-analytics.com https://analytics.google.com;
           img-src 'self' data: https://www.google-analytics.com https://www.googletagmanager.com;

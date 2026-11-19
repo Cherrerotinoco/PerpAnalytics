@@ -3,17 +3,21 @@
     "version": "1.0.0",
     "private": true,
     "type": "module",
+    "packageManager": "pnpm@10.33.2",
     "scripts": {
-        "build": "vite build --config app/vite.config.ts && vite build --config app/vite.ssr.config.ts && tsx scripts/prerender.ts",
+        "build": "vite build --config app/vite.config.ts && vite build --config app/vite.ssr.config.ts && tsx scripts/prerender.ts && pnpm build:server",
         "build:client": "vite build --config app/vite.config.ts",
+        "build:server": "tsc -p server/tsconfig.json",
+        "start": "node dist-server/index.js",
         "typecheck": "tsc --noEmit",
         "dev:app": "vite --config app/vite.config.ts",
+        "dev:server": "node --env-file=.env --import tsx server/index.ts",
         "build:app": "vite build --config app/vite.config.ts",
         "preview:app": "vite preview --config app/vite.config.ts",
         "lint": "eslint app/src",
         "format": "prettier --write app/src",
-        "test": "vitest run app/src",
-        "test:watch": "vitest app/src",
+        "test": "vitest run",
+        "test:watch": "vitest",
         "prepare": "git config core.hooksPath .githooks"
     },
     "engines": {
@@ -21,6 +25,7 @@
     },
     "devDependencies": {
         "@types/node": "22.19.19",
+        "@types/pg": "^8.23.1",
         "@types/react": "19.2.15",
         "@types/react-dom": "19.2.3",
         "@typescript-eslint/eslint-plugin": "^8.0.0",
@@ -36,13 +41,17 @@
         "vitest": "^2.1.9"
     },
     "dependencies": {
+        "@hono/node-server": "^2.1.9",
+        "@neondatabase/serverless": "^1.2.1",
+        "hono": "^4.13.19",
+        "jspdf": "^2.5.2",
         "lightweight-charts": "^5.2.0",
+        "pg": "^8.23.1",
         "react": "19.2.6",
         "react-dom": "19.2.6",
         "react-icons": "^5.6.0",
         "react-router-dom": "7.15.1",
         "recharts": "2.15.4",
-        "vanilla-cookieconsent": "^3.1.0",
-        "jspdf": "^2.5.2"
+        "vanilla-cookieconsent": "^3.1.0"
     }
 }

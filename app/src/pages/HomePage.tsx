@@ -51,8 +51,8 @@ const FEATURES: FeatureDef[] = [
   },
   {
     Icon: CgPlug,
-    title: 'Jupiter & Pacifica',
-    body: 'Pull your full trade history from both platforms with one wallet address. No CSV exports needed.',
+    title: 'Jupiter, Pacifica & Hyperliquid',
+    body: 'Pull your full trade history from all three venues with one wallet address. No CSV exports needed.',
   },
 ];
 
@@ -96,7 +96,8 @@ const HomePage = () => {
           </h1>
           <p className="tc-hero-subtitle">
             Paste your wallet address. Instantly see your complete trade history from{' '}
-            <strong>Jupiter Perpetuals</strong> and <strong>Pacifica Finance</strong> with
+            <strong>Jupiter Perpetuals</strong>, <strong>Pacifica Finance</strong> and{' '}
+            <strong>Hyperliquid</strong> with
             institutional-grade performance and risk metrics.
           </p>
           <div className="tc-hero-actions">

@@ -2,8 +2,12 @@
 node_modules/
 .pnpm-store/
 
+# Claude Code local state (contains git worktrees with full repo copies)
+.claude/
+
 # Build output
 dist/
+dist-server/
 
 # Generated files
 *.csv

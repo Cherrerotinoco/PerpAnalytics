@@ -856,6 +856,10 @@ body {
 .tc-platform-label--inactive {
   color: var(--tc-muted);
 }
+.tc-platform-label--disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
 
 .tc-platform-label input[type='checkbox'] {
   display: none;
@@ -886,6 +890,68 @@ body {
 .tc-wallet-input-wrap {
   flex: 1 1 200px;
   min-width: 0;
+}
+
+/* ─── Search mode toggle (wallet / FOMO user) ───────────────────────────────── */
+.tc-search-mode-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.tc-search-mode {
+  display: inline-flex;
+  padding: 2px;
+  gap: 2px;
+  background: var(--tc-surface-3);
+  border: 1px solid var(--tc-border);
+  border-radius: var(--tc-radius);
+}
+
+.tc-search-mode-btn {
+  padding: 0.1rem 0.5rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--tc-muted);
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  cursor: pointer;
+  transition:
+    color 0.12s,
+    background 0.12s;
+}
+.tc-search-mode-btn:hover {
+  color: var(--tc-text);
+}
+.tc-search-mode-btn--active {
+  color: var(--tc-text);
+  background: var(--tc-surface);
+}
+
+.tc-handle-input-wrap {
+  position: relative;
+}
+.tc-handle-prefix {
+  position: absolute;
+  left: 0.6rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.82rem;
+  color: var(--tc-muted);
+  pointer-events: none;
+}
+.tc-input.tc-handle-input {
+  padding-left: 1.35rem;
+}
+
+.tc-handle-resolved {
+  margin: 0.4rem 0 0;
+  font-size: 0.72rem;
+  color: var(--tc-muted);
 }
 
 /* ─── Panel placeholder ──────────────────────────────────────────────────────── */

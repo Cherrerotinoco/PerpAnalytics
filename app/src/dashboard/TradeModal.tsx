@@ -448,6 +448,13 @@ export const TradeModal = ({ trade, onClose }: TradeModalProps) => {
                   colorClass={pnlGross >= 0 ? 'tc-green' : 'tc-red'}
                 />
                 <StatRow label="Fee" value={`-${fmtMoney(trade.fee)} $`} colorClass="tc-red" />
+                {trade.builderFee !== undefined && trade.builderFee > 0 && (
+                  <StatRow
+                    label="of which builder"
+                    value={`-${fmtMoney(trade.builderFee)} $`}
+                    colorClass="tc-red"
+                  />
+                )}
                 <StatRow label="Size" value={`${fmtMoney(trade.sizeUsd)} $`} />
                 {trade.entryPrice !== undefined && (
                   <StatRow label="Entry price" value={`${fmtMoney(trade.entryPrice, 4)} $`} />

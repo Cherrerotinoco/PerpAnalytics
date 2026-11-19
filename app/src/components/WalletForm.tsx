@@ -4,10 +4,23 @@ import { CgSync, CgCheck } from 'react-icons/cg';
 import { Trade } from '../types/tradeTypes';
 import { normalizeJupiterTrades, JupiterTrade } from '../utils/normalizeJupiter';
 import { normalizePacificaTrades, PacificaFill } from '../utils/normalizePacifica';
+import { normalizeHyperliquidFills } from '../utils/normalizeHyperliquid';
+import { fetchHyperliquidFills, HyperliquidError } from '../utils/fetchHyperliquid';
+import { fetchFomoWallet, FomoLookupError } from '../utils/fetchFomoWallet';
+import {
+  ALL_PLATFORMS,
+  PLATFORM_CHAIN,
+  PLATFORM_LABEL,
+  Platform,
+  chainOfAddress,
+  isValidWalletAddress,
+  parsePlatformsParam,
+  pickAddressForPlatforms,
+  resolvePlatformsForAddress,
+} from '../utils/platforms';
 import Dashboard from '../dashboard/Dashboard';
 import RecentWallets from './RecentWallets';
 
-const SOLANA_ADDRESS_REGEX = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 const MAX_CACHE_ENTRIES = 10;
 const STORAGE_PREFIX = 'tc:';
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
@@ -32,7 +45,7 @@ const isValidCachedTrade = (t: unknown): boolean => {
     isFinite(o.fee) &&
     typeof o.sizeUsd === 'number' &&
     isFinite(o.sizeUsd) &&
-    (o.source === 'Jupiter' || o.source === 'Pacifica') &&
+    (o.source === 'Jupiter' || o.source === 'Pacifica' || o.source === 'Hyperliquid') &&
     typeof o.opened === 'string' &&
     !isNaN(Date.parse(o.opened)) &&
     typeof o.closed === 'string' &&
@@ -100,7 +113,11 @@ const formatDateParam = (s: string): string => {
   return `${d}.${mo}.${y}`;
 };
 
-type Platform = 'jupiter' | 'pacifica';
+type SearchMode = 'wallet' | 'user';
+
+const HANDLE_REGEX = /^@?[A-Za-z0-9_.-]{1,64}$/;
+const normalizeHandle = (h: string): string => h.trim().replace(/^@/, '');
+const shortAddress = (a: string): string => `${a.slice(0, 6)}…${a.slice(-4)}`;
 
 interface WalletFormProps {
   recentWallets: string[];
@@ -123,12 +140,19 @@ export const WalletForm = ({
   const [error, setError] = useState('');
   const [trades, setTrades] = useState<Trade[]>([]);
   const [hasQueried, setHasQueried] = useState(false);
-  const [platforms, setPlatforms] = useState<Platform[]>(() => {
-    const p = searchParams.get('platforms');
-    if (!p) return ['jupiter', 'pacifica'];
-    const valid = p.split(',').filter((x): x is Platform => x === 'jupiter' || x === 'pacifica');
-    return valid.length ? valid : ['jupiter', 'pacifica'];
-  });
+  const [platforms, setPlatforms] = useState<Platform[]>(() =>
+    parsePlatformsParam(searchParams.get('platforms'))
+  );
+  const [searchMode, setSearchMode] = useState<SearchMode>(() =>
+    searchParams.get('user') ? 'user' : 'wallet'
+  );
+  const [handle, setHandle] = useState(() => searchParams.get('user') ?? '');
+  // The handle whose wallet is currently loaded, so a refresh doesn't re-resolve it
+  const [resolved, setResolved] = useState<{
+    handle: string;
+    evm: string | null;
+    solana: string | null;
+  } | null>(null);
   const cacheRef = useRef<{ [key: string]: Trade[] }>({});
   const cacheTsRef = useRef<{ [key: string]: number }>({});
   const lastAutoKey = useRef('');
@@ -154,19 +178,33 @@ export const WalletForm = ({
 
   // ── Core fetch logic (wallet + platforms passed explicitly so callers don't wait for state) ──
   const fetchTradesFor = useCallback(
-    async (w: string, plats: Platform[], forceRefresh = false) => {
-      if (!w || !SOLANA_ADDRESS_REGEX.test(w)) {
-        setError('Enter a valid Solana wallet address (32–44 Base58 characters).');
+    async (
+      rawWallet: string,
+      selectedPlats: Platform[],
+      forceRefresh = false,
+      fomoHandle: string | null = null
+    ) => {
+      const w = rawWallet.trim();
+      if (!w || !isValidWalletAddress(w)) {
+        setError(
+          'Enter a valid Solana address (Jupiter, Pacifica) or EVM 0x address (Hyperliquid).'
+        );
         return;
       }
-      if (plats.length === 0) {
+      if (selectedPlats.length === 0) {
         setError('Select at least one platform.');
         return;
       }
 
-      // Write wallet to URL — filters are kept in sync by the live-sync effect
+      // Only query venues on the address's chain, and reflect that in the selection
+      const plats = resolvePlatformsForAddress(selectedPlats, w);
+      if (plats.join(',') !== selectedPlats.join(',')) setPlatforms(plats);
+
+      // Write wallet (and the FOMO handle it came from, if any) to URL — filters are kept in sync by the live-sync effect
       const urlParams = new URLSearchParams(window.location.search);
       urlParams.set('wallet', w);
+      if (fomoHandle) urlParams.set('user', fomoHandle);
+      else urlParams.delete('user');
       window.history.replaceState(null, '', `?${urlParams.toString()}`);
 
       const cacheKey = JSON.stringify({ wallet: w, platforms: [...plats].sort() });
@@ -241,6 +279,10 @@ export const WalletForm = ({
               await fetchPage();
               return normalizePacificaTrades(allFills);
             }
+            if (platform === 'hyperliquid') {
+              const fills = await fetchHyperliquidFills(w, { signal: controller.signal });
+              return normalizeHyperliquidFills(fills);
+            }
             return [];
           })
         );
@@ -257,6 +299,8 @@ export const WalletForm = ({
       } catch (err) {
         if (err instanceof Error && err.name === 'AbortError') {
           setError('Request timed out after 30 s. Please check your connection and try again.');
+        } else if (err instanceof HyperliquidError) {
+          setError(err.message);
         } else {
           console.error('Failed to fetch trades:', err);
           setError('Failed to fetch trades. Check the console for details.');
@@ -269,18 +313,70 @@ export const WalletForm = ({
     [addRecentWallet, scrollToDashboard]
   );
 
+  // ── FOMO handle → wallet, then the normal wallet fetch ──
+  const fetchTradesForHandle = useCallback(
+    async (rawHandle: string, plats: Platform[], forceRefresh = false) => {
+      const h = normalizeHandle(rawHandle);
+      if (!HANDLE_REGEX.test(h)) {
+        setError('Enter a FOMO username (letters, numbers, _ . -).');
+        return;
+      }
+      if (plats.length === 0) {
+        setError('Select at least one platform.');
+        return;
+      }
+
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
+      setLoading(true);
+      setError('');
+
+      try {
+        const fomo = await fetchFomoWallet(h, { signal: controller.signal });
+        const address = pickAddressForPlatforms(fomo, plats);
+        if (!address) {
+          setError(`@${fomo.handle} has no linked wallet.`);
+          setLoading(false);
+          return;
+        }
+        setResolved({ handle: fomo.handle, evm: fomo.evm, solana: fomo.solana });
+        setWallet(address);
+        await fetchTradesFor(address, plats, forceRefresh, fomo.handle);
+      } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') return;
+        setError(
+          err instanceof FomoLookupError ? err.message : 'Could not look up that FOMO username.'
+        );
+        setLoading(false);
+      }
+    },
+    [fetchTradesFor, setWallet]
+  );
+
   // ── Form submit (reads from component state) ──
   const handleSubmit = useCallback(
     async (e: React.FormEvent | null, forceRefresh = false) => {
       if (e) e.preventDefault();
+      if (searchMode === 'user') {
+        // Already resolved this handle — refresh/re-search its trades without another lookup
+        if (resolved && resolved.handle.toLowerCase() === normalizeHandle(handle).toLowerCase()) {
+          const address = pickAddressForPlatforms(resolved, platforms);
+          if (address) return fetchTradesFor(address, platforms, forceRefresh, resolved.handle);
+        }
+        return fetchTradesForHandle(handle, platforms, forceRefresh);
+      }
+      setResolved(null);
       return fetchTradesFor(wallet, platforms, forceRefresh);
     },
-    [wallet, platforms, fetchTradesFor]
+    [searchMode, resolved, handle, wallet, platforms, fetchTradesFor, fetchTradesForHandle]
   );
 
   // ── Recent wallet selection — update wallet, URL, and fetch immediately ──
   const handleSelectRecentWallet = useCallback(
     (w: string) => {
+      setSearchMode('wallet');
+      setResolved(null);
       setWallet(w);
       // Keep existing filter params, just swap the wallet
       const params = new URLSearchParams(window.location.search);
@@ -296,28 +392,45 @@ export const WalletForm = ({
   // ── URL navigation listener — fires on back/forward/direct URL, NOT on replaceState ──
   useEffect(() => {
     const urlWallet = searchParams.get('wallet');
-    if (!urlWallet || !SOLANA_ADDRESS_REGEX.test(urlWallet)) return;
+    const urlUser = searchParams.get('user');
+    const hasWallet = !!urlWallet && isValidWalletAddress(urlWallet);
+    const hasUser = !!urlUser && HANDLE_REGEX.test(urlUser);
+    if (!hasWallet && !hasUser) return;
 
-    const pParam = searchParams.get('platforms');
-    const urlPlats: Platform[] = pParam
-      ? pParam.split(',').filter((x): x is Platform => x === 'jupiter' || x === 'pacifica')
-      : ['jupiter', 'pacifica'];
-    const plats = urlPlats.length ? urlPlats : (['jupiter', 'pacifica'] as Platform[]);
+    const urlPlats = parsePlatformsParam(searchParams.get('platforms'));
+    const plats = hasWallet ? resolvePlatformsForAddress(urlPlats, urlWallet) : urlPlats;
 
-    // Deduplicate: don't re-fetch if we already submitted for this exact wallet+platforms combo
-    const autoKey = `${urlWallet}|${[...plats].sort().join(',')}`;
+    // Deduplicate: don't re-fetch if we already submitted for this exact user+wallet+platforms combo
+    const autoKey = `${hasUser ? urlUser : ''}|${hasWallet ? urlWallet : ''}|${[...plats].sort().join(',')}`;
     if (autoKey === lastAutoKey.current) return;
     lastAutoKey.current = autoKey;
 
     // Sync all form fields from URL params
-    setWallet(urlWallet);
     setStartDate(parseDateParam(searchParams.get('start_date')));
     setEndDate(parseDateParam(searchParams.get('end_date')));
     setPlatforms(plats);
+    setSearchMode(hasUser ? 'user' : 'wallet');
+    if (hasUser) setHandle(urlUser);
 
     // Fetch directly with URL params (don't wait for state to settle)
-    fetchTradesFor(urlWallet, plats);
-  }, [searchParams, fetchTradesFor, setWallet]);
+    if (hasWallet) {
+      setWallet(urlWallet);
+      // A shared ?user=…&wallet=… link already carries the resolved address: skip the lookup
+      if (hasUser) {
+        const evm = chainOfAddress(urlWallet) === 'evm';
+        setResolved({
+          handle: normalizeHandle(urlUser),
+          evm: evm ? urlWallet : null,
+          solana: evm ? null : urlWallet,
+        });
+      } else {
+        setResolved(null);
+      }
+      fetchTradesFor(urlWallet, plats, false, hasUser ? normalizeHandle(urlUser) : null);
+    } else if (hasUser) {
+      fetchTradesForHandle(urlUser, plats);
+    }
+  }, [searchParams, fetchTradesFor, fetchTradesForHandle, setWallet]);
 
   const filteredTrades = useMemo(() => {
     const startMs = startDate ? new Date(startDate).getTime() : 0;
@@ -330,7 +443,18 @@ export const WalletForm = ({
     });
   }, [trades, startDate, endDate, platforms]);
 
-  const isDisabled = loading || !wallet || platforms.length === 0;
+  // In user mode the address is picked from the handle, so no platform is off-limits up front
+  const walletChain = searchMode === 'wallet' ? chainOfAddress(wallet) : null;
+  const shownPlatforms = walletChain ? resolvePlatformsForAddress(platforms, wallet) : platforms;
+  const isDisabled =
+    loading || (searchMode === 'wallet' ? !wallet : !handle.trim()) || platforms.length === 0;
+  const resolvedAddress =
+    searchMode === 'user' &&
+    resolved &&
+    resolved.handle.toLowerCase() === normalizeHandle(handle).toLowerCase() &&
+    isValidWalletAddress(wallet)
+      ? wallet
+      : null;
   const hasData = !loading && filteredTrades.length > 0;
 
   return (
@@ -343,40 +467,87 @@ export const WalletForm = ({
         <div className="tc-panel tc-search-pad">
           <form onSubmit={handleSubmit} autoComplete="off">
             <div className="d-flex align-items-center gap-2 flex-wrap">
-              {/* Wallet address */}
+              {/* Wallet address or FOMO username */}
               <div className="tc-wallet-input-wrap">
-                <label className="tc-label" htmlFor="wallet">
-                  Wallet Address *
-                </label>
-                <input
-                  id="wallet"
-                  type="text"
-                  name="wallet"
-                  className="tc-input font-monospace"
-                  placeholder="Wallet address…"
-                  required
-                  value={wallet}
-                  onChange={(e) => setWallet(e.target.value)}
-                  autoComplete="off"
-                  spellCheck={false}
-                />
+                <div className="tc-search-mode-row">
+                  <label className="tc-label" htmlFor="wallet">
+                    {searchMode === 'wallet' ? 'Wallet Address *' : 'FOMO Username *'}
+                  </label>
+                  <div className="tc-search-mode" role="group" aria-label="Search by">
+                    {(['wallet', 'user'] as SearchMode[]).map((m) => (
+                      <button
+                        key={m}
+                        type="button"
+                        aria-pressed={searchMode === m}
+                        className={`tc-search-mode-btn${searchMode === m ? ' tc-search-mode-btn--active' : ''}`}
+                        onClick={() => {
+                          setSearchMode(m);
+                          setError('');
+                        }}
+                      >
+                        {m === 'wallet' ? 'Wallet' : 'FOMO user'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {searchMode === 'wallet' ? (
+                  <input
+                    id="wallet"
+                    type="text"
+                    name="wallet"
+                    className="tc-input font-monospace"
+                    placeholder="Solana or EVM (0x…) address…"
+                    required
+                    value={wallet}
+                    onChange={(e) => setWallet(e.target.value)}
+                    autoComplete="off"
+                    spellCheck={false}
+                  />
+                ) : (
+                  <div className="tc-handle-input-wrap">
+                    <span className="tc-handle-prefix" aria-hidden="true">
+                      @
+                    </span>
+                    <input
+                      id="wallet"
+                      type="text"
+                      name="fomo-user"
+                      className="tc-input tc-handle-input"
+                      placeholder="FOMO username…"
+                      required
+                      value={handle}
+                      onChange={(e) => setHandle(e.target.value)}
+                      autoComplete="off"
+                      autoCapitalize="off"
+                      spellCheck={false}
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Platform checkboxes */}
               <div className="tc-platform-group">
-                {(['jupiter', 'pacifica'] as Platform[]).map((p) => {
-                  const isActive = platforms.includes(p);
-                  const label = p === 'jupiter' ? 'Jupiter' : 'Pacifica';
+                {ALL_PLATFORMS.map((p) => {
+                  // Venues on another chain can't hold trades for this address
+                  const isUnavailable = walletChain !== null && PLATFORM_CHAIN[p] !== walletChain;
+                  const isActive = shownPlatforms.includes(p);
+                  const label = PLATFORM_LABEL[p];
                   return (
                     <label
                       key={p}
                       htmlFor={`plat-${p}`}
-                      className={`tc-platform-label ${isActive ? 'tc-platform-label--active' : 'tc-platform-label--inactive'}`}
+                      title={
+                        isUnavailable
+                          ? `${label} needs ${PLATFORM_CHAIN[p] === 'evm' ? 'an EVM (0x…)' : 'a Solana'} address`
+                          : undefined
+                      }
+                      className={`tc-platform-label ${isActive ? 'tc-platform-label--active' : 'tc-platform-label--inactive'}${isUnavailable ? ' tc-platform-label--disabled' : ''}`}
                     >
                       <input
                         id={`plat-${p}`}
                         type="checkbox"
                         checked={isActive}
+                        disabled={isUnavailable}
                         onChange={(e) => {
                           setPlatforms((prev) =>
                             e.target.checked ? [...prev, p] : prev.filter((x) => x !== p)
@@ -422,6 +593,15 @@ export const WalletForm = ({
                 </button>
               )}
             </div>
+
+            {resolvedAddress && (
+              <p className="tc-handle-resolved">
+                @{resolved?.handle} →{' '}
+                <span className="font-monospace" title={resolvedAddress}>
+                  {shortAddress(resolvedAddress)}
+                </span>
+              </p>
+            )}
 
             {/* Error — aria-live so screen readers announce it immediately */}
             <div aria-live="polite" aria-atomic="true">

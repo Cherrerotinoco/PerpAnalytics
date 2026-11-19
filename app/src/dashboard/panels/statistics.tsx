@@ -47,7 +47,7 @@ export interface TradeStats {
   pnlList: number[];
   feesBySource: Record<string, number>;
   totalFees: number;
-  // Maker/taker split — only counts trades from venues that report it (Pacifica).
+  // Maker/taker split — only counts trades from venues that report it (Pacifica, Hyperliquid).
   takerFees: number;
   makerFees: number;
   feesWithRole: number; // total fee from trades that have a maker/taker split
