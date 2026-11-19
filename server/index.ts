@@ -34,6 +34,44 @@ const DIST = path.resolve(process.cwd(), 'dist');
 
 const app = new Hono();
 
+// connect-src lists every host the browser itself calls. Jupiter, Pacifica and
+// Hyperliquid are public APIs hit directly from the page; only the FOMO handle
+// lookup goes through 'self'.
+const CONTENT_SECURITY_POLICY = [
+  "default-src 'self'",
+  "script-src 'self' https://www.googletagmanager.com 'unsafe-inline'",
+  "style-src 'self' https://fonts.googleapis.com",
+  'font-src https://fonts.gstatic.com',
+  [
+    "connect-src 'self' https://perps-api.jup.ag https://api.pacifica.fi",
+    'https://api.hyperliquid.xyz',
+    'https://api.binance.com https://fapi.binance.com https://api.bybit.com',
+    'https://cryptogamma.io https://www.google-analytics.com https://analytics.google.com',
+  ].join(' '),
+  "img-src 'self' data: https://www.google-analytics.com https://www.googletagmanager.com",
+  'frame-src https://www.googletagmanager.com',
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'none'",
+].join('; ');
+
+const SECURITY_HEADERS: Record<string, string> = {
+  'Content-Security-Policy': CONTENT_SECURITY_POLICY,
+  'X-Frame-Options': 'DENY',
+  'X-Content-Type-Options': 'nosniff',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+};
+
+/** Render only applies render.yaml headers to static sites, so a web service sets its own. */
+app.use('*', async (c, next) => {
+  for (const [name, value] of Object.entries(SECURITY_HEADERS)) {
+    c.header(name, value);
+  }
+  await next();
+});
+
 /** The caller's salted hash, used for quotas without storing any address. */
 const clientHashOf = (c: { req: { raw: Request } }): string => {
   let socket: string | null = null;
