@@ -7,8 +7,19 @@ set -e
 ROOT="$(git rev-parse --show-toplevel)"
 cd "$ROOT"
 
+# Files in this commit, captured before formatting so they can be re-staged after
+STAGED="$(git diff --cached --name-only --diff-filter=ACMR)"
+
 echo "▶ pnpm format..."
 pnpm format
+
+# Prettier rewrites files on disk; re-add them so its changes land in this commit
+# instead of being left behind as unstaged edits.
+if [ -n "$STAGED" ]; then
+  echo "$STAGED" | while IFS= read -r f; do
+    [ -f "$f" ] && git add -- "$f"
+  done
+fi
 
 echo "▶ pnpm lint..."
 pnpm lint
