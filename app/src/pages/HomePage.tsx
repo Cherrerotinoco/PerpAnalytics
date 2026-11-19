@@ -97,8 +97,7 @@ const HomePage = () => {
           <p className="tc-hero-subtitle">
             Paste your wallet address. Instantly see your complete trade history from{' '}
             <strong>Jupiter Perpetuals</strong>, <strong>Pacifica Finance</strong> and{' '}
-            <strong>Hyperliquid</strong> with
-            institutional-grade performance and risk metrics.
+            <strong>Hyperliquid</strong> with institutional-grade performance and risk metrics.
           </p>
           <div className="tc-hero-actions">
             <Link to="/dashboard" className="tc-btn-primary tc-hero-cta-primary">

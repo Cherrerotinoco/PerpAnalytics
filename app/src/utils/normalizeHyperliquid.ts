@@ -61,8 +61,7 @@ const isClose = (dir: string): boolean => /^close/i.test(dir);
  * Hyperliquid marks forced exits in `dir`. Everything else is a normal exit —
  * the venue reports no take-profit / stop-loss distinction on a fill.
  */
-const closeTypeOf = (dir: string): CloseType =>
-  /liquidat/i.test(dir) ? 'Liquidation' : 'Manual';
+const closeTypeOf = (dir: string): CloseType => (/liquidat/i.test(dir) ? 'Liquidation' : 'Manual');
 
 interface OpenPosition {
   openedAt: number;
