@@ -13,6 +13,7 @@ import {
   BudgetExceededError,
   UpstreamError,
 } from './fomoapi/wallets.js';
+import { suggestHandles, isValidQuery } from './fomoapi/suggest.js';
 import {
   clientAddress,
   hashClient,
@@ -99,6 +100,31 @@ app.use('/api/*', async (c, next) => {
 });
 
 app.get('/api/health', (c) => c.json({ ok: true }));
+
+/**
+ * Autocomplete over handles already in the cache.
+ *
+ * Reads our own table only, so it is free and quota-free — which is what makes
+ * it safe to call on every keystroke behind a debounce. It also means the list
+ * can only ever contain handles that are free to open.
+ */
+app.get('/api/fomo/suggest', async (c) => {
+  const q = (c.req.query('q') ?? '').trim();
+  if (!q) {
+    return c.json({ items: [] });
+  }
+  if (!isValidQuery(q.replace(/^@/, ''))) {
+    // Not an error: a half-typed handle should quietly yield nothing.
+    return c.json({ items: [] });
+  }
+  try {
+    return c.json({ items: await suggestHandles(q) });
+  } catch (err) {
+    console.error('[api] suggest failed:', err);
+    // Autocomplete is a convenience; never let it break the search box.
+    return c.json({ items: [] });
+  }
+});
 
 /** Operational view of spend and of the caller's remaining daily allowance. */
 app.get('/api/fomo/budget', async (c) => {

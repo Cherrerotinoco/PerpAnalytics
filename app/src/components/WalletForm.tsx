@@ -20,6 +20,8 @@ import {
 } from '../utils/platforms';
 import Dashboard from '../dashboard/Dashboard';
 import RecentWallets from './RecentWallets';
+import FomoHandleInput from './FomoHandleInput';
+import type { HandleSuggestion } from '../utils/fomoSuggest';
 
 const MAX_CACHE_ENTRIES = 10;
 const STORAGE_PREFIX = 'tc:';
@@ -354,6 +356,30 @@ export const WalletForm = ({
     [fetchTradesFor, setWallet]
   );
 
+  // ── Suggestion picked from the dropdown ──
+  // A suggestion already carries the wallets it was cached with, so this skips
+  // the lookup entirely: no request, and nothing that could cost a credit.
+  const handlePickSuggestion = useCallback(
+    (suggestion: HandleSuggestion) => {
+      setHandle(suggestion.handle);
+      setError('');
+      const picked = {
+        handle: suggestion.handle,
+        evm: suggestion.evm,
+        solana: suggestion.solana,
+      };
+      const address = pickAddressForPlatforms(picked, platforms);
+      if (!address) {
+        setError(`@${suggestion.handle} has no linked wallet.`);
+        return;
+      }
+      setResolved(picked);
+      setWallet(address);
+      void fetchTradesFor(address, platforms, false, suggestion.handle);
+    },
+    [platforms, fetchTradesFor, setWallet]
+  );
+
   // ── Form submit (reads from component state) ──
   const handleSubmit = useCallback(
     async (e: React.FormEvent | null, forceRefresh = false) => {
@@ -504,24 +530,12 @@ export const WalletForm = ({
                     spellCheck={false}
                   />
                 ) : (
-                  <div className="tc-handle-input-wrap">
-                    <span className="tc-handle-prefix" aria-hidden="true">
-                      @
-                    </span>
-                    <input
-                      id="wallet"
-                      type="text"
-                      name="fomo-user"
-                      className="tc-input tc-handle-input"
-                      placeholder="FOMO username…"
-                      required
-                      value={handle}
-                      onChange={(e) => setHandle(e.target.value)}
-                      autoComplete="off"
-                      autoCapitalize="off"
-                      spellCheck={false}
-                    />
-                  </div>
+                  <FomoHandleInput
+                    value={handle}
+                    onChange={setHandle}
+                    onPick={handlePickSuggestion}
+                    disabled={loading}
+                  />
                 )}
               </div>
 
