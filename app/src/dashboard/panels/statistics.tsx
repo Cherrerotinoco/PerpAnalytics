@@ -52,6 +52,11 @@ export interface TradeStats {
   makerFees: number;
   feesWithRole: number; // total fee from trades that have a maker/taker split
   takerFeePct: number;
+  // The front-end's share of the fees, where the venue reports one. Trades
+  // placed through FOMO carry its builder fee inside the Hyperliquid fee, so
+  // this is the part of the cost that goes to the app rather than the venue.
+  builderFees: number;
+  builderFeePct: number;
   bySession: SessionStats[];
 }
 
@@ -119,6 +124,7 @@ export const computeTradeStats = (trades: Trade[]): TradeStats => {
   const feesBySource: Record<string, number> = {};
   let takerFees = 0;
   let makerFees = 0;
+  let builderFees = 0;
 
   let peak = 0;
   let maxDrawdown = 0;
@@ -137,6 +143,7 @@ export const computeTradeStats = (trades: Trade[]): TradeStats => {
     }
     if (t.takerFee !== undefined) takerFees += t.takerFee;
     if (t.makerFee !== undefined) makerFees += t.makerFee;
+    if (t.builderFee !== undefined) builderFees += t.builderFee;
 
     const dateRef = t.closed ?? t.opened;
     const ts = dateRef instanceof Date && !isNaN(dateRef.getTime()) ? dateRef.getTime() : null;
@@ -216,6 +223,8 @@ export const computeTradeStats = (trades: Trade[]): TradeStats => {
   const totalFees = Object.values(feesBySource).reduce((a, b) => a + b, 0);
   const feesWithRole = takerFees + makerFees;
   const takerFeePct = feesWithRole > 0 ? (takerFees / feesWithRole) * 100 : 0;
+  // Share of the total fee bill taken by the front-end rather than the venue.
+  const builderFeePct = totalFees > 0 ? (builderFees / totalFees) * 100 : 0;
 
   // ── Distribution stats ──────────────────────────────────────────────────────
   const winPnls = pnlList.filter((v) => v > 0).sort((a, b) => a - b);
@@ -294,6 +303,8 @@ export const computeTradeStats = (trades: Trade[]): TradeStats => {
     makerFees,
     feesWithRole,
     takerFeePct,
+    builderFees,
+    builderFeePct,
     bySession,
   };
 };
@@ -493,6 +504,21 @@ export const PerformanceSection = memo(({ stats: st }: { stats: TradeStats }) =>
             <p className="tc-metric-sub mt-1">
               {fmtPct(st.takerFeePct)} of fees paid as taker
               {st.takerFeePct >= 99 ? ' — using limit (maker) orders could cut this.' : ''}
+            </p>
+          </div>
+        )}
+
+        {/* The app's cut, not the venue's. It sits inside the fee totals above
+            rather than on top of them, so it is shown as a share, never added. */}
+        {st.builderFees > 0 && (
+          <div className="tc-fees-role">
+            <div className="tc-fees-row">
+              <span className="tc-metric-sub">App fee (builder)</span>
+              <span className="tc-fees-amount">-{fmtNum(st.builderFees)} $</span>
+            </div>
+            <p className="tc-metric-sub mt-1">
+              {fmtPct(st.builderFeePct)} of your fees went to the front-end
+              {st.builderFeePct >= 50 ? ', more than to the exchange itself.' : '.'}
             </p>
           </div>
         )}

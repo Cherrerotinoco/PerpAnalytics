@@ -304,3 +304,50 @@ describe('computeTradeStats — sorts by closed date', () => {
     expect(stats.equityCurve).toEqual([10, 30, 60]);
   });
 });
+
+describe('builder fees', () => {
+  const trade = (over: Partial<Trade>): Trade => ({
+    symbol: 'BTC',
+    opened: new Date('2026-11-18T10:00:00Z'),
+    closed: new Date('2026-11-18T12:00:00Z'),
+    side: 'long',
+    pnl: 1,
+    fee: 1,
+    sizeUsd: 100,
+    closeType: 'Manual',
+    source: 'Hyperliquid',
+    ...over,
+  });
+
+  it('sums the front-end cut and reports it as a share of total fees', () => {
+    // Real ratio from Hyperliquid fills placed through FOMO: the builder takes
+    // 5 bps against the venue's 4.32, so it is the larger half of the bill.
+    const st = computeTradeStats([
+      trade({ fee: 2, builderFee: 1.07 }),
+      trade({ fee: 1.14, builderFee: 0.75 }),
+    ]);
+    expect(st.builderFees).toBeCloseTo(1.82, 2);
+    expect(st.totalFees).toBeCloseTo(3.14, 2);
+    expect(st.builderFeePct).toBeCloseTo(57.96, 1);
+  });
+
+  it('stays at zero for venues that report no builder fee', () => {
+    const st = computeTradeStats([
+      trade({ source: 'Pacifica', fee: 1 }),
+      trade({ source: 'Jupiter', fee: 2 }),
+    ]);
+    expect(st.builderFees).toBe(0);
+    expect(st.builderFeePct).toBe(0);
+  });
+
+  it('does not divide by zero when there are no fees at all', () => {
+    expect(computeTradeStats([trade({ fee: 0 })]).builderFeePct).toBe(0);
+  });
+
+  it('never counts the builder fee on top of the total', () => {
+    // It is charged inside `fee`, so adding it would double-count the cost.
+    const st = computeTradeStats([trade({ fee: 2, builderFee: 1.07 })]);
+    expect(st.totalFees).toBeCloseTo(2, 6);
+    expect(st.builderFees).toBeLessThan(st.totalFees);
+  });
+});
