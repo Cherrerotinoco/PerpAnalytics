@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import WalletForm from './components/WalletForm';
 import MainLayout from './layout/MainLayout';
-import RecentWallets from './components/RecentWallets';
 import CookiePolicyPage from './pages/CookiePolicyPage';
 import HomePage from './pages/HomePage';
 import CalculatorPage from './pages/CalculatorPage';
@@ -10,6 +9,12 @@ import IntradayPage from './pages/IntradayPage';
 import { ThemeProvider } from './context/ThemeContext';
 import { useCookieConsent } from './hooks/useCookieConsent';
 import { isValidWalletAddress } from './utils/platforms';
+import {
+  loadRecentFomoUsers,
+  addRecentFomoUser,
+  RECENT_FOMO_USERS_KEY,
+  type RecentFomoUser,
+} from './utils/recentFomoUsers';
 
 const MAX_RECENT = 5;
 
@@ -42,13 +47,18 @@ const App = () => {
 
   const [wallet, setWallet] = useState('');
   const [recentWallets, setRecentWallets] = useState<string[]>([]);
+  const [recentUsers, setRecentUsers] = useState<RecentFomoUser[]>([]);
 
   // Load from localStorage after hydration, then keep in sync across tabs
   useEffect(() => {
     setRecentWallets(loadRecentWallets());
+    setRecentUsers(loadRecentFomoUsers());
     const onStorage = (e: StorageEvent) => {
       if (e.key === 'recentWallets') {
         setRecentWallets(loadRecentWallets());
+      }
+      if (e.key === RECENT_FOMO_USERS_KEY) {
+        setRecentUsers(loadRecentFomoUsers());
       }
     };
     window.addEventListener('storage', onStorage);
@@ -64,6 +74,10 @@ const App = () => {
       localStorage.setItem('recentWallets', JSON.stringify(next));
       return next;
     });
+  }, []);
+
+  const addRecentUser = useCallback((user: RecentFomoUser) => {
+    setRecentUsers((prev) => addRecentFomoUser(prev, user));
   }, []);
 
   return (
@@ -91,9 +105,11 @@ const App = () => {
                 </div>
                 <WalletForm
                   recentWallets={recentWallets}
+                  recentUsers={recentUsers}
                   wallet={wallet}
                   setWallet={setWallet}
                   addRecentWallet={addRecentWallet}
+                  addRecentUser={addRecentUser}
                 />
               </>
             }

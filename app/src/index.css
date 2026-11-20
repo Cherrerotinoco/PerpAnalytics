@@ -954,6 +954,26 @@ body {
   color: var(--tc-muted);
 }
 
+/* ─── Recent FOMO users ──────────────────────────────────────────────────────── */
+.tc-recent-btn.tc-recent-user {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.tc-recent-user-avatar {
+  width: 1.05rem;
+  height: 1.05rem;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.6rem;
+  font-weight: 700;
+  /* Background is a generated per-handle colour; dark text reads on all of them. */
+  color: #15161a;
+}
+
 /* ─── Handle autocomplete ────────────────────────────────────────────────────── */
 .tc-suggest-list {
   position: absolute;

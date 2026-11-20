@@ -21,6 +21,12 @@ interface Props {
   onChange: (value: string) => void;
   /** Fired when a suggestion is picked, so the parent can search immediately. */
   onPick: (suggestion: HandleSuggestion) => void;
+  /**
+   * A handle the parent has already resolved — from a recent-user chip or a
+   * shared `?user=` link. Suggesting against it would be a request whose only
+   * possible answer is the thing already on screen.
+   */
+  settledHandle?: string | null;
   inputId?: string;
   disabled?: boolean;
 }
@@ -29,6 +35,7 @@ export const FomoHandleInput = ({
   value,
   onChange,
   onPick,
+  settledHandle = null,
   inputId = 'wallet',
   disabled,
 }: Props) => {
@@ -50,7 +57,7 @@ export const FomoHandleInput = ({
       return;
     }
     const q = value.trim().replace(/^@/, '');
-    if (!q) {
+    if (!q || q.toLowerCase() === settledHandle?.toLowerCase()) {
       setSuggestions([]);
       setOpen(false);
       return;
@@ -75,7 +82,7 @@ export const FomoHandleInput = ({
     }, DEBOUNCE_MS);
 
     return () => clearTimeout(timer);
-  }, [value]);
+  }, [value, settledHandle]);
 
   useEffect(() => () => abortRef.current?.abort(), []);
 

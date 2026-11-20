@@ -21,7 +21,9 @@ import {
 import Dashboard from '../dashboard/Dashboard';
 import RecentWallets from './RecentWallets';
 import FomoHandleInput from './FomoHandleInput';
+import RecentFomoUsers from './RecentFomoUsers';
 import type { HandleSuggestion } from '../utils/fomoSuggest';
+import type { RecentFomoUser } from '../utils/recentFomoUsers';
 
 const MAX_CACHE_ENTRIES = 10;
 const STORAGE_PREFIX = 'tc:';
@@ -123,16 +125,20 @@ const shortAddress = (a: string): string => `${a.slice(0, 6)}…${a.slice(-4)}`;
 
 interface WalletFormProps {
   recentWallets: string[];
+  recentUsers: RecentFomoUser[];
   wallet: string;
   setWallet: (w: string) => void;
   addRecentWallet: (w: string) => void;
+  addRecentUser: (user: RecentFomoUser) => void;
 }
 
 export const WalletForm = ({
   recentWallets,
+  recentUsers,
   wallet,
   setWallet,
   addRecentWallet,
+  addRecentUser,
 }: WalletFormProps) => {
   const [searchParams] = useSearchParams();
 
@@ -343,6 +349,8 @@ export const WalletForm = ({
           return;
         }
         setResolved({ handle: fomo.handle, evm: fomo.evm, solana: fomo.solana });
+        // Remember it with its wallets, so coming back here costs nothing.
+        addRecentUser({ handle: fomo.handle, evm: fomo.evm, solana: fomo.solana });
         setWallet(address);
         await fetchTradesFor(address, plats, forceRefresh, fomo.handle);
       } catch (err) {
@@ -353,31 +361,30 @@ export const WalletForm = ({
         setLoading(false);
       }
     },
-    [fetchTradesFor, setWallet]
+    [fetchTradesFor, setWallet, addRecentUser]
   );
 
-  // ── Suggestion picked from the dropdown ──
-  // A suggestion already carries the wallets it was cached with, so this skips
-  // the lookup entirely: no request, and nothing that could cost a credit.
-  const handlePickSuggestion = useCallback(
-    (suggestion: HandleSuggestion) => {
-      setHandle(suggestion.handle);
+  // ── Open a FOMO user whose wallets we already hold ──
+  // Both the autocomplete dropdown and the recent-users row carry the wallets
+  // they were cached with, so this skips the lookup entirely: no request, and
+  // nothing that could cost a credit or a daily quota.
+  const openFomoUser = useCallback(
+    (user: HandleSuggestion | RecentFomoUser) => {
+      setSearchMode('user');
+      setHandle(user.handle);
       setError('');
-      const picked = {
-        handle: suggestion.handle,
-        evm: suggestion.evm,
-        solana: suggestion.solana,
-      };
+      const picked = { handle: user.handle, evm: user.evm, solana: user.solana };
       const address = pickAddressForPlatforms(picked, platforms);
       if (!address) {
-        setError(`@${suggestion.handle} has no linked wallet.`);
+        setError(`@${user.handle} has no linked wallet.`);
         return;
       }
       setResolved(picked);
       setWallet(address);
-      void fetchTradesFor(address, platforms, false, suggestion.handle);
+      addRecentUser(picked);
+      void fetchTradesFor(address, platforms, false, user.handle);
     },
-    [platforms, fetchTradesFor, setWallet]
+    [platforms, fetchTradesFor, setWallet, addRecentUser]
   );
 
   // ── Form submit (reads from component state) ──
@@ -488,6 +495,7 @@ export const WalletForm = ({
       {/* ── Above-fold: form, status ────────────────────────────────────────── */}
       <div className="tc-wallet-top">
         <RecentWallets wallets={recentWallets} onSelect={handleSelectRecentWallet} />
+        <RecentFomoUsers users={recentUsers} onSelect={openFomoUser} />
 
         {/* ── Search bar ─────────────────────────────────────────────────────── */}
         <div className="tc-panel tc-search-pad">
@@ -533,7 +541,8 @@ export const WalletForm = ({
                   <FomoHandleInput
                     value={handle}
                     onChange={setHandle}
-                    onPick={handlePickSuggestion}
+                    onPick={openFomoUser}
+                    settledHandle={resolved?.handle ?? null}
                     disabled={loading}
                   />
                 )}
