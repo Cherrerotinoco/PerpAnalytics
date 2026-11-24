@@ -170,28 +170,40 @@ const GammaBody = ({
     return (
       <p className="tc-intraday-note">
         No gamma snapshot in this run
-        {gamma?.degraded ? ' (the API returned zeroed metrics).' : '.'}
+        {gamma?.degraded ? ' (the chain carried no usable open interest).' : '.'}
       </p>
     );
   }
+  // Tri-state flags: null means the input was missing, and must read as N/A rather
+  // than as the negative interpretation.
+  const pcRead = regime?.defensive == null ? 'N/A' : regime.defensive ? 'defensive' : 'offensive';
   return (
     <>
+      {/* A venue down understates the aggregate and can invert the regime sign, so the
+          warning goes ahead of every number in the panel. */}
+      {gamma.partial && (
+        <p className="tc-intraday-note tc-intraday-note--warn">
+          Incomplete chain: no data from {gamma.venuesDown.join(', ')}. The aggregate is understated
+          and the regime may be inverted.
+        </p>
+      )}
       <div
         className={`tc-intraday-regime ${gamma.netGamma != null && gamma.netGamma < 0 ? 'tc-red' : 'tc-green'}`}
       >
         {regime?.regimeLabel}
       </div>
       <div className="tc-intraday-kv-grid">
-        <KeyValue k="Net gamma" v={gamma.netGamma?.toLocaleString('en-US') ?? '—'} />
+        {/* Millions of USD of delta per 1% move — see GammaSnapshot in types.ts. */}
+        <KeyValue k="Net gamma (M$ / 1%)" v={gamma.netGamma?.toLocaleString('en-US') ?? '—'} />
         <KeyValue
           k="Call / Put gamma"
           v={`${gamma.callGamma?.toLocaleString('en-US') ?? '—'} / ${gamma.putGamma?.toLocaleString('en-US') ?? '—'}`}
         />
+        <KeyValue k="Put/Call ratio" v={`${gamma.putCallRatio ?? '—'} (${pcRead})`} />
         <KeyValue
-          k="Put/Call ratio"
-          v={`${gamma.putCallRatio ?? '—'} (${regime?.defensive ? 'defensive' : 'offensive'})`}
+          k="Asymmetry bias"
+          v={gamma.bias == null ? '—' : `${gamma.bias} (${gamma.gammaAbovePct ?? '—'}% above spot)`}
         />
-        <KeyValue k="Bias" v={gamma.bias ?? '—'} />
         <KeyValue
           k={regime?.isPin ? 'Pin' : 'Support / resistance'}
           v={
@@ -200,15 +212,25 @@ const GammaBody = ({
               : `${usd(gamma.support)} / ${usd(gamma.resistance)}`
           }
         />
-        <KeyValue k="Breakout" v={usd(gamma.breakout)} />
+        <KeyValue k="Gamma flip" v={usd(gamma.breakout)} />
         <KeyValue
           k="Vol realized vs implied"
           v={`${gamma.realizedVol ?? '—'}% vs ${gamma.impliedVol ?? '—'}%`}
           tone={regime?.realizedGtImplied ? 'tc-amber' : ''}
         />
-        <KeyValue k="Squeeze risk" v={gamma.squeezeRisk ?? '—'} />
-        <KeyValue k="Delta hedging" v={gamma.deltaHedging ?? '—'} />
         <KeyValue k="Pin risk" v={gamma.pinRisk ?? '—'} />
+        <KeyValue
+          k="Options flow 24h (BTC)"
+          v={`call ${gamma.callFlow?.toLocaleString('en-US') ?? '—'} / put ${gamma.putFlow?.toLocaleString('en-US') ?? '—'}`}
+        />
+        <KeyValue
+          k="Contracts"
+          v={`${gamma.contractsUsed} used · ${gamma.contractsSkipped} skipped`}
+        />
+        {/* Proprietary labels of the previous provider, not derivable from the chain.
+            Kept visible so their absence is explicit rather than silent. */}
+        <KeyValue k="Squeeze risk" v="N/A (not derivable)" />
+        <KeyValue k="Delta hedging" v="N/A (not derivable)" />
       </div>
       {regime?.realizedGtImplied && (
         <p className="tc-intraday-note tc-intraday-note--warn">
@@ -280,8 +302,8 @@ const IntradayPage = () => {
       <div className="tc-page-intro">
         <h1 className="tc-page-title">Intraday — BTC order flow</h1>
         <p className="tc-page-subtitle">
-          Multi-timeframe aggressor delta (CVD) for Binance spot and perpetuals, plus Deribit gamma
-          exposure. Every request is made{' '}
+          Multi-timeframe aggressor delta (CVD) for Binance spot and perpetuals, plus BTC options
+          gamma exposure. Every request is made{' '}
           <span className="tc-page-highlight">straight from your browser</span> — no account, no
           server of ours in the middle, nothing about you stored anywhere.
         </p>
@@ -301,8 +323,10 @@ const IntradayPage = () => {
               Reading it next to spot is what exposes leverage pulling against cash.
             </li>
             <li>
-              <strong>Deribit gamma exposure</strong> — options snapshot (net gamma, put/call,
-              support, resistance, breakout, implied vs realized vol) via cryptogamma.io.
+              <strong>BTC options gamma exposure</strong> — the raw options chain of Deribit, OKX,
+              Bybit and Binance via basischarts.com. No aggregated metrics are served: net gamma,
+              support, resistance, the gamma flip and the pin are all computed in the page with
+              Black-76 gamma on each expiry&apos;s forward.
             </li>
           </ul>
           <p className="tc-intraday-about-note">
@@ -415,7 +439,7 @@ const IntradayPage = () => {
                 value={snap.gammaRegime?.regime.replace('_', ' ') ?? '—'}
                 sub={
                   snap.gamma?.ok
-                    ? `net ${snap.gamma.netGamma?.toLocaleString('en-US')}`
+                    ? `net ${snap.gamma.netGamma?.toLocaleString('en-US')} M$ / 1%`
                     : 'no snapshot'
                 }
                 tone={
@@ -564,7 +588,13 @@ const IntradayPage = () => {
               </p>
             </Panel>
 
-            <Panel title="Gamma exposure (Deribit)" grow={5} minWidth={300}>
+            {/* The venue list comes from the data, not hardcoded: a pull with a venue down
+                must not claim coverage it does not have. */}
+            <Panel
+              title={`Gamma exposure (${snap.gamma?.ok && snap.gamma.venues.length ? snap.gamma.venues.join(' + ') : 'options chain'})`}
+              grow={5}
+              minWidth={300}
+            >
               <GammaBody gamma={snap.gamma} regime={snap.gammaRegime} />
             </Panel>
           </Row>

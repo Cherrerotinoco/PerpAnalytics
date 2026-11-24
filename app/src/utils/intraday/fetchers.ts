@@ -8,7 +8,17 @@ import { readCache, readExpiredCache, writeCache } from './cache';
 // Whale flows, realized/potential profit, HODL and news therefore live only in the
 // `bitcoinAnalizer` CLI, not here.
 
-export const GAMMA_URL = 'https://cryptogamma.io/api/public/snapshot/?asset=BTC';
+// Gamma exposure: the RAW options chain (deribit + okx + bybit + binance) served by
+// basischarts. It returns no aggregated metrics — netGamma, levels and the rest are
+// computed in gex.ts from the ~3,000 quotes. No token, unlike the cryptogamma
+// snapshot it replaces.
+//
+// This is the ONLY intraday source that does not go straight to its upstream: the
+// basischarts host sends no `Access-Control-Allow-Origin` header (same situation as
+// Whale Alert above), so the browser blocks reading the response even though the
+// request itself succeeds. The server relays it same-origin — see /api/options/btc in
+// server/index.ts — and the GEX is still aggregated here in the browser.
+export const GAMMA_URL = '/api/options/btc';
 
 // Spot session CVD (Binance). 5m candles instead of raw trades: each kline already
 // carries the taker-buy volume (buy aggressor) broken out, so the per-candle delta
@@ -24,6 +34,10 @@ export const BINANCE_FAPI_KLINES_BASE =
 
 const TIMEOUT_MS = 12_000;
 
+// The full options chain weighs ~1.3 MB, far more than the aggregated snapshot the
+// previous endpoint served: it gets its own headroom over the default timeout.
+const GAMMA_TIMEOUT_MS = 30_000;
+
 export type FetchResult =
   | { ok: true; data: unknown; stale?: string }
   | { ok: false; error: string };
@@ -31,6 +45,8 @@ export type FetchResult =
 /** `force` skips the 15 min cache and always goes to the network. */
 export interface FetchOpts {
   force?: boolean;
+  /** Per-request override, for responses too large for the default budget. */
+  timeoutMs?: number;
 }
 
 // Requests currently on the wire, keyed by URL. Concurrent callers for the same
@@ -42,7 +58,7 @@ const inFlight = new Map<string, Promise<FetchResult>>();
 const fetchJson = (
   url: string,
   name: string,
-  { force = false }: FetchOpts = {}
+  { force = false, timeoutMs = TIMEOUT_MS }: FetchOpts = {}
 ): Promise<FetchResult> => {
   if (!force) {
     const cached = readCache(url);
@@ -51,14 +67,14 @@ const fetchJson = (
   const pending = inFlight.get(url);
   if (pending) return pending;
 
-  const promise = requestJson(url, name).finally(() => inFlight.delete(url));
+  const promise = requestJson(url, name, timeoutMs).finally(() => inFlight.delete(url));
   inFlight.set(url, promise);
   return promise;
 };
 
-const requestJson = async (url: string, name: string): Promise<FetchResult> => {
+const requestJson = async (url: string, name: string, timeoutMs: number): Promise<FetchResult> => {
   try {
-    const res = await fetch(url, { signal: AbortSignal.timeout(TIMEOUT_MS) });
+    const res = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data: unknown = await res.json();
     writeCache(url, data);
@@ -123,7 +139,7 @@ export const fetchCvdDailyFutures = (limit = 8, opts: FetchOpts = {}): Promise<F
   fetchCvdDaily(BINANCE_FAPI_KLINES_BASE, 'Daily perp CVD (Binance fapi klines 1d)', limit, opts);
 
 export const fetchGamma = (opts: FetchOpts = {}): Promise<FetchResult> =>
-  fetchJson(GAMMA_URL, 'Gamma Exposure', opts);
+  fetchJson(GAMMA_URL, 'Gamma Exposure', { timeoutMs: GAMMA_TIMEOUT_MS, ...opts });
 
 /** URLs a single pull touches — used to report how stale the cached data is. */
 export const pullUrls = (now: Date = new Date()): string[] => [

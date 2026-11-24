@@ -1,4 +1,5 @@
-import type { GammaResult, KlineBucket, ParsedCvd } from './types';
+import { computeGex } from './gex';
+import type { GammaResult, KlineBucket, OptionsChain, ParsedCvd } from './types';
 
 /** "60,270", "-7.55e+08", "1,685" → Number. null when unparseable. */
 export const toNum = (raw: unknown): number | null => {
@@ -45,55 +46,27 @@ export const parseCvd = (data: unknown): ParsedCvd => {
   return { ok: buckets.length > 0, buckets };
 };
 
-// ─── Gamma exposure snapshot (cryptogamma.io) ─────────────────────────────────
+// ─── Gamma exposure from the options chain (basischarts) ──────────────────────
 
+/**
+ * The endpoint returns the RAW options chain, not aggregated metrics, so the whole
+ * computation lives in gex.ts and this only validates the response shape and applies
+ * the same degradation rule the previous provider had.
+ */
 export const parseGamma = (data: unknown): GammaResult => {
-  const d = data as Record<string, never> | null;
-  if (!d || d['@type'] !== ('Dataset' as never)) {
+  const chain = data as OptionsChain | null;
+  if (!chain || !Array.isArray(chain.quotes)) {
     return { ok: false };
   }
-  const obj = data as Record<string, Record<string, unknown> | string | undefined>;
-  const m = (obj.metrics ?? {}) as Record<string, unknown>;
-  const s = (obj.squeezeLevels ?? {}) as Record<string, unknown>;
-  const v = (obj.volatilityData ?? {}) as Record<string, unknown>;
-  const fd = (obj.flowData ?? {}) as Record<string, unknown>;
-  const r = (obj.riskMetrics ?? {}) as Record<string, unknown>;
 
-  const callGamma = toNum(m.callGamma);
-  const putGamma = toNum(m.putGamma);
+  const parsed = computeGex(chain);
 
-  // The API sometimes returns a well-formed Dataset stuffed with placeholders
-  // (net/call/put gamma at zero + fixed ~$48-52K levels that don't match spot).
-  // Without real call/put gamma the snapshot is unusable: flag it unavailable
-  // instead of propagating misleading levels into the analysis.
-  if (!callGamma && !putGamma) {
+  // Well-formed response with nothing usable in it: empty chain, all open interest
+  // at zero, or no index price. Without real call/put gamma the snapshot is useless:
+  // flag it unavailable instead of propagating misleading levels into the analysis.
+  if (!parsed || (!parsed.callGamma && !parsed.putGamma)) {
     return { ok: false, degraded: true };
   }
 
-  return {
-    ok: true,
-    asset: (obj.asset as string | undefined) ?? null,
-    source: (obj.source as string | undefined) ?? null,
-    generatedAt:
-      (obj.generatedAt as string | undefined) ?? (obj.dateModified as string | undefined) ?? null,
-    netGamma: toNum(m.netGamma),
-    callGamma,
-    putGamma,
-    bias: (m.bias as string | undefined) ?? null,
-    putCallRatio: toNum(m.putCallRatio),
-    callWeighted: toNum(m.callWeighted),
-    currentPrice: toNum(s.currentPrice),
-    support: toNum(s.support),
-    resistance: toNum(s.resistance),
-    breakout: toNum(s.breakout),
-    realizedVol: toNum(v.realizedVol),
-    impliedVol: toNum(v.impliedVol),
-    volPremium: toNum(v.volPremium),
-    callFlow: toNum(fd.callFlow),
-    putFlow: toNum(fd.putFlow),
-    flowCpRatio: toNum(fd.cpRatio),
-    deltaHedging: (r.deltaHedging as string | undefined) ?? null,
-    squeezeRisk: (r.squeezeRisk as string | undefined) ?? null,
-    pinRisk: (r.pinRisk as string | undefined) ?? null,
-  };
+  return parsed;
 };

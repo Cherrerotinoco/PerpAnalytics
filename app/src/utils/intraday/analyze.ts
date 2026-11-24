@@ -266,7 +266,18 @@ export const analyzeGamma = (g: GammaResult | null): GammaRegime | null => {
     else if (g.netGamma > 0) regime = 'MEAN_REVERSION';
   }
 
-  const isPin = g.support != null && g.resistance != null && g.support === g.resistance;
+  // PIN: the magnet only rules when the dominant strike sits RIGHT ON spot and also
+  // concentrates real gamma. It used to be derived from (support === resistance),
+  // impossible by construction now that the levels are computed in gex.ts (support is
+  // always < spot < resistance), so that branch was dead.
+  const PIN_PROXIMITY = 0.005; // 0.5% of spot
+  const PIN_MIN_SHARE = 0.12;
+  const pinDistance =
+    g.pinLevel != null && g.currentPrice != null && g.currentPrice > 0
+      ? Math.abs(g.pinLevel - g.currentPrice) / g.currentPrice
+      : null;
+  const isPin =
+    pinDistance != null && pinDistance <= PIN_PROXIMITY && (g.pinShare ?? 0) >= PIN_MIN_SHARE;
 
   return {
     regime,
@@ -277,11 +288,12 @@ export const analyzeGamma = (g: GammaResult | null): GammaRegime | null => {
           ? '🧲 Mean reversion (dealers long, pin)'
           : '⚪ Neutral',
     isPin,
-    pinLevel: isPin ? g.support : null,
-    defensive: g.putCallRatio != null && g.putCallRatio > 1,
-    volPremiumNegative: g.volPremium != null && g.volPremium < 0,
+    pinLevel: isPin ? g.pinLevel : null,
+    // Tri-state: null = missing input. See GammaRegime in types.ts.
+    defensive: g.putCallRatio == null ? null : g.putCallRatio > 1,
+    volPremiumNegative: g.volPremium == null ? null : g.volPremium < 0,
     realizedGtImplied:
-      g.realizedVol != null && g.impliedVol != null && g.realizedVol > g.impliedVol,
+      g.realizedVol == null || g.impliedVol == null ? null : g.realizedVol > g.impliedVol,
   };
 };
 

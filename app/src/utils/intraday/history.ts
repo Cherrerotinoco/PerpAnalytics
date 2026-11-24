@@ -42,7 +42,10 @@ export const buildRecord = ({
   cvdSpot: cvdFlows?.totalCvd ?? null,
   cvdPerp: cvdPerpFlows?.totalCvd ?? null,
   gammaRegime: gammaRegime?.regime ?? null,
-  netGamma: gamma?.ok ? gamma.netGamma : null,
+  // `netGammaM`, not `netGamma`: see the field docs in types.ts. Records already in a
+  // user's localStorage from before the endpoint change keep their own `netGamma` key
+  // untouched — they stay readable, they just carry no value for this field.
+  netGammaM: gamma?.ok ? gamma.netGamma : null,
 });
 
 /** Two pulls are the same reading when price and both CVDs are unchanged. */

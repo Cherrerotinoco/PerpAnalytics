@@ -57,7 +57,7 @@ const routes: Record<string, RouteMeta> = {
   '/intraday': {
     title: 'BTC Intraday Order Flow — CVD, Absorption & Gamma',
     description:
-      'Live BTC order flow: spot and perp CVD by session, absorption and price-vs-CVD divergence, daily aggressor trend and Deribit gamma regime. Runs in-browser.',
+      'Live BTC order flow: spot and perp CVD by session, absorption and price-vs-CVD divergence, daily aggressor trend and BTC options gamma. Runs in-browser.',
   },
   '/cookie-policy': {
     title: 'Cookie Policy — PerpsAnalytics',

@@ -107,8 +107,8 @@ flagged as absorbed: treat it as distribution, not as strength.
 **Spot vs perp.** The perp trades far more volume and reflects leverage/speculation; spot
 reflects real cash.
 - Perp selling aggressively while spot holds or buys = leveraged shorts pressing against cash
-  demand → if price does not fall, SHORT SQUEEZE risk (cross-check with the gamma Squeeze
-  Risk).
+  demand → if price does not fall, SHORT SQUEEZE risk (the gamma Squeeze Risk label is no
+  longer available: this divergence is now the only way to read it).
 - Perp buying while spot sells = leverage-driven rally with no cash backing, more fragile.
 - ⚠️ Do NOT compare absolute magnitudes between spot and perp (perp is several times larger):
   compare SIGN and DIRECTION only, never size in BTC.
@@ -130,25 +130,48 @@ Aggressor delta of the last COMPLETE sessions (spot and perp).
 - ⚠️ This is context, NOT a trigger: use it to weight conviction, never to trade on alone.
 
 ## C) Gamma exposure (MEDIUM WEIGHT — modulates, does not replace)
-⚠️ Sign convention: netGamma is assumed dealer-adjusted (negative = dealers short gamma). If
-the regime clashes head-on with every other signal, suspect the sign and say so.
+Computed from the RAW options chain of Deribit + OKX + Bybit + Binance (Black-76 gamma on the
+forward), not served pre-aggregated by a provider. That has consequences:
+- ⚠️ SCALE: net/call/put gamma are in MILLIONS OF USD OF DELTA PER 1% MOVE. Read the SIGN and
+  the trend between pulls, never the absolute level against older readings.
+- ⚠️ Sign convention: netGamma is dealer-adjusted (calls +, puts −), so negative = dealers
+  short gamma. The convention is imposed by this app, but the ASSUMPTION that dealers are long
+  calls and short puts is still just an assumption. If the regime clashes head-on with every
+  other signal, say so and lower conviction instead of forcing the fit.
 - NEGATIVE net gamma → amplified volatility; dealers hedge with the move and breakouts
   self-accelerate. LOWERS the probability of SIDEWAYS and raises conviction on whichever side
   breaks the pivot level.
 - POSITIVE net gamma → mean reversion; price is pinned to the max-gamma level. RAISES the
   probability of SIDEWAYS.
-- Pin (support == resistance) → price magnet and pivot level. ⚠️ "PIN" is only labelled on an
-  EXACT match: if support and resistance come very close but not identical there is still a
-  magnet — treat it as a quasi-pin and say so.
-- Breakout → the break trigger. Compare it against current price: above = bullish trigger;
-  below = bearish trigger. With negative gamma, breaking it tends to self-accelerate; with
-  positive gamma price is more likely to reject it and return to the pin.
+- Pin (pin level + pin risk) → price magnet: the strike concentrating the most |gamma| in the
+  profile. "PIN" is only labelled when it sits within 0.5% of spot AND holds ≥12% of total
+  gamma; closer-but-not-both still means there IS a magnet — treat it as a quasi-pin, cite pin
+  risk and say so. With negative gamma the magnet is unstable.
+- Gamma flip (reported as "gamma flip") → the SPOT PRICE where the regime turns over, not a
+  strike. Compare it against current price: flip ABOVE = the market is in the amplified zone
+  and reclaiming it would return to the dampened regime; flip BELOW = the market is dampened
+  and losing it opens the amplified zone. It is the most informative break trigger in the
+  block, because crossing it changes dealer behaviour, not just the level. It can be N/A when
+  there is no crossing in the swept band: then do not invent a pivot.
 - Put/Call ratio → P/C > 1 defensive/bearish, < 1 offensive/bullish. A nuance, not a driver.
-- Options flow (callFlow / putFlow / flow C/P) → where options money is positioning NOW
-  (distinct from net gamma, which is accumulated stock). Confirms or qualifies the bias; not
-  a driver on its own.
+- Bias no longer comes from the sign of netGamma: it measures PROFILE ASYMMETRY (what % of
+  |gamma| sits above spot, 45-55% dead band). It is independent of the regime, so it may
+  contradict it without that being an error — the regime says amplify or dampen, the bias says
+  which way the profile leans.
+- Options flow (callFlow / putFlow / flow C/P) → GROSS 24h volume in BTC, not a net flow:
+  callFlow/putFlow are never negative and the useful read is the C/P ratio, not the value. It
+  shows where options money is positioning NOW (distinct from net gamma, the accumulated
+  stock). Confirms or qualifies the bias; not a driver on its own.
 - realizedVol > impliedVol → expect more turbulence than the market is pricing.
-- squeezeRisk / pinRisk → the vulnerable side and the strength of the magnet.
+- Pin risk → the strength of the magnet (High/Medium/Low by the dominant strike's gamma share).
+- Squeeze risk and delta hedging are ALWAYS N/A: they were the old provider's labels and are
+  not derivable from the chain. Do not cite them as if an API were down, do not estimate them,
+  and do not build the squeeze read on them (the spot↔perp CVD divergence is for that).
+- If an INCOMPLETE CHAIN warning appears (a venue down), the aggregate is understated and the
+  regime sign may be inverted: say it in the report and lower conviction on anything that
+  depends on gamma.
+- contractsSkipped counts contracts with open interest dropped for expiry or unusable IV. If
+  it is high against contractsUsed, the profile is incomplete.
 Gamma warns about the VOLATILITY REGIME and sets the real PIVOT LEVEL.
 
 ## D) End-of-capitulation check (convergence marker, not a verdict)
@@ -197,17 +220,19 @@ replicate the DATA block: produce the analysis.
 - **Price↔CVD divergence (spot)** → [bullish aggression / bearish aggression / bullish
   absorption / bearish absorption] plus the structure nuance if it applies
 - **Per-timeframe absorption** → [if flagged, say so and discount that TF]
-- **Spot vs perp** → [aligned or divergent; if divergent, leverage vs cash, cross-checked
-  against the gamma squeeze risk]
+- **Spot vs perp** → [aligned or divergent; if divergent, leverage vs cash — this is the only
+  squeeze read available]
 - **Excursion and momentum** → [CVD min/max, last candle, last N min]
 
 ### 🗓️ Multi-day context
 [streak or turn across previous sessions and how it conditions today]
 
-### 🧲 Gamma exposure (Deribit) — [⚡/🧲/⚪ regime]
-- **Net gamma** (call vs put) · **P/C ratio** · bias
-- **Pivot / breakout** · support · resistance, compared against current price
-- Realized vs implied vol → [interpretation] · squeeze / pin risk
+### 🧲 Gamma exposure (4 venues) — [⚡/🧲/⚪ regime]
+- **Net gamma** (call vs put) · **P/C ratio** · asymmetry bias
+- **Pivot / gamma flip** · support · resistance, compared against current price — omit the
+  pivot if the gamma flip is N/A
+- Realized vs implied vol → [interpretation] · pin risk
+- [if the chain is INCOMPLETE, say so here before any number]
 
 ### 🎯 Intraday scenarios
 [required table: Scenario | Prob. | Drivers | Key level]
@@ -218,8 +243,9 @@ replicate the DATA block: produce the analysis.
 ### 📐 Suggested setups (LONG / SHORT)
 [table: Setup | Entry | Stop (invalidation) | Target | R:R | Volatility note]
 LONG = the bullish scenario plus the share of sideways that resolves up. SHORT = bearish plus
-the share of sideways that resolves down. Entry = current price or the relevant breakout/pin
-level. Stop = the gamma level that breaks the thesis (support for LONG, resistance for SHORT).
+the share of sideways that resolves down. Entry = current price or the gamma flip / pin if the
+setup depends on confirming a break. Stop = the gamma level that breaks the thesis (support for
+LONG, resistance for SHORT).
 Target = the next gamma level in that direction. R:R = |target − entry| / |entry − stop|, to
 1 decimal. If gamma is missing or there are no usable levels for one side, OMIT that setup and
 say so — do not fabricate levels.
@@ -405,34 +431,73 @@ const buildDataBlock = (snap: IntradaySnapshot): string => {
   }
 
   // ---- Gamma ----
-  out.push('## Gamma exposure (Deribit)');
+  // The GEX is computed here from the raw chain (see gex.ts), aggregating whichever
+  // venues the endpoint served on this pull.
+  const gammaVenues = gamma?.ok && gamma.venues.length ? gamma.venues.join(' + ') : 'options chain';
+  out.push(`## Gamma exposure (${gammaVenues})`);
   if (!gamma || !gamma.ok) {
     out.push(
       gamma?.ok === false && gamma.degraded
-        ? 'No usable snapshot: the API returned a well-formed Dataset with the gamma metrics zeroed (placeholder).'
+        ? 'No usable snapshot: the endpoint returned a well-formed chain with no usable open interest or index price.'
         : 'No gamma snapshot in this run.'
     );
   } else {
-    out.push(`- Generated: ${gamma.generatedAt ?? 'N/A'}`);
-    out.push(`- Net gamma: ${num(gamma.netGamma)} → ${gammaRegime?.regimeLabel ?? 'N/A'}`);
-    out.push(`- Call gamma: ${num(gamma.callGamma)} · Put gamma: ${num(gamma.putGamma)}`);
+    const skipped = gamma.contractsSkipped
+      ? ` (${gamma.contractsSkipped} dropped for expiry/IV)`
+      : '';
     out.push(
-      `- Put/Call ratio: ${gamma.putCallRatio ?? 'N/A'} (${gammaRegime?.defensive ? 'defensive/bearish' : 'offensive/bullish'}) · Bias: ${gamma.bias ?? 'N/A'}`
+      `- Generated: ${gamma.generatedAt ?? 'N/A'} · ${gamma.contractsUsed} contracts with open interest${skipped}`
+    );
+    // If a venue is down the aggregate loses its gamma and the regime can flip sign:
+    // the warning goes first, ahead of any number.
+    if (gamma.partial) {
+      out.push(
+        `- ⚠️ INCOMPLETE CHAIN: no data from ${gamma.venuesDown.join(', ')} — the aggregate is understated and the regime may be inverted.`
+      );
+    }
+    // Units: millions of USD of delta per 1% move in spot. NOT comparable with the
+    // previous provider's scale nor with history recorded before this change: what
+    // matters is the SIGN and the trend between pulls.
+    out.push(
+      `- Net gamma: ${num(gamma.netGamma)} M$ of delta per 1% → ${gammaRegime?.regimeLabel ?? 'N/A'}`
+    );
+    out.push(`- Call gamma: ${num(gamma.callGamma)} · Put gamma: ${num(gamma.putGamma)}`);
+    // Tri-state: null prints as N/A, not as the negative reading.
+    const pcRead =
+      gammaRegime?.defensive == null
+        ? 'N/A'
+        : gammaRegime.defensive
+          ? 'defensive/bearish'
+          : 'offensive/bullish';
+    out.push(`- Put/Call ratio: ${gamma.putCallRatio ?? 'N/A'} (${pcRead})`);
+    // Bias = profile asymmetry (gamma above vs below spot), a signal independent of the
+    // regime; it used to come from the sign of netGamma and was a duplicate of the
+    // regime dressed up as confirmation.
+    out.push(
+      `- Gamma-asymmetry bias: ${gamma.bias ?? 'N/A'} (${gamma.gammaAbovePct ?? 'N/A'}% of the profile above spot)`
     );
     out.push(
       gammaRegime?.isPin
-        ? `- Levels: exact PIN at ${usd(gammaRegime.pinLevel)} · breakout ${usd(gamma.breakout)}`
-        : `- Levels: support ${usd(gamma.support)} / resistance ${usd(gamma.resistance)} · breakout ${usd(gamma.breakout)}`
+        ? `- Levels: PIN at ${usd(gammaRegime.pinLevel)} · gamma flip ${usd(gamma.breakout)}`
+        : `- Levels: support ${usd(gamma.support)} / resistance ${usd(gamma.resistance)} · gamma flip ${usd(gamma.breakout)}`
     );
     out.push(`- Snapshot reference price: ${usd(gamma.currentPrice)}`);
+    const volRead =
+      gammaRegime?.realizedGtImplied == null
+        ? 'N/A'
+        : gammaRegime.realizedGtImplied
+          ? 'options UNDERPRICE the real move'
+          : 'options cover the move';
     out.push(
-      `- Vol: realized ${gamma.realizedVol ?? 'N/A'}% vs implied ${gamma.impliedVol ?? 'N/A'}% (premium ${gamma.volPremium ?? 'N/A'}) → ${gammaRegime?.realizedGtImplied ? 'options UNDERPRICE the real move' : 'options cover the move'}`
+      `- Vol: realized ${gamma.realizedVol ?? 'N/A'}% vs implied ${gamma.impliedVol ?? 'N/A'}% (premium ${gamma.volPremium ?? 'N/A'}) → ${volRead}`
+    );
+    // Squeeze risk and delta hedging were proprietary labels of the previous provider,
+    // not derivable from the chain: they are always N/A, on purpose.
+    out.push(
+      `- Pin risk: ${gamma.pinRisk ?? 'N/A'} · Squeeze risk: ${gamma.squeezeRisk ?? 'N/A (not derivable from the chain)'} · Delta hedging: ${gamma.deltaHedging ?? 'N/A (not derivable from the chain)'}`
     );
     out.push(
-      `- Squeeze risk: ${gamma.squeezeRisk ?? 'N/A'} · Pin risk: ${gamma.pinRisk ?? 'N/A'} · Delta hedging: ${gamma.deltaHedging ?? 'N/A'}`
-    );
-    out.push(
-      `- Options flow: call ${num(gamma.callFlow)} · put ${num(gamma.putFlow)} · flow C/P ${gamma.flowCpRatio ?? 'N/A'} · callWeighted ${num(gamma.callWeighted)}`
+      `- Options flow (GROSS 24h volume, BTC): call ${num(gamma.callFlow)} · put ${num(gamma.putFlow)} · flow C/P ${gamma.flowCpRatio ?? 'N/A'} · callWeighted ${num(gamma.callWeighted)}%`
     );
   }
   out.push('');

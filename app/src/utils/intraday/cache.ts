@@ -1,7 +1,7 @@
 // ─── Response cache for the intraday APIs ─────────────────────────────────────
 // Same shape as the trade cache in WalletForm: an in-memory map for the current
 // session plus a localStorage mirror so a reload (or a second tab) reuses the same
-// responses instead of re-hitting Binance and cryptogamma.
+// responses instead of re-hitting Binance and basischarts.
 //
 // Cache keys are the request URLs, which are stable: the session CVD URLs embed
 // today's UTC midnight (constant within a day) and the rest have no time param.
@@ -9,6 +9,9 @@
 export const CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes
 
 const STORAGE_PREFIX = 'tc:intraday-cache:';
+
+/** Ceiling for the localStorage mirror, in UTF-16 chars. See writeCache. */
+const MAX_PERSISTED_CHARS = 512 * 1024;
 
 interface CacheEntry {
   cachedAt: number;
@@ -67,7 +70,13 @@ export const writeCache = (url: string, data: unknown, now: number = Date.now())
   memory.set(url, entry);
   if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem(storageKey(url), JSON.stringify(entry));
+    const serialized = JSON.stringify(entry);
+    // The raw options chain is ~1.3 MB, a quarter of the usual 5 MB origin quota, and it
+    // would also push out the trade caches WalletForm keeps here. Oversized payloads stay
+    // memory-only: they still serve this session, they just do not survive a reload (so a
+    // reload re-fetches rather than falling back to a stale chain).
+    if (serialized.length > MAX_PERSISTED_CHARS) return;
+    localStorage.setItem(storageKey(url), serialized);
   } catch {
     // Quota exceeded or private mode — the in-memory copy still serves this session.
   }

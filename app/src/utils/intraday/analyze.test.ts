@@ -6,8 +6,8 @@ import {
   midnightUtcMs,
   summarizeDailyCvd,
 } from './analyze';
-import { parseCvd, parseGamma } from './parse';
-import type { HistoryRecord } from './types';
+import { parseCvd } from './parse';
+import type { GammaSnapshot, HistoryRecord } from './types';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const FIVE_MIN = 5 * 60 * 1000;
@@ -205,44 +205,45 @@ describe('summarizeDailyCvd', () => {
   });
 });
 
-// ─── parseGamma / analyzeGamma ────────────────────────────────────────────────
-describe('parseGamma', () => {
-  const dataset = (metrics: Record<string, unknown>, extra: Record<string, unknown> = {}) => ({
-    '@type': 'Dataset',
-    asset: 'BTC',
-    metrics,
-    squeezeLevels: { support: 50000, resistance: 60000 },
-    ...extra,
-  });
-
-  it('rejects a payload that is not a Dataset', () => {
-    expect(parseGamma({ foo: 1 }).ok).toBe(false);
-    expect(parseGamma(null).ok).toBe(false);
-  });
-
-  it('flags a placeholder snapshot with zeroed gamma as degraded', () => {
-    const res = parseGamma(dataset({ netGamma: 0, callGamma: 0, putGamma: 0 }));
-    expect(res.ok).toBe(false);
-    expect(res.ok === false && res.degraded).toBe(true);
-  });
-
-  it('parses a real snapshot', () => {
-    const res = parseGamma(
-      dataset({ netGamma: -1500, callGamma: 2000, putGamma: 3500, putCallRatio: 1.4 })
-    );
-    expect(res.ok).toBe(true);
-    expect(res.ok && res.netGamma).toBe(-1500);
-  });
-});
-
+// ─── analyzeGamma ─────────────────────────────────────────────────────────────
+// The chain → metrics side is covered in gex.test.ts; this only covers the regime
+// read on top of a snapshot.
 describe('analyzeGamma', () => {
-  const snap = (over: Record<string, unknown> = {}) =>
-    parseGamma({
-      '@type': 'Dataset',
-      metrics: { netGamma: -100, callGamma: 1, putGamma: 1, putCallRatio: 1.2, ...over },
-      squeezeLevels: { support: 50000, resistance: 60000, ...(over.squeezeLevels ?? {}) },
-      volatilityData: over.volatilityData ?? {},
-    });
+  const snapshot = (over: Partial<GammaSnapshot> = {}): GammaSnapshot => ({
+    ok: true,
+    asset: 'BTC',
+    source: 'all',
+    generatedAt: '2026-07-28T10:00:00.000Z',
+    netGamma: -100,
+    callGamma: 50,
+    putGamma: -150,
+    bias: 'BEARISH',
+    gammaAbovePct: 40,
+    putCallRatio: 1.2,
+    callWeighted: 25,
+    currentPrice: 60000,
+    support: 55000,
+    resistance: 65000,
+    breakout: 62000,
+    realizedVol: null,
+    impliedVol: null,
+    volPremium: null,
+    callFlow: 10,
+    putFlow: 20,
+    flowCpRatio: 0.5,
+    deltaHedging: null,
+    squeezeRisk: null,
+    pinRisk: 'Low (near $65,000)',
+    pinLevel: 65000,
+    pinShare: 0.4,
+    contractsUsed: 3,
+    contractsSkipped: 0,
+    venuesDown: [],
+    partial: false,
+    venues: ['deribit'],
+    gammaByVenue: { deribit: -100 },
+    ...over,
+  });
 
   it('returns null without a usable snapshot', () => {
     expect(analyzeGamma(null)).toBeNull();
@@ -250,22 +251,42 @@ describe('analyzeGamma', () => {
   });
 
   it('reads negative net gamma as amplified volatility', () => {
-    expect(analyzeGamma(snap())!.regime).toBe('AMPLIFIED_VOL');
+    expect(analyzeGamma(snapshot())!.regime).toBe('AMPLIFIED_VOL');
   });
 
   it('reads positive net gamma as mean reversion', () => {
-    expect(analyzeGamma(snap({ netGamma: 250 }))!.regime).toBe('MEAN_REVERSION');
+    expect(analyzeGamma(snapshot({ netGamma: 250 }))!.regime).toBe('MEAN_REVERSION');
   });
 
-  it('detects a pin when support equals resistance', () => {
-    const g = analyzeGamma(snap({ squeezeLevels: { support: 55000, resistance: 55000 } }))!;
+  // The pin needs BOTH conditions: within 0.5% of spot and ≥12% of total gamma.
+  it('detects a pin only when it sits on spot and concentrates gamma', () => {
+    const g = analyzeGamma(snapshot({ pinLevel: 60100, pinShare: 0.3 }))!;
     expect(g.isPin).toBe(true);
-    expect(g.pinLevel).toBe(55000);
+    expect(g.pinLevel).toBe(60100);
+  });
+
+  it('does not call a distant dominant strike a pin', () => {
+    const g = analyzeGamma(snapshot({ pinLevel: 65000, pinShare: 0.9 }))!;
+    expect(g.isPin).toBe(false);
+    expect(g.pinLevel).toBeNull();
+  });
+
+  it('does not call a near but thin strike a pin', () => {
+    expect(analyzeGamma(snapshot({ pinLevel: 60100, pinShare: 0.05 }))!.isPin).toBe(false);
   });
 
   it('flags realized vol above implied', () => {
-    const g = analyzeGamma(snap({ volatilityData: { realizedVol: 60, impliedVol: 45 } }))!;
+    const g = analyzeGamma(snapshot({ realizedVol: 60, impliedVol: 45, volPremium: -15 }))!;
     expect(g.realizedGtImplied).toBe(true);
+    expect(g.volPremiumNegative).toBe(true);
+  });
+
+  // Tri-state: a missing input must not read as the negative interpretation.
+  it('leaves flags null when the input is missing', () => {
+    const g = analyzeGamma(snapshot({ putCallRatio: null }))!;
+    expect(g.defensive).toBeNull();
+    expect(g.realizedGtImplied).toBeNull();
+    expect(g.volPremiumNegative).toBeNull();
   });
 });
 
@@ -277,7 +298,7 @@ describe('assessCapitulation', () => {
     cvdSpot,
     cvdPerp: null,
     gammaRegime: null,
-    netGamma: null,
+    netGammaM: null,
   });
 
   it('leaves checks unevaluated (null) when the data is missing', () => {
