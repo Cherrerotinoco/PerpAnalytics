@@ -9,11 +9,16 @@ import './index.css';
 // server rendered or /intraday mismatches its own markup.
 const ssrSnapshot = takeSsrSnapshot();
 
-// Canonical URL — set once at startup using the real deployed origin
-const canonical = document.createElement('link');
-canonical.rel = 'canonical';
-canonical.href = window.location.origin + '/';
-document.head.appendChild(canonical);
+// No canonical is injected here on purpose.
+//
+// This used to append one pointing at `origin + '/'`, from before the build
+// prerendered a page per route. Every served page now ships its own correct
+// canonical — the prerender writes it, and scripts/prerender.ts asserts it — so
+// appending another only added a SECOND, wrong one declaring every route to be
+// the homepage, which invites search engines to collapse the site onto one URL.
+//
+// Client-side navigation does not need to maintain it: a crawler requests each
+// URL directly and gets that route's prerendered HTML, canonical included.
 
 const rootEl = document.getElementById('root') as HTMLElement;
 const app = (

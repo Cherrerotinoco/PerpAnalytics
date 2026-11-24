@@ -116,6 +116,29 @@ function assertMetaFits(url: string, meta: RouteMeta): void {
   }
 }
 
+/**
+ * A page must carry EXACTLY ONE canonical, and it must be its own.
+ *
+ * This is checked rather than assumed because it has already gone wrong twice.
+ * `applyRouteMeta` rewrites the template's canonical, but nothing stopped the app
+ * from appending a second one at runtime — entry-client.tsx used to do precisely
+ * that, pointing every route at the homepage and undoing the rewrite below. A
+ * duplicate or wrong canonical is invisible in the browser and only shows up as
+ * pages quietly dropping out of search results, so it fails the build instead.
+ */
+function assertSingleCanonical(html: string, expected: string, label: string): void {
+  const found = [...html.matchAll(/<link\b[^>]*\brel="canonical"[^>]*>/g)];
+  if (found.length !== 1) {
+    throw new Error(
+      `prerender: ${label} has ${found.length} canonical link(s), expected exactly 1`,
+    );
+  }
+  const href = /\bhref="([^"]*)"/.exec(found[0][0])?.[1];
+  if (href !== expected) {
+    throw new Error(`prerender: ${label} canonical is "${href ?? ''}", expected "${expected}"`);
+  }
+}
+
 /** Apply one route's title/description to every place the template repeats them. */
 function applyRouteMeta(html: string, meta: RouteMeta, canonical: string): string {
   let out = replaceOrThrow(
@@ -165,6 +188,9 @@ for (const [url, meta] of Object.entries(routes)) {
   assertMetaFits(url, meta);
   const canonical = url === '/' ? `${SITE_ORIGIN}/` : `${SITE_ORIGIN}${url}`;
   const html = applyRouteMeta(template, meta, canonical).replace('<!--app-html-->', () => appHtml);
+  // Checked on the FINAL html, with the rendered app already in it, so a canonical
+  // emitted by a component would be caught too.
+  assertSingleCanonical(html, canonical, url);
 
   let outPath: string;
   if (url === '/') {
@@ -197,11 +223,9 @@ const INTRADAY_META: RouteMeta = {
 };
 
 assertMetaFits('/intraday', INTRADAY_META);
-const intradayTemplate = applyRouteMeta(
-  template,
-  INTRADAY_META,
-  `${SITE_ORIGIN}/intraday`
-);
+const intradayCanonical = `${SITE_ORIGIN}/intraday`;
+const intradayTemplate = applyRouteMeta(template, INTRADAY_META, intradayCanonical);
+assertSingleCanonical(intradayTemplate, intradayCanonical, '/intraday template');
 const ssrDir = path.resolve(__dirname, '..', 'dist-ssr');
 fs.mkdirSync(ssrDir, { recursive: true });
 fs.writeFileSync(path.join(ssrDir, 'intraday-template.html'), intradayTemplate);
