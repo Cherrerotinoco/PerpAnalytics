@@ -108,6 +108,8 @@ interface Aggregate {
   signedByStrike: Map<number, number>;
   absByStrike: Map<number, number>;
   byVenue: Map<string, number>;
+  /** Signed gamma per expiry timestamp — the shape of the term structure. */
+  byExpiry: Map<number, number>;
   callGex: number;
   putGex: number;
   callOi: number;
@@ -131,6 +133,7 @@ const aggregate = (quotes: OptionQuote[], now: number): Aggregate => {
   const signedByStrike = new Map<number, number>();
   const absByStrike = new Map<number, number>();
   const byVenue = new Map<string, number>();
+  const byExpiry = new Map<number, number>();
   let callGex = 0;
   let putGex = 0;
   let callOi = 0;
@@ -180,6 +183,7 @@ const aggregate = (quotes: OptionQuote[], now: number): Aggregate => {
     absByStrike.set(strike, (absByStrike.get(strike) ?? 0) + gex);
     const venue = q.venue ?? 'unknown';
     byVenue.set(venue, (byVenue.get(venue) ?? 0) + signed);
+    if (q.expiry != null) byExpiry.set(q.expiry, (byExpiry.get(q.expiry) ?? 0) + signed);
     used++;
   }
 
@@ -187,6 +191,7 @@ const aggregate = (quotes: OptionQuote[], now: number): Aggregate => {
     signedByStrike,
     absByStrike,
     byVenue,
+    byExpiry,
     callGex,
     putGex,
     callOi,
@@ -447,5 +452,16 @@ export const computeGex = (data: OptionsChain): GammaSnapshot | null => {
     partial: venuesDown.length > 0,
     venues: [...agg.byVenue.keys()],
     gammaByVenue: Object.fromEntries([...agg.byVenue].map(([v, g]) => [v, round2(g / MM)])),
+    // Term structure of the profile: signed gamma per expiry, nearest first. The
+    // sign is what matters per bucket — a near expiry deep in negative gamma is
+    // what makes the next few days jumpy, regardless of the total.
+    gammaByExpiry: [...agg.byExpiry]
+      .sort((a, b) => a[0] - b[0])
+      .map(([expiry, g]) => ({
+        expiry,
+        label: new Date(expiry).toISOString().slice(0, 10),
+        daysOut: Math.max(0, Math.round((expiry - now) / 86_400_000)),
+        gamma: round2(g / MM) ?? 0,
+      })),
   };
 };

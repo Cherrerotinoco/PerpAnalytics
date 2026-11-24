@@ -21,6 +21,9 @@ export interface PullRecord {
   cvdPerp: number | null;
   gammaRegime: string | null;
   netGammaM: number | null;
+  /** Realised/potential profit in USD. Rule 7 reads the realised sequence. */
+  realized: number | null;
+  potential: number | null;
 }
 
 /** Pulls kept. Mirrors the 6 the CLI reads, with headroom for the chart. */
@@ -33,6 +36,8 @@ interface PullRow {
   cvd_perp: number | null;
   gamma_regime: string | null;
   net_gamma_m: number | null;
+  realized: number | null;
+  potential: number | null;
 }
 
 const asNumber = (v: unknown): number | null => {
@@ -48,12 +53,15 @@ const rowToRecord = (row: PullRow): PullRecord => ({
   cvdPerp: asNumber(row.cvd_perp),
   gammaRegime: row.gamma_regime,
   netGammaM: asNumber(row.net_gamma_m),
+  realized: asNumber(row.realized),
+  potential: asNumber(row.potential),
 });
 
 /** The last `MAX_HISTORY` pulls, oldest first (the order the analysis expects). */
 export const loadHistory = async (limit: number = MAX_HISTORY): Promise<PullRecord[]> => {
   const rows = await query<PullRow>(
-    `select generated_at, price, cvd_spot, cvd_perp, gamma_regime, net_gamma_m
+    `select generated_at, price, cvd_spot, cvd_perp, gamma_regime, net_gamma_m,
+            realized, potential
        from intraday_pull
       order by generated_at desc
       limit $1`,
@@ -81,9 +89,19 @@ export const appendRecord = async (
   if (last && isDuplicate(last, record)) return { history, deduped: true };
 
   await query(
-    `insert into intraday_pull (generated_at, price, cvd_spot, cvd_perp, gamma_regime, net_gamma_m)
-     values ($1, $2, $3, $4, $5, $6)`,
-    [record.t, record.price, record.cvdSpot, record.cvdPerp, record.gammaRegime, record.netGammaM]
+    `insert into intraday_pull
+       (generated_at, price, cvd_spot, cvd_perp, gamma_regime, net_gamma_m, realized, potential)
+     values ($1, $2, $3, $4, $5, $6, $7, $8)`,
+    [
+      record.t,
+      record.price,
+      record.cvdSpot,
+      record.cvdPerp,
+      record.gammaRegime,
+      record.netGammaM,
+      record.realized,
+      record.potential,
+    ]
   );
   return { history: [...history, record].slice(-MAX_HISTORY), deduped: false };
 };

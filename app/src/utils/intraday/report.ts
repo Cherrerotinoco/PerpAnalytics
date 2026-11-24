@@ -273,6 +273,12 @@ const buildDataBlock = (snap: IntradaySnapshot): string => {
   const {
     generatedAt,
     errors,
+    whale,
+    flows,
+    skew,
+    skewRead,
+    volLab,
+    volLabRead,
     gamma,
     gammaRegime,
     cvdFlows,
@@ -285,8 +291,10 @@ const buildDataBlock = (snap: IntradaySnapshot): string => {
 
   out.push('# DATA');
   out.push(`**Run:** ${generatedAt.replace('T', ' ').replace(/\.\d+Z$/, ' UTC')}`);
-  if (cvdFlows?.priceTo != null) {
-    out.push(`**BTC price (last 5m candle close):** ${usd(cvdFlows.priceTo)}`);
+  const price = whale?.prices?.price ?? cvdFlows?.priceTo;
+  if (price != null) {
+    const chg = whale?.prices?.changePct;
+    out.push(`**BTC price:** ${usd(price)}${chg != null ? ` (${pct(chg)})` : ''}`);
   }
   if (errors.length) {
     out.push('');
@@ -294,6 +302,76 @@ const buildDataBlock = (snap: IntradaySnapshot): string => {
     for (const e of errors) out.push(`- ${e}`);
   }
   out.push('');
+
+  // ---- Whale flows ----
+  out.push('## Whale flows (most recent first)');
+  if (!flows || flows.classified.length === 0) {
+    out.push('No whale flow data in this run.');
+  } else {
+    const w = flows.window;
+    if (w.from != null && w.to != null) {
+      const fmt = (s: number) => new Date(s * 1000).toISOString().slice(11, 16);
+      const hours = ((w.to - w.from) / 3600).toFixed(1);
+      out.push(`**Window:** ${fmt(w.from)} → ${fmt(w.to)} UTC (${hours}h)`);
+    }
+    out.push('');
+    for (const a of flows.classified) {
+      const time =
+        a.timestamp != null ? new Date(a.timestamp * 1000).toISOString().slice(11, 16) : '--:--';
+      const tag = a.materiality ? ` [${a.materiality}]` : '';
+      const amount = a.amount != null ? a.amount.toLocaleString('en-US') : '?';
+      out.push(
+        `- [${time} UTC] ${a.flow.emoji}${tag} ${amount} ${a.symbol ?? '?'} (${usd(a.valueUsd)}) — ${a.description}`
+      );
+      out.push(`  - ${a.flow.category} / ${a.flow.bias} · ${a.flow.note}`);
+    }
+    out.push('');
+    out.push(
+      `**NET BTC BALANCE:** ${sign(flows.netBtc, 0)} BTC (${usd(flows.netUsd)}) · inflow ${flows.inflowBtc.toLocaleString('en-US')} vs outflow ${flows.outflowBtc.toLocaleString('en-US')}`
+    );
+    out.push(
+      `- Flow signal by BTC count: ${sigEmoji(flows.netSignal)} ${flows.netSignal} · by USD: ${sigEmoji(flows.netSignalUsd)} ${flows.netSignalUsd}`
+    );
+    if (flows.signalConflict) {
+      // Several small transfers one way against one huge transfer the other.
+      out.push(
+        '- ⚠️ The two disagree: the USD signal is the one that matters (it weighs magnitude, not transfer count).'
+      );
+    }
+    out.push(
+      `- Stablecoins: mint ${usd(flows.stable.mint)} · burn ${usd(flows.stable.burn)} · redemption ${usd(flows.stable.redemption)} · to-exchange ${usd(flows.stable.toExchange)}`
+    );
+  }
+  out.push('');
+
+  // ---- Market metrics ----
+  if (whale) {
+    out.push('## Market metrics');
+    out.push('');
+    out.push('| Metric | Value | Change |');
+    out.push('|---|---|---|');
+    const row = (label: string, value: string, change: number | null | undefined) =>
+      out.push(`| ${label} | ${value} | ${change != null ? pct(change) : 'N/A'} |`);
+    row('Realised profit', millions(whale.realizedProfit?.value), whale.realizedProfit?.changePct);
+    row(
+      'Potential profit',
+      millions(whale.potentialProfit?.value),
+      whale.potentialProfit?.changePct
+    );
+    row('Volume', millions(whale.volume?.value), whale.volume?.changePct);
+    row('HODL', num(whale.hodl?.value), whale.hodl?.changePct);
+    if (whale.averageBuyPrice?.price != null && price != null) {
+      const avg = whale.averageBuyPrice.price;
+      out.push(
+        `| Avg buy vs price | ${usd(avg)} vs ${usd(price)} | holders ${price > avg ? 'in AGGREGATE PROFIT' : 'in AGGREGATE LOSS'} |`
+      );
+    }
+    out.push('');
+    out.push(
+      '> Realised profit is the Rule 7 input: read its sequence across pulls in the history table below, never one reading alone.'
+    );
+    out.push('');
+  }
 
   // ---- Multi-timeframe CVD ----
   out.push('## Aggressor order flow — Binance spot + perp');
@@ -502,6 +580,73 @@ const buildDataBlock = (snap: IntradaySnapshot): string => {
   }
   out.push('');
 
+  // ---- Skew ----
+  out.push('## 25-delta skew');
+  if (!skew?.ok || !skewRead) {
+    out.push('No skew snapshot in this run.');
+  } else {
+    out.push(
+      `Put skew ${sign(skew.putSkew)}% · call skew ${sign(skew.callSkew)}% · historical mean ${sign(skew.historicalAverage)}%`
+    );
+    out.push(
+      `- vs mean: ${sign(skewRead.vsHistorical, 2)} → ${skewRead.vsHistorical != null && skewRead.vsHistorical > 0 ? 'LESS negative than its mean (hedging costs less)' : 'MORE negative than its mean (hedging costs more)'}`
+    );
+    out.push(
+      `- Percentiles: 30d ${num(skew.p30)} · 90d ${num(skew.p90)} · 1y ${num(skew.p1y)} → ${skewRead.percentileRegime} regime`
+    );
+    if (skewRead.percentileDisagrees) {
+      // The percentile scale is not documented as signed or absolute, so when it
+      // contradicts the mean the reading may be inverted — say so, don't bury it.
+      out.push(
+        '- ⚠️ The percentile contradicts the historical mean: treat the skew reading as unreliable this run.'
+      );
+    }
+    if (skew.byExpiry.length) {
+      out.push(
+        `- Term structure: ${skew.byExpiry.map((e) => `${e.expiry} ${e.skew25}`).join(' · ')}`
+      );
+      out.push(
+        `  - front ${num(skewRead.front)} vs back ${num(skewRead.back)} → ${skewRead.termStructureLabel}`
+      );
+    }
+    if (skew.marketSentiment) out.push(`- API sentiment: ${skew.marketSentiment}`);
+    if (skew.anomalyDetected) out.push(`- ⚠️ Anomaly: ${skew.anomalyMessage ?? 'flagged'}`);
+    out.push(`- Reading: ${skewRead.biasLabel}`);
+    out.push('');
+    out.push(
+      '> Skew measures the PRICE of hedging, not direction. Its percentile extremes are contrarian (expensive protection tends to accompany bottoms, cheap protection tops): it modulates conviction, it never replaces whales or CVD.'
+    );
+  }
+  out.push('');
+
+  // ---- Vol Lab ----
+  out.push('## Vol Lab — skew risk premium (Ravagli)');
+  if (!volLab?.ok || !volLabRead) {
+    out.push('No Vol Lab snapshot in this run.');
+  } else {
+    out.push(
+      `Expiry ${volLab.expiry ?? 'N/A'} (τ ${num(volLab.tauDays)}d, ${volLab.days} days of surface)`
+    );
+    out.push(`- Signal: ${volLabRead.signalLabel}`);
+    out.push(
+      `- Mean skew RP ${num(volLab.avgSkewRp)} · z-score ${num(volLab.skewRpZ)} → ${volLabRead.stretch} stretch`
+    );
+    out.push(
+      `- Risk reversal ${num(volLab.avgRr)} · butterfly ${num(volLab.avgFly)} · hedge N ${num(volLab.hedgeN)}`
+    );
+    out.push(
+      `- Vol-of-vol ν: implied ${num(volLab.nuImp)} vs realised ${num(volLab.nuR)}${volLabRead.vvolUnderpriced ? ' ⚠️ realised HIGHER (the market underprices how much vol itself is moving)' : ''}`
+    );
+    out.push(
+      `- Spot-vol correlation ρ: implied ${num(volLab.rhoImp)} vs realised ${num(volLab.rhoR)}${volLabRead.rhoDivergence ? ' ⚠️ OPPOSITE SIGN (what is implied is not confirmed by what was realised)' : ''}`
+    );
+    out.push('');
+    out.push(
+      '> A volatility-positioning signal on a days-to-weeks horizon, NOT an intraday direction call: use it as regime context, never as the driver of the bias. BUY_SKEW/SELL_SKEW are not directional votes.'
+    );
+  }
+  out.push('');
+
   // ---- Capitulation ----
   if (capitulation.checks.length) {
     out.push('## End-of-capitulation check');
@@ -513,20 +658,26 @@ const buildDataBlock = (snap: IntradaySnapshot): string => {
   }
 
   // ---- History ----
-  out.push("## Reading history (stored in the user's browser)");
+  // One shared server-side series at a fixed 15 min cadence, not a per-visitor
+  // log, so the sequence is continuous regardless of when the page was opened.
+  out.push('## Pull history (shared series, ~15 min cadence)');
   if (!history.length) {
     out.push('No previous history: this is the first stored reading.');
   } else {
     out.push('');
-    out.push('| UTC time | Price | Spot CVD | Perp CVD | Gamma regime |');
-    out.push('| --- | --- | --- | --- | --- |');
+    out.push('| UTC time | Price | Realised | Spot CVD | Perp CVD | Gamma regime |');
+    out.push('| --- | --- | --- | --- | --- | --- |');
     for (let i = 0; i < history.length; i++) {
       const r = history[i];
       const tag = i === history.length - 1 ? ' ← current' : '';
       out.push(
-        `| ${r.t.slice(11, 16)}${tag} | ${usd(r.price)} | ${sign(r.cvdSpot)} | ${sign(r.cvdPerp)} | ${r.gammaRegime ?? '—'} |`
+        `| ${r.t.slice(11, 16)}${tag} | ${usd(r.price)} | ${millions(r.realized)} | ${sign(r.cvdSpot)} | ${sign(r.cvdPerp)} | ${r.gammaRegime ?? '—'} |`
       );
     }
+    out.push('');
+    out.push(
+      '> Rule 7: capitulation only counts as spent after TWO consecutive pulls of realised profit recovering towards zero. The sequence is in this table — read it, do not infer it.'
+    );
     if (history.length < 3) {
       out.push('');
       out.push(

@@ -7,7 +7,7 @@ import {
   summarizeDailyCvd,
 } from './analyze';
 import { parseCvd } from './parse';
-import type { GammaSnapshot, HistoryRecord } from './types';
+import type { FlowAnalysis, GammaSnapshot, HistoryRecord } from './types';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const FIVE_MIN = 5 * 60 * 1000;
@@ -242,6 +242,7 @@ describe('analyzeGamma', () => {
     partial: false,
     venues: ['deribit'],
     gammaByVenue: { deribit: -100 },
+    gammaByExpiry: [],
     ...over,
   });
 
@@ -292,13 +293,18 @@ describe('analyzeGamma', () => {
 
 // ─── assessCapitulation ───────────────────────────────────────────────────────
 describe('assessCapitulation', () => {
-  const rec = (cvdSpot: number | null): HistoryRecord => ({
+  // Check 1 is Rule 7 and reads the `realized` sequence, which is the figure the
+  // rule is actually defined on. It became readable once the pull moved
+  // server-side and could reach Whale Alert; before that it stood in with CVD.
+  const rec = (realized: number | null): HistoryRecord => ({
     t: '2026-07-28T10:00:00.000Z',
     price: 100,
-    cvdSpot,
+    cvdSpot: null,
     cvdPerp: null,
     gammaRegime: null,
     netGammaM: null,
+    realized,
+    potential: null,
   });
 
   it('leaves checks unevaluated (null) when the data is missing', () => {
@@ -309,17 +315,33 @@ describe('assessCapitulation', () => {
     expect(cap.verdict).toContain('NO CLEAR SIGNS');
   });
 
-  it('needs 3 pulls before it can read the CVD sequence', () => {
-    const two = assessCapitulation({ history: [rec(-100), rec(-50)] });
+  it('needs 3 pulls before it can read the realised sequence', () => {
+    const two = assessCapitulation({ history: [rec(-100e6), rec(-50e6)] });
     expect(two.checks[0].met).toBeNull();
 
-    const three = assessCapitulation({ history: [rec(-100), rec(-50), rec(-10)] });
+    const three = assessCapitulation({ history: [rec(-100e6), rec(-50e6), rec(-10e6)] });
     expect(three.checks[0].met).toBe(true);
   });
 
-  it('does not count a non-monotonic CVD sequence as recovering', () => {
-    const cap = assessCapitulation({ history: [rec(-100), rec(-10), rec(-50)] });
+  it('does not count a non-monotonic realised sequence as recovering', () => {
+    const cap = assessCapitulation({ history: [rec(-100e6), rec(-10e6), rec(-50e6)] });
     expect(cap.checks[0].met).toBe(false);
+  });
+
+  // Records written before Whale Alert was reachable carry no realised figure, so
+  // Rule 7 has to report that rather than silently passing or failing.
+  it('cannot evaluate Rule 7 on records with no realised profit', () => {
+    const cap = assessCapitulation({ history: [rec(null), rec(null), rec(null)] });
+    expect(cap.checks[0].met).toBeNull();
+    expect(cap.checks[0].detail).toContain('not enough history');
+  });
+
+  it('counts net whale flow as buying only when the net is positive', () => {
+    const flowsWith = (netBtc: number) => ({ netBtc }) as unknown as FlowAnalysis;
+    expect(assessCapitulation({ flows: flowsWith(5917) }).checks[4].met).toBe(true);
+    expect(assessCapitulation({ flows: flowsWith(-2000) }).checks[4].met).toBe(false);
+    // Absent on a browser pull: Whale Alert is CORS-blocked there.
+    expect(assessCapitulation({}).checks[4].met).toBeNull();
   });
 
   it('counts the session CVD as off its low only when above the excursion floor', () => {

@@ -4,10 +4,17 @@ import { CACHE_TTL_MS, buildIntradayReport, clearHistory, runIntraday } from '..
 import { useSsrSnapshot } from '../utils/intraday/ssrData';
 import type {
   CvdAnalysis,
+  FlowAnalysis,
+  GammaByExpiry,
   GammaResult,
+  GammaSnapshot,
   IntradaySnapshot,
+  SkewRead,
+  SkewSnapshot,
   TimeframeKey,
   TimeframeWindow,
+  VolLabRead,
+  VolLabSnapshot,
 } from '../utils/intraday/types';
 
 const CvdSessionChart = lazy(() => import('../dashboard/panels/cvdSessionChart'));
@@ -159,6 +166,277 @@ const swingNuance = (cvd: CvdAnalysis): string | null => {
   return null;
 };
 
+// ─── Headline blocks ──────────────────────────────────────────────────────────
+
+const Hero = ({ value, label, tone }: { value: string; label: string; tone?: string }) => (
+  <div className="tc-gex-hero-item">
+    <div className={`tc-gex-hero-value ${tone ?? ''}`}>{value}</div>
+    <div className="tc-gex-hero-label">{label}</div>
+  </div>
+);
+
+const signed = (n: number | null | undefined, digits = 2): string =>
+  n == null ? '—' : `${n > 0 ? '+' : ''}${n.toFixed(digits)}`;
+
+/**
+ * The four figures a reader checks first. Net gamma carries the sign colour
+ * because its sign IS the regime; call and put gamma are shown unsigned-coloured
+ * since their signs are fixed by the convention and carry no information.
+ */
+const TotalGammaExposure = ({ gamma }: { gamma: GammaSnapshot }) => (
+  <div className="tc-gex-hero">
+    <Hero
+      value={gamma.netGamma?.toFixed(2) ?? '—'}
+      label="Net gamma (M$ / 1%)"
+      tone={gamma.netGamma == null ? '' : gamma.netGamma < 0 ? 'tc-red' : 'tc-green'}
+    />
+    <Hero value={signed(gamma.callGamma)} label="Call gamma" />
+    <Hero value={gamma.putGamma?.toFixed(2) ?? '—'} label="Put gamma" />
+    <Hero
+      value={gamma.bias ?? '—'}
+      label={`${gamma.callWeighted?.toFixed(0) ?? '—'}% call weighted`}
+      tone={gamma.bias === 'BULLISH' ? 'tc-green' : gamma.bias === 'BEARISH' ? 'tc-red' : ''}
+    />
+  </div>
+);
+
+/**
+ * Support, resistance and the gamma flip against the current price.
+ *
+ * The flip is a SPOT level, not a strike: crossing it flips the regime itself, so
+ * it is listed alongside the two walls rather than buried in the detail grid.
+ */
+const SqueezeLevels = ({ gamma }: { gamma: GammaSnapshot }) => (
+  <>
+    <div className="tc-gex-levels">
+      <span className="tc-gex-level">
+        <span className="tc-gex-dot tc-gex-dot--support" />
+        {usd(gamma.support)} <span className="tc-gex-level-tag">(support)</span>
+      </span>
+      <span className="tc-gex-level">
+        <span className="tc-gex-dot tc-gex-dot--resistance" />
+        {usd(gamma.resistance)} <span className="tc-gex-level-tag">(resistance)</span>
+      </span>
+      <span className="tc-gex-level">
+        <span className="tc-gex-dot tc-gex-dot--flip" />
+        {usd(gamma.breakout)} <span className="tc-gex-level-tag">(gamma flip)</span>
+      </span>
+      <span className="tc-gex-level tc-gex-level-tag">Current BTC: {usd(gamma.currentPrice)}</span>
+    </div>
+    {gamma.breakout == null && (
+      <p className="tc-intraday-note">
+        No gamma flip inside ±25% of spot: aggregate gamma keeps its sign across the whole range, so
+        there is no regime pivot to trade against.
+      </p>
+    )}
+  </>
+);
+
+/** Signed gamma per expiry, scaled against the largest bucket in the set. */
+const GammaByExpiryChart = ({ buckets }: { buckets: GammaByExpiry[] }) => {
+  if (!buckets.length) {
+    return <p className="tc-intraday-note">No expiry breakdown in this run.</p>;
+  }
+  // Only the nearest expiries matter intraday, and the tail is a long list of
+  // tiny quarterlies that would squash every bar that counts.
+  const shown = buckets.slice(0, 12);
+  const max = Math.max(...shown.map((b) => Math.abs(b.gamma)), 0.01);
+  return (
+    <div className="tc-gex-expiry">
+      {shown.map((b) => {
+        const pctWidth = `${(Math.abs(b.gamma) / max) * 100}%`;
+        const neg = b.gamma < 0;
+        return (
+          <div className="tc-gex-expiry-row" key={b.expiry}>
+            <span className="tc-gex-expiry-label">
+              {b.label} · {b.daysOut}d
+            </span>
+            <span className="tc-gex-expiry-track">
+              <span className="tc-gex-expiry-half tc-gex-expiry-half--neg">
+                {neg && (
+                  <span
+                    className="tc-gex-expiry-bar tc-gex-expiry-bar--neg"
+                    style={{ width: pctWidth }}
+                  />
+                )}
+              </span>
+              <span className="tc-gex-expiry-half">
+                {!neg && (
+                  <span
+                    className="tc-gex-expiry-bar tc-gex-expiry-bar--pos"
+                    style={{ width: pctWidth }}
+                  />
+                )}
+              </span>
+            </span>
+            <span className={`tc-gex-expiry-value ${neg ? 'tc-red' : 'tc-green'}`}>
+              {signed(b.gamma)}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+/** Put/call skew with the reading derived from its own historical mean. */
+const MarketSentiment = ({ skew, read }: { skew: SkewSnapshot; read: SkewRead }) => (
+  <>
+    <div className="tc-gex-hero">
+      <Hero
+        value={skew.putSkew != null ? `${skew.putSkew.toFixed(2)}%` : '—'}
+        label="Put skew"
+        tone="tc-red"
+      />
+      <Hero
+        value={skew.callSkew != null ? `${signed(skew.callSkew)}%` : '—'}
+        label="Call skew"
+        tone="tc-green"
+      />
+    </div>
+    <div className={`tc-skew-callout ${read.bias === 'NEUTRAL' ? '' : 'tc-skew-callout--warn'}`}>
+      <span className="tc-skew-callout-title">
+        {skew.marketSentiment ?? (read.bias === 'COMPLACENCY' ? 'Complacency' : 'Fear')}
+      </span>
+      <span className="tc-skew-callout-body">{read.biasLabel}</span>
+      <span className="tc-skew-callout-body">
+        vs historical mean: {signed(read.vsHistorical)} · 30d percentile {skew.p30 ?? '—'} ·{' '}
+        {read.termStructureLabel}
+      </span>
+      {read.percentileDisagrees && (
+        // The percentile scale is undocumented as signed or absolute; when it
+        // contradicts the mean, the reading may be inverted.
+        <span className="tc-skew-callout-body tc-amber">
+          ⚠️ The percentile contradicts the historical mean — treat this reading as unreliable.
+        </span>
+      )}
+    </div>
+    <p className="tc-intraday-note">
+      Skew prices hedging, not direction. Its extremes are contrarian: it modulates conviction, it
+      never replaces order flow.
+    </p>
+  </>
+);
+
+/** Vol Lab: how stretched the skew risk premium is, and implied vs realised. */
+const VolLabBody = ({ volLab, read }: { volLab: VolLabSnapshot; read: VolLabRead }) => (
+  <>
+    <div className="tc-intraday-regime">{read.signalLabel}</div>
+    <div className="tc-intraday-kv-grid">
+      <KeyValue k="Expiry" v={`${volLab.expiry ?? '—'} (τ ${volLab.tauDays ?? '—'}d)`} />
+      <KeyValue k="Skew RP z-score" v={`${volLab.skewRpZ ?? '—'} (${read.stretch})`} />
+      <KeyValue
+        k="Risk reversal / butterfly"
+        v={`${volLab.avgRr ?? '—'} / ${volLab.avgFly ?? '—'}`}
+      />
+      <KeyValue
+        k="Vol-of-vol ν (impl / real)"
+        v={`${volLab.nuImp ?? '—'} / ${volLab.nuR ?? '—'}`}
+        tone={read.vvolUnderpriced ? 'tc-amber' : ''}
+      />
+      <KeyValue
+        k="Spot-vol ρ (impl / real)"
+        v={`${volLab.rhoImp ?? '—'} / ${volLab.rhoR ?? '—'}`}
+        tone={read.rhoDivergence ? 'tc-amber' : ''}
+      />
+    </div>
+    {read.rhoDivergence && (
+      <p className="tc-intraday-note tc-intraday-note--warn">
+        Implied and realised spot-vol correlation carry opposite signs: the market is paying for a
+        correlation recent reality is not confirming.
+      </p>
+    )}
+    <p className="tc-intraday-note">
+      A days-to-weeks volatility-positioning signal, not an intraday direction call. BUY_SKEW and
+      SELL_SKEW are not directional votes.
+    </p>
+  </>
+);
+
+/** Whale transfers, newest first, with the net balance underneath. */
+const WhaleFlowBody = ({ flows }: { flows: FlowAnalysis }) => {
+  if (!flows.classified.length)
+    return <p className="tc-intraday-note">No whale alerts in this run.</p>;
+  const tone = (bias: string) =>
+    bias === 'bullish' ? 'tc-green' : bias === 'bearish' ? 'tc-red' : '';
+  return (
+    <>
+      <div className="tc-gex-hero">
+        <Hero
+          value={`${flows.netBtc > 0 ? '+' : ''}${Math.round(flows.netBtc).toLocaleString('en-US')}`}
+          label="Net BTC balance"
+          tone={tone(flows.netBtc > 0 ? 'bullish' : flows.netBtc < 0 ? 'bearish' : '')}
+        />
+        <Hero value={usd(flows.netUsd)} label="Net USD" />
+        <Hero
+          value={flows.netSignal}
+          label="Flow signal (BTC count)"
+          tone={
+            flows.netSignal === 'BULLISH'
+              ? 'tc-green'
+              : flows.netSignal === 'BEARISH'
+                ? 'tc-red'
+                : ''
+          }
+        />
+        <Hero
+          value={flows.netSignalUsd}
+          label="Flow signal (USD)"
+          tone={
+            flows.netSignalUsd === 'BULLISH'
+              ? 'tc-green'
+              : flows.netSignalUsd === 'BEARISH'
+                ? 'tc-red'
+                : ''
+          }
+        />
+      </div>
+      {flows.signalConflict && (
+        // Several small transfers one way against one huge transfer the other way.
+        <p className="tc-intraday-note tc-intraday-note--warn">
+          The BTC-count and USD signals disagree. The USD one is the one that matters: it weighs
+          magnitude, not the number of transfers.
+        </p>
+      )}
+      <div className="tc-intraday-kv-grid">
+        <KeyValue
+          k="Inflow / outflow (BTC)"
+          v={`${flows.inflowBtc.toLocaleString('en-US')} / ${flows.outflowBtc.toLocaleString('en-US')}`}
+        />
+        <KeyValue
+          k="Stable mint / burn"
+          v={`${usd(flows.stable.mint)} / ${usd(flows.stable.burn)}`}
+        />
+        <KeyValue k="Stable redemption" v={usd(flows.stable.redemption)} />
+        <KeyValue k="Stable to exchange" v={usd(flows.stable.toExchange)} />
+      </div>
+      <div className="tc-whale-list">
+        {flows.classified.map((a, i) => (
+          <div className="tc-whale-row" key={`${a.timestamp ?? i}-${i}`}>
+            <span className="tc-whale-time">
+              {a.timestamp != null
+                ? new Date(a.timestamp * 1000).toISOString().slice(11, 16)
+                : '--:--'}
+            </span>
+            <span>
+              {a.flow.emoji}{' '}
+              {a.materiality && <span className="tc-whale-tag tc-amber">{a.materiality} </span>}
+              <strong>
+                {a.amount?.toLocaleString('en-US') ?? '?'} {a.symbol ?? '?'}
+              </strong>{' '}
+              ({usd(a.valueUsd)})
+              <br />
+              <span className="tc-whale-note">
+                <span className={tone(a.flow.bias)}>{a.flow.category}</span> · {a.flow.note}
+              </span>
+            </span>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+};
+
 // ─── Gamma panel ──────────────────────────────────────────────────────────────
 const GammaBody = ({
   gamma,
@@ -263,7 +541,23 @@ const IntradayPage = () => {
     setLoading(true);
     const result = await runIntraday(new Date(), { force });
     if (runIdRef.current !== id) return;
-    setSnap(result);
+    // Whale Alert, skew and Vol Lab are CORS-blocked, so a browser pull returns
+    // them as null. Carry the server-rendered values forward instead of blanking
+    // three panels every time someone presses refresh — they are labelled with
+    // their own timestamps, so a reader can see they are older than the CVD.
+    setSnap((prev) =>
+      prev
+        ? {
+            ...result,
+            whale: result.whale ?? prev.whale,
+            flows: result.flows ?? prev.flows,
+            skew: result.skew ?? prev.skew,
+            skewRead: result.skewRead ?? prev.skewRead,
+            volLab: result.volLab ?? prev.volLab,
+            volLabRead: result.volLabRead ?? prev.volLabRead,
+          }
+        : result
+    );
     setLoading(false);
   }, []);
 
@@ -464,6 +758,20 @@ const IntradayPage = () => {
           </Row>
 
           {/* ─── Order flow ─────────────────────────────────────────────────── */}
+          {/* Whale flows lead the page: they carry the highest weight in the model
+              (whales and CVD > realised/potential > gamma > skew). Server-rendered
+              only — Whale Alert blocks cross-origin reads. */}
+          {snap.flows && (
+            <>
+              <SectionHeading>Whale flows</SectionHeading>
+              <Row>
+                <Panel title="Transfers and net balance" grow={1} minWidth={320}>
+                  <WhaleFlowBody flows={snap.flows} />
+                </Panel>
+              </Row>
+            </>
+          )}
+
           <SectionHeading>Aggressor order flow</SectionHeading>
 
           <Row>
@@ -608,6 +916,46 @@ const IntradayPage = () => {
               <GammaBody gamma={snap.gamma} regime={snap.gammaRegime} />
             </Panel>
           </Row>
+
+          {/* Options detail. Rendered only when the server supplied it: all three
+              sources are CORS-blocked, so a browser-only pull has nothing here. */}
+          {snap.gamma?.ok && (
+            <>
+              <SectionHeading>Options positioning</SectionHeading>
+              <Row>
+                <Panel title="Total gamma exposure" grow={5} minWidth={320}>
+                  <TotalGammaExposure gamma={snap.gamma} />
+                </Panel>
+                <Panel title="Squeeze levels" grow={4} minWidth={300}>
+                  <SqueezeLevels gamma={snap.gamma} />
+                </Panel>
+              </Row>
+              <Row>
+                <Panel title="Gamma exposure by expiry" grow={1} minWidth={320}>
+                  <GammaByExpiryChart buckets={snap.gamma.gammaByExpiry} />
+                  <p className="tc-intraday-note">
+                    Signed gamma per expiry, nearest first, in M$ of delta per 1% move. Red =
+                    dealers short gamma on that expiry (amplifies moves), green = long (dampens).
+                  </p>
+                </Panel>
+              </Row>
+            </>
+          )}
+
+          {(snap.skew?.ok || snap.volLab?.ok) && (
+            <Row>
+              {snap.skew?.ok && snap.skewRead && (
+                <Panel title="Market sentiment — 25-delta skew" grow={4} minWidth={300}>
+                  <MarketSentiment skew={snap.skew} read={snap.skewRead} />
+                </Panel>
+              )}
+              {snap.volLab?.ok && snap.volLabRead && (
+                <Panel title="Vol Lab — skew risk premium" grow={5} minWidth={320}>
+                  <VolLabBody volLab={snap.volLab} read={snap.volLabRead} />
+                </Panel>
+              )}
+            </Row>
+          )}
 
           <Row>
             <Panel title="End-of-capitulation check" grow={5} minWidth={300}>

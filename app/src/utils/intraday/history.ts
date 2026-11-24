@@ -1,4 +1,4 @@
-import type { CvdAnalysis, GammaRegime, GammaResult, HistoryRecord } from './types';
+import type { CvdAnalysis, GammaRegime, GammaResult, HistoryRecord, WhaleMetrics } from './types';
 
 // The CLI crawler persists every pull to output/history.jsonl so the assistant can
 // read how the numbers evolve between runs. A static site has no disk, so the
@@ -30,18 +30,25 @@ export const buildRecord = ({
   cvdPerpFlows,
   gamma,
   gammaRegime,
+  whale = null,
 }: {
   generatedAt: string;
   cvdFlows: CvdAnalysis | null;
   cvdPerpFlows: CvdAnalysis | null;
   gamma: GammaResult | null;
   gammaRegime: GammaRegime | null;
+  /** Server-side pulls only: Whale Alert is CORS-blocked in the browser. */
+  whale?: WhaleMetrics | null;
 }): HistoryRecord => ({
   t: generatedAt,
   price: cvdFlows?.priceTo ?? null,
   cvdSpot: cvdFlows?.totalCvd ?? null,
   cvdPerp: cvdPerpFlows?.totalCvd ?? null,
   gammaRegime: gammaRegime?.regime ?? null,
+  // Rule 7 reads the `realized` sequence — persisting it is the whole reason the
+  // check can be evaluated at all.
+  realized: whale?.realizedProfit?.value ?? null,
+  potential: whale?.potentialProfit?.value ?? null,
   // `netGammaM`, not `netGamma`: see the field docs in types.ts. Records already in a
   // user's localStorage from before the endpoint change keep their own `netGamma` key
   // untouched — they stay readable, they just carry no value for this field.

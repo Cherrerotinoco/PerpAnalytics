@@ -90,6 +90,16 @@ export const runIntraday = async (
   return {
     generatedAt,
     errors,
+    // Whale Alert and cryptogamma's skew / vol-lab are unreachable from a browser
+    // (CORS, and the latter two need a token that cannot ship to a client), so a
+    // client-side pull always reports them absent. IntradayPage carries the
+    // server-rendered values forward rather than blanking those panels.
+    whale: null,
+    flows: null,
+    skew: null,
+    skewRead: null,
+    volLab: null,
+    volLabRead: null,
     gamma,
     gammaRegime,
     cvdFlows,

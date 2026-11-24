@@ -1,20 +1,30 @@
 import type {
   Capitulation,
   CapitulationCheck,
+  ClassifiedAlert,
   CvdAnalysis,
   CvdDaily,
   CvdSignal,
   DailyCvd,
   Divergence,
+  FlowAnalysis,
+  FlowClass,
   FlowClassification,
+  FlowSignal,
   GammaRegime,
   GammaResult,
   HistoryRecord,
   KlineBucket,
   ParsedCvd,
   PriceSwings,
+  SkewBias,
+  SkewRead,
+  SkewResult,
   TimeframeWindow,
   Timeframes,
+  VolLabRead,
+  VolLabResult,
+  WhaleAlert,
 } from './types';
 
 // Net session aggression threshold (|CVD| / total volume) to raise a signal.
@@ -314,25 +324,36 @@ export const assessCapitulation = ({
   history = [],
   cvdFlows = null,
   cvdDaily = null,
+  flows = null,
 }: {
   history?: HistoryRecord[];
   cvdFlows?: CvdAnalysis | null;
   cvdDaily?: CvdDaily | null;
+  flows?: FlowAnalysis | null;
 } = {}): Capitulation => {
   const checks: CapitulationCheck[] = [];
   const add = (label: string, met: boolean | null, detail: string) =>
     checks.push({ label, met, detail });
 
-  // 1. Session CVD recovering across 2 consecutive pulls (stand-in for Rule 7).
-  const cvdSeq = history.map((r) => r?.cvdSpot).filter((v): v is number => v != null);
-  let cvdRecovering: boolean | null = null;
-  let cvdSeqDetail = 'not enough history (<3 pulls)';
-  if (cvdSeq.length >= 3) {
-    const [a, b, c] = cvdSeq.slice(-3);
-    cvdRecovering = c > b && b > a;
-    cvdSeqDetail = `sequence ${[a, b, c].map((v) => v.toFixed(0)).join(' → ')} BTC`;
+  // 1. Rule 7: realised profit recovering towards zero across 2 consecutive pulls.
+  //
+  // This used to stand in with session CVD, because realised profit comes from
+  // Whale Alert and that was unreachable from the browser. Now that the pull runs
+  // server-side it reads the real figure — but only for records written since,
+  // hence the fallback below for a sequence that predates it.
+  const realizedSeq = history.map((r) => r?.realized).filter((v): v is number => v != null);
+  let realizedRecovering: boolean | null = null;
+  let realizedDetail = 'not enough history with realised profit (<3 pulls)';
+  if (realizedSeq.length >= 3) {
+    const [a, b, c] = realizedSeq.slice(-3);
+    realizedRecovering = c > b && b > a;
+    realizedDetail = `sequence ${[a, b, c].map((v) => `${(v / 1e6).toFixed(0)}M`).join(' → ')}`;
   }
-  add('Session CVD recovering across 2 consecutive pulls', cvdRecovering, cvdSeqDetail);
+  add(
+    'Realised profit recovering across 2 consecutive pulls (Rule 7)',
+    realizedRecovering,
+    realizedDetail
+  );
 
   // 2. Session CVD no longer making a new low (it bounced off the excursion floor).
   let cvdOffLow: boolean | null = null;
@@ -370,6 +391,16 @@ export const assessCapitulation = ({
   }
   add('Last complete daily session (spot) buying', dailyBuying, dailyDetail);
 
+  // 5. Net whale flow buying. Null on a browser-side pull: Whale Alert is
+  // CORS-blocked, so only the server-rendered page can evaluate this one.
+  let whalesNetBuy: boolean | null = null;
+  let whalesDetail = 'no whale flow data';
+  if (flows?.netBtc != null) {
+    whalesNetBuy = flows.netBtc > 0;
+    whalesDetail = `net ${flows.netBtc > 0 ? '+' : ''}${flows.netBtc.toFixed(0)} BTC`;
+  }
+  add('Net whale flow buying', whalesNetBuy, whalesDetail);
+
   const evaluated = checks.filter((c) => c.met != null);
   const met = evaluated.filter((c) => c.met).length;
   const total = evaluated.length;
@@ -382,4 +413,407 @@ export const assessCapitulation = ({
     verdict = 'NO CLEAR SIGNS — capitulation may continue';
   }
   return { checks, met, total, verdict };
+};
+
+// ─── Whale flows ──────────────────────────────────────────────────────────────
+
+/** Centralised exchange keywords (lowercase, no leading #). */
+const EXCHANGE_KEYWORDS = [
+  'binance',
+  'coinbase',
+  'kraken',
+  'okx',
+  'bybit',
+  'bitfinex',
+  'huobi',
+  'htx',
+  'gemini',
+  'kucoin',
+  'bitstamp',
+  'gate.io',
+  'crypto.com',
+  'upbit',
+  'bithumb',
+  'mexc',
+  'bitget',
+  'deribit',
+  'bitmex',
+  'bitso',
+  'whitebit',
+  'poloniex',
+  'robinhood',
+];
+
+/**
+ * DeFi protocol keywords (lending / DEX / liquid staking).
+ *
+ * Several are ordinary English words — "maker", "compound", "spark", "curve",
+ * "drift" — so they are matched on a word boundary. A substring match would
+ * classify any entity merely containing them as DeFi.
+ */
+const DEFI_KEYWORDS = [
+  'aave',
+  'morpho',
+  'kamino',
+  'jupiter',
+  'drift',
+  'maker',
+  'compound',
+  'spark',
+  'curve',
+  'uniswap',
+  'lido',
+  'pendle',
+  'sky',
+];
+
+const STABLES = new Set(['USDT', 'USDC', 'DAI', 'BUSD', 'TUSD', 'FDUSD', 'PYUSD']);
+
+const clean = (entity: string | null): string =>
+  (entity ?? '').replace(/^#/, '').toLowerCase().trim();
+
+const isExchange = (entity: string | null): boolean => {
+  const e = clean(entity);
+  if (!e || e.includes('unknown')) return false;
+  return EXCHANGE_KEYWORDS.some((kw) => e.includes(kw));
+};
+
+const isDefi = (entity: string | null): boolean => {
+  const e = clean(entity);
+  if (!e || e.includes('unknown')) return false;
+  // "Market Maker" is a common OTC-desk label on Whale Alert, not the Maker/Sky
+  // protocol: the word matches exactly but means something else, so it is
+  // excluded explicitly.
+  if (e.includes('market maker')) return false;
+  return DEFI_KEYWORDS.some((kw) => new RegExp(`\\b${kw}\\b`).test(e));
+};
+
+const isTreasury = (entity: string | null): boolean => /treasury/i.test(entity ?? '');
+
+/**
+ * Materiality thresholds (large whales / institutional events).
+ * BTC: 1k notable · 5k institutional · 10k very relevant.
+ * Stables: 50M notable · 100M very relevant · 250M institutional · 500M extraordinary.
+ */
+export const materialityTag = (a: WhaleAlert): string | null => {
+  if (a.symbol === 'BTC' && a.amount != null) {
+    if (a.amount >= 10000) return '🔥🔥 VERY RELEVANT';
+    if (a.amount >= 5000) return '🏦 INSTITUTIONAL';
+    if (a.amount >= 1000) return '⭐ NOTABLE';
+    return null;
+  }
+  if (a.symbol != null && STABLES.has(a.symbol) && a.valueUsd != null) {
+    if (a.valueUsd >= 500_000_000) return '🌋 EXTRAORDINARY';
+    if (a.valueUsd >= 250_000_000) return '🏦 INSTITUTIONAL';
+    if (a.valueUsd >= 100_000_000) return '🔥 VERY RELEVANT';
+    if (a.valueUsd >= 50_000_000) return '⭐ NOTABLE';
+    return null;
+  }
+  return null;
+};
+
+/** Sorts one transfer into a directional category. */
+export const classifyAlert = (a: WhaleAlert): FlowClass => {
+  const isStable = a.symbol != null && STABLES.has(a.symbol);
+
+  if (a.symbol === 'BTC') {
+    const srcEx = isExchange(a.from);
+    const dstEx = isExchange(a.to);
+    if (dstEx && !srcEx)
+      return {
+        category: 'INFLOW',
+        bias: 'bearish',
+        emoji: '🔴',
+        note: 'BTC to an exchange (possible sale)',
+      };
+    if (srcEx && !dstEx)
+      return {
+        category: 'OUTFLOW',
+        bias: 'bullish',
+        emoji: '🟢',
+        note: 'BTC off an exchange (accumulation/withdrawal)',
+      };
+    if (srcEx && dstEx)
+      return {
+        category: 'INTER_EXCHANGE',
+        bias: 'neutral',
+        emoji: '🔵',
+        note: 'Exchange → exchange',
+      };
+
+    const srcDefi = isDefi(a.from);
+    const dstDefi = isDefi(a.to);
+    if (dstDefi && !srcDefi)
+      return {
+        category: 'DEFI_DEPOSIT',
+        bias: 'neutral',
+        emoji: '🟣',
+        note: 'BTC into a DeFi protocol (collateral/yield, not a sale)',
+      };
+    if (srcDefi && !dstDefi)
+      return {
+        category: 'DEFI_WITHDRAWAL',
+        bias: 'neutral',
+        emoji: '🟣',
+        note: 'BTC out of a DeFi protocol (watch where it goes next)',
+      };
+
+    return { category: 'OTC', bias: 'neutral', emoji: '🟡', note: 'Private/OTC transfer' };
+  }
+
+  if (isStable) {
+    if (a.isBurn)
+      return {
+        category: 'STABLE_BURN',
+        bias: 'bearish',
+        emoji: '⚫',
+        note: 'Stablecoin burn (removes liquidity)',
+      };
+    if (a.isMint)
+      return {
+        category: 'STABLE_MINT',
+        bias: 'bullish_latent',
+        emoji: '💵',
+        note: 'Stablecoin mint (potential dry powder)',
+      };
+    if (isTreasury(a.to))
+      return {
+        category: 'STABLE_REDEMPTION',
+        bias: 'bearish',
+        emoji: '⚫',
+        note: 'Stable to Treasury (redemption, removes liquidity)',
+      };
+    if (isExchange(a.to))
+      return {
+        category: 'STABLE_TO_EXCHANGE',
+        bias: 'bullish',
+        emoji: '💵',
+        note: 'Stable to an exchange (buying powder)',
+      };
+    if (isDefi(a.to) && !isDefi(a.from))
+      return {
+        category: 'STABLE_TO_DEFI',
+        bias: 'neutral',
+        emoji: '🟣',
+        note: 'Stable into a DeFi protocol (collateral/yield, not a purchase)',
+      };
+    if (isDefi(a.from) && !isDefi(a.to))
+      return {
+        category: 'STABLE_FROM_DEFI',
+        bias: 'neutral',
+        emoji: '🟣',
+        note: 'Stable out of a DeFi protocol (watch where it goes next)',
+      };
+
+    return {
+      category: 'STABLE_OTHER',
+      bias: 'neutral',
+      emoji: '⚪',
+      note: 'Neutral stable movement',
+    };
+  }
+
+  return { category: 'OTHER', bias: 'neutral', emoji: '⚪', note: 'Other asset' };
+};
+
+export const analyzeFlows = (alerts: WhaleAlert[]): FlowAnalysis => {
+  const classified: ClassifiedAlert[] = alerts.map((a) => ({
+    ...a,
+    flow: classifyAlert(a),
+    materiality: materialityTag(a),
+  }));
+
+  let netBtc = 0;
+  let inflowBtc = 0;
+  let outflowBtc = 0;
+  let inflowUsd = 0;
+  let outflowUsd = 0;
+  const stable = { mint: 0, burn: 0, redemption: 0, toExchange: 0 };
+
+  for (const a of classified) {
+    if (a.symbol === 'BTC' && a.amount != null) {
+      if (a.flow.category === 'INFLOW') {
+        inflowBtc += a.amount;
+        inflowUsd += a.valueUsd ?? 0;
+        netBtc -= a.amount;
+      } else if (a.flow.category === 'OUTFLOW') {
+        outflowBtc += a.amount;
+        outflowUsd += a.valueUsd ?? 0;
+        netBtc += a.amount;
+      }
+    }
+    if (a.symbol != null && STABLES.has(a.symbol) && a.valueUsd != null) {
+      if (a.flow.category === 'STABLE_MINT') stable.mint += a.valueUsd;
+      else if (a.flow.category === 'STABLE_BURN') stable.burn += a.valueUsd;
+      else if (a.flow.category === 'STABLE_REDEMPTION') stable.redemption += a.valueUsd;
+      else if (a.flow.category === 'STABLE_TO_EXCHANGE') stable.toExchange += a.valueUsd;
+    }
+  }
+
+  const signalOf = (net: number): FlowSignal =>
+    net > 0 ? 'BULLISH' : net < 0 ? 'BEARISH' : 'NEUTRAL';
+
+  const netSignal = signalOf(outflowBtc - inflowBtc);
+  // By USD magnitude, independent of the BTC-count signal. When the two differ
+  // (three small outflows against one huge inflow) the USD one is the real one:
+  // both are reported so the conflict is explicit rather than averaged away.
+  const netUsd = outflowUsd - inflowUsd;
+  const netSignalUsd = signalOf(netUsd);
+
+  const times = alerts.map((a) => a.timestamp).filter((t): t is number => t != null);
+
+  return {
+    classified,
+    netBtc,
+    inflowBtc,
+    outflowBtc,
+    inflowUsd,
+    outflowUsd,
+    netUsd,
+    netSignal,
+    netSignalUsd,
+    signalConflict:
+      netSignal !== netSignalUsd && (netSignal !== 'NEUTRAL' || netSignalUsd !== 'NEUTRAL'),
+    stable,
+    window: times.length
+      ? { from: Math.min(...times), to: Math.max(...times) }
+      : { from: null, to: null },
+  };
+};
+
+// ─── Skew and Vol Lab ─────────────────────────────────────────────────────────
+
+/** Percentile bands for the 30-day skew percentile. */
+const SKEW_PCTL_LOW = 20;
+const SKEW_PCTL_HIGH = 80;
+/** Minimum distance from the historical mean before calling a bias. */
+const SKEW_VS_HIST_MIN = 1;
+/** Minimum front-vs-back gap before calling the curve sloped. */
+const SKEW_SLOPE_MIN = 1;
+
+const mean = (xs: number[]): number | null =>
+  xs.length === 0 ? null : xs.reduce((a, b) => a + b, 0) / xs.length;
+
+/** "7D" → 7. Skew expiries arrive as labels, not dates. */
+const expiryDays = (label: string): number | null => {
+  const m = /^(\d+)D$/.exec(label);
+  return m ? Number(m[1]) : null;
+};
+
+/**
+ * 25-delta skew: how much downside protection costs against its own history, and
+ * whether that fear is concentrated in the front of the curve.
+ */
+export const analyzeSkew = (s: SkewResult | null): SkewRead | null => {
+  if (!s?.ok) return null;
+
+  // Positive = put skew LESS negative than its mean = hedging costs less.
+  const vsHistorical =
+    s.putSkew != null && s.historicalAverage != null ? s.putSkew - s.historicalAverage : null;
+
+  let percentileRegime: SkewRead['percentileRegime'] = 'NORMAL';
+  if (s.p30 != null) {
+    if (s.p30 <= SKEW_PCTL_LOW) percentileRegime = 'LOW';
+    else if (s.p30 >= SKEW_PCTL_HIGH) percentileRegime = 'HIGH';
+  }
+
+  // Term structure: front (≤7D) vs back (≥90D). A front more negative than the
+  // back means the fear sits on the near expiry (event hedging) rather than
+  // being structural.
+  const front = mean(
+    s.byExpiry.filter((e) => (expiryDays(e.expiry) ?? 999) <= 7).map((e) => e.skew25)
+  );
+  const back = mean(
+    s.byExpiry.filter((e) => (expiryDays(e.expiry) ?? 0) >= 90).map((e) => e.skew25)
+  );
+  let termStructure: SkewRead['termStructure'] = 'FLAT';
+  if (front != null && back != null) {
+    if (front < back - SKEW_SLOPE_MIN) termStructure = 'FRONT_FEAR';
+    else if (front > back + SKEW_SLOPE_MIN) termStructure = 'BACK_FEAR';
+  }
+
+  // The bias comes from the distance to the historical mean, not the percentile:
+  // the sign of `putSkew − historicalAverage` is unambiguous (more negative =
+  // hedging costs more), while the percentile scale the API publishes does not
+  // document whether it ranks the signed value or the magnitude of the fear.
+  let bias: SkewBias = 'NEUTRAL';
+  if (vsHistorical != null) {
+    if (vsHistorical <= -SKEW_VS_HIST_MIN) bias = 'EXPENSIVE_HEDGING';
+    else if (vsHistorical >= SKEW_VS_HIST_MIN) bias = 'COMPLACENCY';
+  }
+
+  // The percentile is corroboration only. If it points the opposite way to the
+  // historical mean, the scale is not the convention assumed here — which has to
+  // be said rather than propagated as a reading that may be inverted.
+  const percentileDisagrees =
+    (bias === 'EXPENSIVE_HEDGING' && percentileRegime === 'LOW') ||
+    (bias === 'COMPLACENCY' && percentileRegime === 'HIGH');
+
+  return {
+    vsHistorical,
+    percentileRegime,
+    termStructure,
+    termStructureLabel:
+      termStructure === 'FRONT_FEAR'
+        ? 'fear concentrated in the front of the curve (event hedging)'
+        : termStructure === 'BACK_FEAR'
+          ? 'structural long-dated fear, quiet front end'
+          : 'flat across expiries',
+    front,
+    back,
+    bias,
+    biasLabel:
+      bias === 'EXPENSIVE_HEDGING'
+        ? '🔴 Protection EXPENSIVE vs its historical mean (fear; contrarian bullish at extremes)'
+        : bias === 'COMPLACENCY'
+          ? '🟠 Protection CHEAP vs its historical mean (complacency; risk underpriced)'
+          : '⚪ Skew in its normal range',
+    percentileDisagrees,
+  };
+};
+
+/** |z| at which the skew risk premium counts as stretched against its own window. */
+const SKEW_RP_Z_EXTREME = 1.5;
+const SKEW_RP_Z_HIGH = 1.0;
+
+/**
+ * Vol Lab: how stretched the skew risk premium is, and whether what is implied
+ * contradicts what has actually been realised.
+ */
+export const analyzeVolLab = (v: VolLabResult | null): VolLabRead | null => {
+  if (!v?.ok) return null;
+
+  const z = v.skewRpZ;
+  let stretch: VolLabRead['stretch'] = 'NORMAL';
+  if (z != null) {
+    if (Math.abs(z) >= SKEW_RP_Z_EXTREME) stretch = 'EXTREME';
+    else if (Math.abs(z) >= SKEW_RP_Z_HIGH) stretch = 'ELEVATED';
+  }
+
+  // Implied and realised ρ with opposite signs: the market is paying for a
+  // spot-vol correlation that recent reality is NOT confirming.
+  const rhoDivergence =
+    v.rhoImp != null &&
+    v.rhoR != null &&
+    Math.sign(v.rhoImp) !== 0 &&
+    Math.sign(v.rhoR) !== 0 &&
+    Math.sign(v.rhoImp) !== Math.sign(v.rhoR);
+
+  // Realised vol-of-vol far above implied = the market is underpricing how much
+  // volatility itself is moving.
+  const vvolGap = v.nuR != null && v.nuImp != null ? v.nuR - v.nuImp : null;
+
+  return {
+    signal: v.signal,
+    signalLabel:
+      v.signal === 'BUY_SKEW'
+        ? '🟢 BUY_SKEW (the skew premium trades cheap: buy protection/skew)'
+        : v.signal === 'SELL_SKEW'
+          ? '🔴 SELL_SKEW (the skew premium trades rich: sell skew)'
+          : '⚪ WAIT (no actionable signal)',
+    stretch,
+    rhoDivergence,
+    vvolGap,
+    vvolUnderpriced: vvolGap != null && vvolGap > 0,
+  };
 };

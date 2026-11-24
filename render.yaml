@@ -23,6 +23,12 @@ services:
         sync: false
       - key: FOMOAPI_KEY
         sync: false
+      # cryptogamma.io bearer token, used only by the 25-delta skew and Vol Lab
+      # blocks on /intraday. Without it both endpoints answer 401 and those two
+      # panels degrade on their own; every other block is unaffected. Gamma does
+      # NOT need it — that comes from basischarts, unauthenticated.
+      - key: CRYPTOGAMMA_TOKEN
+        sync: false
       # Must be a fresh random value in production — the one in .env is marked
       # development-only. Changing it resets every client's daily quota once.
       - key: CLIENT_HASH_SALT

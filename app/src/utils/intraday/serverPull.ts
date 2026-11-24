@@ -1,13 +1,16 @@
 import {
   analyzeCvd,
+  analyzeFlows,
   analyzeGamma,
+  analyzeSkew,
+  analyzeVolLab,
   assessCapitulation,
   midnightUtcMs,
   summarizeDailyCvd,
 } from './analyze';
 import { BINANCE_FAPI_KLINES_BASE, BINANCE_KLINES_BASE } from './fetchers';
 import { appendRecord, buildRecord } from './history';
-import { parseCvd, parseGamma } from './parse';
+import { parseCvd, parseGamma, parseSkew, parseVolLab, parseWhaleAlert } from './parse';
 import type { HistoryRecord, IntradaySnapshot } from './types';
 
 /**
@@ -35,14 +38,37 @@ import type { HistoryRecord, IntradaySnapshot } from './types';
 /** No CORS constraint on this side, so the chain comes from its own host. */
 const GAMMA_UPSTREAM = 'https://www.basischarts.com/api/options?venue=all&underlying=BTC';
 
-/** The chain is ~1.3 MB; the klines are small. One budget covers both. */
+/**
+ * Three sources that exist ONLY here, because all three are CORS-blocked and the
+ * browser could never read them:
+ *
+ *   - Whale Alert answers `access-control-allow-origin: https://whale-alert.io`.
+ *     It carries whale flows, realised/potential profit, volume and HODL — the
+ *     heaviest-weighted signals in the model, which the page simply did not have.
+ *   - cryptogamma's skew and vol-lab need a Bearer token, which cannot ship to a
+ *     browser anyway. Without CRYPTOGAMMA_TOKEN they answer 401 and both blocks
+ *     degrade on their own, exactly like any other failing source.
+ *
+ * The URLs and their query params are copied verbatim from the CLI crawler. Do
+ * not edit the params.
+ */
+const WHALE_ALERT_UPSTREAM =
+  'https://whale-alert.io/data.json?alerts=25&prices=BTC&hodl=bitcoin%2CBTC&potential_profit=bitcoin%2CBTC&average_buy_price=bitcoin%2CBTC&realized_profit=bitcoin%2CBTC&volume=bitcoin%2CBTC&news=true';
+const SKEW_UPSTREAM = 'https://cryptogamma.io/api/public/skew/?asset=BTC';
+const VOL_LAB_UPSTREAM = 'https://cryptogamma.io/api/public/vol-lab/?asset=BTC';
+
+/** The chain is ~1.3 MB; everything else is small. One budget covers them all. */
 const TIMEOUT_MS = 30_000;
 
 type SourceResult = { ok: true; data: unknown } | { ok: false; error: string };
 
-const getJson = async (url: string, name: string): Promise<SourceResult> => {
+const getJson = async (
+  url: string,
+  name: string,
+  headers?: Record<string, string>
+): Promise<SourceResult> => {
   try {
-    const res = await fetch(url, { signal: AbortSignal.timeout(TIMEOUT_MS) });
+    const res = await fetch(url, { signal: AbortSignal.timeout(TIMEOUT_MS), headers });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return { ok: true, data: (await res.json()) as unknown };
   } catch (err) {
@@ -60,18 +86,38 @@ export interface ServerPullResult {
 export const runIntradayServer = async ({
   now = new Date(),
   history,
+  cryptogammaToken = null,
 }: {
   now?: Date;
   history: HistoryRecord[];
+  /**
+   * Passed in rather than read from `process.env` here: this module ships inside
+   * the SSR bundle, and keeping it free of environment access is what lets the
+   * same bundle be imported by the build-time prerender.
+   */
+  cryptogammaToken?: string | null;
 }): Promise<ServerPullResult> => {
   const generatedAt = now.toISOString();
   const errors: string[] = [];
   const midnight = midnightUtcMs(now);
+  const cgHeaders = cryptogammaToken ? { Authorization: `Bearer ${cryptogammaToken}` } : undefined;
 
   // Every source in parallel, and each degrades on its own: a failing API adds a
   // line to `errors` and leaves its section empty rather than sinking the page.
-  const [gammaRes, cvdRes, cvdPerpRes, cvdDailySpotRes, cvdDailyPerpRes] = await Promise.all([
+  const [
+    whaleRes,
+    gammaRes,
+    skewRes,
+    volLabRes,
+    cvdRes,
+    cvdPerpRes,
+    cvdDailySpotRes,
+    cvdDailyPerpRes,
+  ] = await Promise.all([
+    getJson(WHALE_ALERT_UPSTREAM, 'Whale Alert'),
     getJson(GAMMA_UPSTREAM, 'Gamma Exposure'),
+    getJson(SKEW_UPSTREAM, '25-delta skew', cgHeaders),
+    getJson(VOL_LAB_UPSTREAM, 'Vol Lab', cgHeaders),
     getJson(`${BINANCE_KLINES_BASE}&startTime=${midnight}&limit=1000`, 'Spot CVD'),
     getJson(`${BINANCE_FAPI_KLINES_BASE}&startTime=${midnight}&limit=1000`, 'Perp CVD'),
     getJson(
@@ -83,6 +129,27 @@ export const runIntradayServer = async ({
       'Daily perp CVD'
     ),
   ]);
+
+  const whale = whaleRes.ok ? parseWhaleAlert(whaleRes.data) : null;
+  if (!whaleRes.ok) errors.push(`Whale Alert unavailable (${whaleRes.error})`);
+  const flows = whale ? analyzeFlows(whale.alerts) : null;
+
+  const skew = skewRes.ok ? parseSkew(skewRes.data) : null;
+  if (!skewRes.ok) {
+    // 401 here almost always means CRYPTOGAMMA_TOKEN is missing or expired.
+    errors.push(`25-delta skew unavailable (${skewRes.error})`);
+  } else if (skew && !skew.ok) {
+    errors.push('25-delta skew unavailable (degraded snapshot)');
+  }
+  const skewRead = analyzeSkew(skew);
+
+  const volLab = volLabRes.ok ? parseVolLab(volLabRes.data) : null;
+  if (!volLabRes.ok) {
+    errors.push(`Vol Lab unavailable (${volLabRes.error})`);
+  } else if (volLab && !volLab.ok) {
+    errors.push('Vol Lab unavailable (degraded snapshot)');
+  }
+  const volLabRead = analyzeVolLab(volLab);
 
   const gamma = gammaRes.ok ? parseGamma(gammaRes.data) : null;
   if (!gammaRes.ok) {
@@ -110,7 +177,7 @@ export const runIntradayServer = async ({
   // The capitulation checklist reads the sequence *including* this pull, so the
   // record is appended before assessing. `appendRecord` is the browser helper
   // reused for its dedupe rule only: its localStorage write is a no-op here.
-  const record = buildRecord({ generatedAt, cvdFlows, cvdPerpFlows, gamma, gammaRegime });
+  const record = buildRecord({ generatedAt, cvdFlows, cvdPerpFlows, gamma, gammaRegime, whale });
   const { history: nextHistory, deduped } = appendRecord(history, record);
   if (deduped) {
     errors.push('Data identical to the previous pull (likely cached): not appended to history.');
@@ -120,12 +187,20 @@ export const runIntradayServer = async ({
     snapshot: {
       generatedAt,
       errors,
+      whale,
+      flows,
+      skew,
+      skewRead,
+      volLab,
+      volLabRead,
       gamma,
       gammaRegime,
       cvdFlows,
       cvdPerpFlows,
       cvdDaily,
-      capitulation: assessCapitulation({ history: nextHistory, cvdFlows, cvdDaily }),
+      // `flows` adds the fifth capitulation condition, which the browser-only
+      // pull could never evaluate.
+      capitulation: assessCapitulation({ history: nextHistory, cvdFlows, cvdDaily, flows }),
       history: nextHistory,
       // Nothing underneath this pull is cached — the page above it is. How stale
       // the page itself is, is the server's to report.

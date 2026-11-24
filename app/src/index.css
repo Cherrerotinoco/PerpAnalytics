@@ -2905,3 +2905,198 @@ body {
     font-size: 0.6rem;
   }
 }
+
+/* ─── Intraday: headline blocks ──────────────────────────────────────────────── */
+/* Big-number summaries for gamma and skew. Deliberately separate from the dense
+   key/value grid below them: these four figures are the ones a reader checks
+   first, so they get size and space rather than another row in a list. */
+.tc-gex-hero {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 20px 32px;
+  align-items: start;
+}
+
+.tc-gex-hero-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.tc-gex-hero-value {
+  font-size: clamp(1.5rem, 4vw, 2.1rem);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  /* Long values must shrink rather than push the grid wider. */
+  overflow-wrap: anywhere;
+}
+
+.tc-gex-hero-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--tc-muted);
+}
+
+/* Support / resistance / flip, each with its own dot. */
+.tc-gex-levels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 24px;
+  align-items: center;
+}
+
+.tc-gex-level {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.95rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.tc-gex-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+
+.tc-gex-dot--support {
+  background: var(--tc-red);
+}
+.tc-gex-dot--resistance {
+  background: var(--tc-amber);
+}
+.tc-gex-dot--flip {
+  background: var(--tc-green);
+}
+
+.tc-gex-level-tag {
+  color: var(--tc-muted);
+  font-size: 0.8rem;
+}
+
+/* Gamma by expiry: a horizontal bar per expiry, signed around a centre line. */
+.tc-gex-expiry {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tc-gex-expiry-row {
+  display: grid;
+  grid-template-columns: 88px 1fr 76px;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.tc-gex-expiry-label {
+  color: var(--tc-muted);
+  white-space: nowrap;
+}
+
+/* The track is split in two halves so negative bars grow left from the centre
+   and positive bars grow right, without any JS layout maths. */
+.tc-gex-expiry-track {
+  display: flex;
+  align-items: center;
+  height: 14px;
+  min-width: 0;
+}
+
+.tc-gex-expiry-half {
+  flex: 1 1 50%;
+  display: flex;
+  height: 100%;
+  min-width: 0;
+}
+
+.tc-gex-expiry-half--neg {
+  justify-content: flex-end;
+  border-right: 1px solid var(--tc-border);
+}
+
+.tc-gex-expiry-bar {
+  height: 100%;
+  border-radius: 2px;
+  min-width: 1px;
+}
+
+.tc-gex-expiry-bar--neg {
+  background: var(--tc-red);
+}
+.tc-gex-expiry-bar--pos {
+  background: var(--tc-green);
+}
+
+.tc-gex-expiry-value {
+  text-align: right;
+  color: var(--tc-text-secondary);
+}
+
+/* Sentiment callout under the skew figures. */
+.tc-skew-callout {
+  border: 1px solid var(--tc-border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tc-skew-callout--warn {
+  border-color: var(--tc-amber);
+  background: rgba(244, 185, 66, 0.08);
+}
+
+.tc-skew-callout-title {
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.tc-skew-callout-body {
+  font-size: 0.85rem;
+  color: var(--tc-text-secondary);
+  line-height: 1.45;
+}
+
+/* Whale flow feed. */
+.tc-whale-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.tc-whale-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-size: 0.84rem;
+  line-height: 1.4;
+}
+
+.tc-whale-time {
+  color: var(--tc-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.tc-whale-note {
+  color: var(--tc-muted);
+  font-size: 0.78rem;
+}
+
+.tc-whale-tag {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}

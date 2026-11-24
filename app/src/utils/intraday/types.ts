@@ -156,6 +156,17 @@ export interface OptionsChain {
   reference?: string;
 }
 
+/** One expiry bucket of the gamma term structure. */
+export interface GammaByExpiry {
+  /** Expiry timestamp in ms. */
+  expiry: number;
+  /** YYYY-MM-DD, for the axis. */
+  label: string;
+  daysOut: number;
+  /** Signed gamma in millions of USD of delta per 1% move. */
+  gamma: number;
+}
+
 /**
  * Aggregated gamma exposure, computed in gex.ts from the chain above.
  *
@@ -210,6 +221,8 @@ export interface GammaSnapshot {
   partial: boolean;
   venues: string[];
   gammaByVenue: Record<string, number | null>;
+  /** Signed gamma per expiry, nearest first — the term structure of the profile. */
+  gammaByExpiry: GammaByExpiry[];
 }
 
 /** `degraded` = well-formed chain but nothing usable in it (no OI, no index price). */
@@ -251,7 +264,179 @@ export interface Capitulation {
   verdict: string;
 }
 
-/** One persisted pull, kept in localStorage so the sequence survives reloads. */
+// ─── Whale Alert ──────────────────────────────────────────────────────────────
+
+/** The directional category one transfer falls into. */
+export type FlowCategory =
+  | 'INFLOW'
+  | 'OUTFLOW'
+  | 'INTER_EXCHANGE'
+  | 'DEFI_DEPOSIT'
+  | 'DEFI_WITHDRAWAL'
+  | 'OTC'
+  | 'STABLE_MINT'
+  | 'STABLE_BURN'
+  | 'STABLE_REDEMPTION'
+  | 'STABLE_TO_EXCHANGE'
+  | 'STABLE_TO_DEFI'
+  | 'STABLE_FROM_DEFI'
+  | 'STABLE_OTHER'
+  | 'OTHER';
+
+export type FlowBias = 'bullish' | 'bearish' | 'neutral' | 'bullish_latent';
+
+export interface FlowClass {
+  category: FlowCategory;
+  bias: FlowBias;
+  emoji: string;
+  note: string;
+}
+
+/** One Whale Alert transfer, parsed from its CSV line. */
+export interface WhaleAlert {
+  timestamp: number | null;
+  isoTime: string | null;
+  emojis: string;
+  /** How many 🚨 the alert carries — Whale Alert's own size emphasis. */
+  burstCount: number;
+  isMint: boolean;
+  isBurn: boolean;
+  amount: number | null;
+  symbol: string | null;
+  valueUsd: number | null;
+  description: string;
+  from: string | null;
+  to: string | null;
+}
+
+export interface ClassifiedAlert extends WhaleAlert {
+  flow: FlowClass;
+  /** Size label, or null when the transfer is under every threshold. */
+  materiality: string | null;
+}
+
+export type FlowSignal = 'BULLISH' | 'BEARISH' | 'NEUTRAL';
+
+export interface FlowAnalysis {
+  classified: ClassifiedAlert[];
+  netBtc: number;
+  inflowBtc: number;
+  outflowBtc: number;
+  inflowUsd: number;
+  outflowUsd: number;
+  netUsd: number;
+  netSignal: FlowSignal;
+  /** By USD magnitude rather than by BTC count — the two can disagree. */
+  netSignalUsd: FlowSignal;
+  signalConflict: boolean;
+  stable: { mint: number; burn: number; redemption: number; toExchange: number };
+  window: { from: number | null; to: number | null };
+}
+
+export interface PricedMetric {
+  symbol: string | null;
+  price: number | null;
+  changePct: number | null;
+}
+
+export interface ValuedMetric {
+  symbol: string | null;
+  value: number | null;
+  changePct: number | null;
+}
+
+/**
+ * Whale Alert's market metrics.
+ *
+ * News is deliberately not parsed even though the endpoint returns it: headlines
+ * lag price, so they are excluded from this analysis.
+ */
+export interface WhaleMetrics {
+  alerts: WhaleAlert[];
+  prices: PricedMetric | null;
+  averageBuyPrice: PricedMetric | null;
+  realizedProfit: ValuedMetric | null;
+  potentialProfit: ValuedMetric | null;
+  volume: ValuedMetric | null;
+  hodl: ValuedMetric | null;
+}
+
+// ─── Options: skew and risk premium ───────────────────────────────────────────
+
+export interface SkewByExpiry {
+  expiry: string;
+  skew25: number;
+}
+
+export interface SkewSnapshot {
+  ok: true;
+  asset: string | null;
+  source: string | null;
+  generatedAt: string | null;
+  putSkew: number | null;
+  callSkew: number | null;
+  historicalAverage: number | null;
+  marketSentiment: string | null;
+  p30: number | null;
+  p90: number | null;
+  p1y: number | null;
+  anomalyDetected: boolean;
+  anomalyMessage: string | null;
+  anomalySeverity: string | null;
+  byExpiry: SkewByExpiry[];
+}
+
+export type SkewResult = SkewSnapshot | { ok: false; degraded?: boolean };
+
+export type SkewBias = 'EXPENSIVE_HEDGING' | 'COMPLACENCY' | 'NEUTRAL';
+
+export interface SkewRead {
+  /** putSkew − historicalAverage. Positive = hedging costs less than usual. */
+  vsHistorical: number | null;
+  percentileRegime: 'LOW' | 'HIGH' | 'NORMAL';
+  termStructure: 'FRONT_FEAR' | 'BACK_FEAR' | 'FLAT';
+  termStructureLabel: string;
+  front: number | null;
+  back: number | null;
+  bias: SkewBias;
+  biasLabel: string;
+  /** The percentile points the other way than the historical mean does. */
+  percentileDisagrees: boolean;
+}
+
+export interface VolLabSnapshot {
+  ok: true;
+  asset: string | null;
+  source: string | null;
+  generatedAt: string | null;
+  expiry: string | null;
+  tauDays: number | null;
+  signal: string | null;
+  skewRpZ: number | null;
+  avgSkewRp: number | null;
+  avgRr: number | null;
+  avgFly: number | null;
+  hedgeN: number | null;
+  nuImp: number | null;
+  rhoImp: number | null;
+  nuR: number | null;
+  rhoR: number | null;
+  days: number;
+}
+
+export type VolLabResult = VolLabSnapshot | { ok: false; degraded?: boolean };
+
+export interface VolLabRead {
+  signal: string | null;
+  signalLabel: string;
+  stretch: 'EXTREME' | 'ELEVATED' | 'NORMAL';
+  /** Implied and realised spot-vol correlation carry opposite signs. */
+  rhoDivergence: boolean;
+  vvolGap: number | null;
+  vvolUnderpriced: boolean;
+}
+
+/** One persisted pull, kept so the sequence survives across refreshes. */
 export interface HistoryRecord {
   t: string;
   price: number | null;
@@ -266,6 +451,16 @@ export interface HistoryRecord {
    */
   netGammaM: number | null;
   /**
+   * Realised and potential profit, in USD.
+   *
+   * Rule 7 reads the `realized` sequence: capitulation only counts as spent after
+   * two consecutive pulls recovering towards zero. Null on every record written
+   * before Whale Alert was reachable, which is why that check reports "not enough
+   * history" rather than a verdict for those.
+   */
+  realized: number | null;
+  potential: number | null;
+  /**
    * Legacy: records already sitting in users' localStorage from before the endpoint
    * change. Read-only — never written again, and never charted alongside netGammaM.
    */
@@ -276,6 +471,18 @@ export interface HistoryRecord {
 export interface IntradaySnapshot {
   generatedAt: string;
   errors: string[];
+  /**
+   * Whale Alert, skew and Vol Lab are null on any pull that ran in the browser:
+   * all three are CORS-blocked, so only the server-side pull (serverPull.ts) can
+   * reach them. A client-side manual refresh therefore keeps whatever the server
+   * rendered for these three rather than blanking them.
+   */
+  whale: WhaleMetrics | null;
+  flows: FlowAnalysis | null;
+  skew: SkewResult | null;
+  skewRead: SkewRead | null;
+  volLab: VolLabResult | null;
+  volLabRead: VolLabRead | null;
   gamma: GammaResult | null;
   gammaRegime: GammaRegime | null;
   cvdFlows: CvdAnalysis | null;

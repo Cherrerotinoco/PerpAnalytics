@@ -76,6 +76,13 @@ create index if not exists intraday_pull_generated_at_idx on intraday_pull (gene
 export const MIGRATIONS_SQL = `
 alter table fomoapi_credit_ledger add column if not exists client_hash text;
 
+-- Added once Whale Alert became reachable (it is CORS-blocked in a browser, so
+-- only the server-side pull can read it). Rule 7 reads the realized sequence:
+-- without these columns the check could never be evaluated. Rows written before
+-- this keep nulls, and the check reports "not enough history" for them.
+alter table intraday_pull add column if not exists realized double precision;
+alter table intraday_pull add column if not exists potential double precision;
+
 create index if not exists fomoapi_credit_ledger_client_idx
   on fomoapi_credit_ledger (client_hash, ts desc);
 `;

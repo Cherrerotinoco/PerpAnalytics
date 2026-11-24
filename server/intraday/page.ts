@@ -28,7 +28,11 @@ const APP_HTML_PLACEHOLDER = '<!--app-html-->';
 
 interface SsrBundle {
   render: (url: string, snapshot: unknown) => string;
-  runIntradayServer: (opts: { now?: Date; history: PullRecord[] }) => Promise<{
+  runIntradayServer: (opts: {
+    now?: Date;
+    history: PullRecord[];
+    cryptogammaToken?: string | null;
+  }) => Promise<{
     snapshot: unknown;
     record: PullRecord;
     deduped: boolean;
@@ -108,7 +112,13 @@ const renderPage = async (): Promise<string> => {
     console.error('[intraday] history read failed, rendering without it:', err);
   }
 
-  const { snapshot, record, deduped } = await runIntradayServer({ history });
+  // Read here rather than inside the SSR bundle, which must stay free of
+  // environment access so the build-time prerender can import it too. Absent
+  // token = skew and Vol Lab degrade on their own; the rest of the page is fine.
+  const { snapshot, record, deduped } = await runIntradayServer({
+    history,
+    cryptogammaToken: process.env.CRYPTOGAMMA_TOKEN ?? null,
+  });
 
   if (!deduped) {
     try {
