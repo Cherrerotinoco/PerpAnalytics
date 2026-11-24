@@ -181,10 +181,11 @@ and that condition counts neither for nor against.
 ⚠️ It runs on the order-flow conditions listed in the block: treat it as a partial marker
 that supports a read, never as the read itself.
 
-## E) Reading history
-Sequence of pulls stored in the user's browser. Use it to read the EVOLUTION between readings
-(is CVD recovering or sinking?). ⚠️ It may be empty or very short on a first visit: with fewer
-than 3 records, say so and do not infer a trend from them.`;
+## E) Pull history
+Sequence of pulls of a single shared series, the same for every reader — NOT a record of this
+user's own visits. Use it to read the EVOLUTION between pulls (is CVD recovering or sinking?).
+⚠️ It may be short, and its cadence is irregular: with fewer than 3 records, say so and do not
+infer a trend from them.`;
 
 const PROBABILITY_RULES = `# PROBABILITY RULES
 Heuristic, not rigorous statistics. Weight, highest to lowest:

@@ -3022,6 +3022,10 @@ body {
   border-right: 1px solid var(--tc-border);
 }
 
+/* The width comes from an inline style attribute, so it only paints if the CSP
+   allows style attributes (see style-src in server/index.ts): without that, every
+   bar silently falls back to this min-width and the chart reads as a column of
+   identical hairlines. */
 .tc-gex-expiry-bar {
   height: 100%;
   border-radius: 2px;

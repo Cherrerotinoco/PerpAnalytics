@@ -46,7 +46,13 @@ const app = new Hono();
 const CONTENT_SECURITY_POLICY = [
   "default-src 'self'",
   "script-src 'self' https://www.googletagmanager.com 'unsafe-inline'",
-  "style-src 'self' https://fonts.googleapis.com",
+  // 'unsafe-inline' is required, not lazy: React writes every `style={{…}}` as a
+  // style ATTRIBUTE, and CSP blocks those wholesale without it. Dropping it does
+  // not fail loudly — the attributes are silently ignored and the element falls
+  // back to its stylesheet rule, which is how every Panel lost its grow/minWidth
+  // and every gamma-by-expiry bar collapsed to its 1px min-width. Nonces and
+  // hashes are not an option here: they do not apply to style attributes.
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   'font-src https://fonts.gstatic.com',
   [
     "connect-src 'self' https://perps-api.jup.ag https://api.pacifica.fi",

@@ -607,9 +607,9 @@ const IntradayPage = () => {
         <h1 className="tc-page-title">Intraday — BTC order flow</h1>
         <p className="tc-page-subtitle">
           Multi-timeframe aggressor delta (CVD) for Binance spot and perpetuals, plus BTC options
-          gamma exposure. Every request is made{' '}
-          <span className="tc-page-highlight">straight from your browser</span> — no account, no
-          server of ours in the middle, nothing about you stored anywhere.
+          gamma exposure. The page is{' '}
+          <span className="tc-page-highlight">rendered on our server</span> from public market
+          endpoints and refreshed every 15 minutes — no account, no sign-up.
         </p>
       </div>
 
@@ -635,8 +635,8 @@ const IntradayPage = () => {
           </ul>
           <p className="tc-intraday-about-note">
             All three are public endpoints and need no API key. Responses are cached for 15 minutes
-            so refreshing does not hammer them; the reading history lives in this browser&apos;s
-            localStorage and never leaves your device.
+            so refreshing does not hammer them; the pull history below is one shared series, the
+            same for every visitor, not a record of your own visits.
           </p>
         </section>
 
@@ -926,7 +926,7 @@ const IntradayPage = () => {
                 <Panel title="Total gamma exposure" grow={5} minWidth={320}>
                   <TotalGammaExposure gamma={snap.gamma} />
                 </Panel>
-                <Panel title="Squeeze levels" grow={4} minWidth={300}>
+                <Panel title="Squeeze levels" grow={4} minWidth={300} centered>
                   <SqueezeLevels gamma={snap.gamma} />
                 </Panel>
               </Row>
@@ -980,7 +980,7 @@ const IntradayPage = () => {
               </p>
             </Panel>
 
-            <Panel title="Reading history (this browser)" grow={4} minWidth={280}>
+            <Panel title="Pull history (shared series)" grow={4} minWidth={280}>
               {snap.history.length ? (
                 <table className="tc-intraday-table">
                   <thead>
@@ -1010,11 +1010,13 @@ const IntradayPage = () => {
                   </tbody>
                 </table>
               ) : (
-                <p className="tc-intraday-note">First reading stored.</p>
+                <p className="tc-intraday-note">No pulls recorded yet.</p>
               )}
               <div className="tc-intraday-history-foot">
                 <p className="tc-intraday-note">
-                  The sequence is stored only in this browser and builds up as you refresh.
+                  One shared series, refreshed on the server every 15 minutes.{' '}
+                  <strong>Clear history</strong> only drops the copy this browser kept from its own
+                  manual refreshes; the shared series is untouched.
                 </p>
                 <button type="button" className="tc-page-btn" onClick={handleClearHistory}>
                   Clear history
