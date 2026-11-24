@@ -2,7 +2,12 @@ import React from 'react';
 import { hydrateRoot, createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App';
+import { SsrSnapshotContext, takeSsrSnapshot } from './utils/intraday/ssrData';
 import './index.css';
+
+// Read before the first render: the hydrated tree has to see the same snapshot the
+// server rendered or /intraday mismatches its own markup.
+const ssrSnapshot = takeSsrSnapshot();
 
 // Canonical URL — set once at startup using the real deployed origin
 const canonical = document.createElement('link');
@@ -13,9 +18,11 @@ document.head.appendChild(canonical);
 const rootEl = document.getElementById('root') as HTMLElement;
 const app = (
   <React.StrictMode>
-    <BrowserRouter>
-      <App />
-    </BrowserRouter>
+    <SsrSnapshotContext.Provider value={ssrSnapshot}>
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
+    </SsrSnapshotContext.Provider>
   </React.StrictMode>
 );
 

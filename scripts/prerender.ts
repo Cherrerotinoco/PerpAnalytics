@@ -19,9 +19,12 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const distPath = path.resolve(__dirname, '..', 'dist');
-const serverEntry = path.join(distPath, 'server', 'entry-server.js');
+const serverEntry = path.resolve(__dirname, '..', 'dist-ssr', 'entry-server.js');
 
-// The SSR bundle is built by `vite build --config app/vite.ssr.config.ts`
+// The SSR bundle is built by `vite build --config app/vite.ssr.config.ts`. It is no
+// longer deleted once this script finishes: the Node server imports the very same
+// bundle at runtime to render /intraday per request. That is why it now lives in
+// dist-ssr/ instead of inside the publicly served dist/.
 const { render } = (await import(serverEntry)) as { render: (url: string) => string };
 
 const template = fs.readFileSync(path.join(distPath, 'index.html'), 'utf-8');
@@ -54,11 +57,11 @@ const routes: Record<string, RouteMeta> = {
     description:
       'Project account growth from your win rate, risk/reward, leverage and stop loss. See expectancy per trade, trades to target, days needed and liquidation risk.',
   },
-  '/intraday': {
-    title: 'BTC Intraday Order Flow — CVD, Absorption & Gamma',
-    description:
-      'Live BTC order flow: spot and perp CVD by session, absorption and price-vs-CVD divergence, daily aggressor trend and BTC options gamma. Runs in-browser.',
-  },
+  // NOTE: /intraday is deliberately absent. It is rendered per request by the Node
+  // server with live data and cached for 15 min (server/intraday/page.ts), so a
+  // build-time snapshot of it would be frozen market data served as if it were
+  // current. Its metadata lives in INTRADAY_META below, which the server reuses so
+  // the <head> copy stays in one place.
   '/cookie-policy': {
     title: 'Cookie Policy — PerpsAnalytics',
     description:
@@ -177,7 +180,33 @@ for (const [url, meta] of Object.entries(routes)) {
   console.log(`✓  Prerendered ${url}  →  ${path.relative(distPath, outPath)}`);
 }
 
-// The server bundle is only needed during build — remove it so it isn't
-// accidentally served as a public asset on the static host.
-fs.rmSync(path.join(distPath, 'server'), { recursive: true });
-console.log('✓  Cleaned up server bundle');
+/**
+ * /intraday is rendered per request, so instead of a finished page it gets a
+ * TEMPLATE: the same HTML with its own <head> already applied and the
+ * <!--app-html--> placeholder left intact for the server to fill with the live
+ * render.
+ *
+ * Doing it here rather than in the server keeps all the <head> rewriting — and
+ * the `replaceOrThrow` guards that make a template change fail the build instead
+ * of silently shipping the homepage's metadata — in this one file.
+ */
+const INTRADAY_META: RouteMeta = {
+  title: 'BTC Intraday Order Flow — CVD, Absorption & Gamma',
+  description:
+    'Live BTC order flow: spot and perp CVD by session, absorption and price-vs-CVD divergence, daily aggressor trend and options gamma across four venues.',
+};
+
+assertMetaFits('/intraday', INTRADAY_META);
+const intradayTemplate = applyRouteMeta(
+  template,
+  INTRADAY_META,
+  `${SITE_ORIGIN}/intraday`
+);
+const ssrDir = path.resolve(__dirname, '..', 'dist-ssr');
+fs.mkdirSync(ssrDir, { recursive: true });
+fs.writeFileSync(path.join(ssrDir, 'intraday-template.html'), intradayTemplate);
+console.log('✓  Wrote /intraday SSR template  →  dist-ssr/intraday-template.html');
+
+// The SSR bundle is NOT deleted any more: the Node server imports it at runtime to
+// render /intraday. It lives in dist-ssr/, outside the tree serveStatic hands out,
+// so it is not publicly reachable — which is what the deletion used to guarantee.

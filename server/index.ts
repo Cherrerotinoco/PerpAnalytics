@@ -14,6 +14,7 @@ import {
   UpstreamError,
 } from './fomoapi/wallets.js';
 import { suggestHandles, isValidQuery } from './fomoapi/suggest.js';
+import { getIntradayPage, warmUp as warmIntraday } from './intraday/page.js';
 import {
   clientAddress,
   hashClient,
@@ -271,6 +272,34 @@ app.get('/api/options/btc', async (c) => {
 
 app.all('/api/*', (c) => c.json({ error: 'not_found' }, 404));
 
+/**
+ * /intraday is server-rendered with live data and cached for 15 minutes.
+ *
+ * It must be registered BEFORE serveStatic: the build no longer prerenders an
+ * intraday/index.html, but if it ever did again, the static handler would win and
+ * quietly serve frozen market data.
+ */
+app.get('/intraday', async (c) => {
+  try {
+    const page = await getIntradayPage();
+    return c.html(page.html, 200, {
+      // The page is identical for every visitor, so a shared cache may hold it.
+      // `stale-while-revalidate` mirrors server-side what this does internally.
+      'Cache-Control': 'public, max-age=60, stale-while-revalidate=900',
+      'X-Page-Age-Ms': String(page.ageMs),
+      'X-Page-Stale': String(page.stale),
+    });
+  } catch (err) {
+    // Only reachable on a cold cache whose very first render failed. Falling
+    // through to the SPA shell means the page still loads and fetches
+    // client-side, which is exactly how it behaved before SSR.
+    console.error('[intraday] falling back to the SPA shell:', err);
+    const shell = path.join(DIST, 'index.html');
+    if (!fs.existsSync(shell)) return c.text('Build output missing.', 500);
+    return c.html(fs.readFileSync(shell, 'utf8'));
+  }
+});
+
 // ─── Static site ──────────────────────────────────────────────────────────────
 // `pnpm build` prerenders one index.html per route, so a directory-index lookup
 // serves the right prerendered page and only unknown paths fall back to the SPA
@@ -299,6 +328,13 @@ const start = async (): Promise<void> => {
   }
   serve({ fetch: app.fetch, port }, (info) => {
     console.log(`[server] listening on http://localhost:${info.port}`);
+  });
+
+  // After `serve`, not before: the warm-up does five upstream fetches and the
+  // health check should not wait on them. Deliberately not awaited — a cold
+  // cache is slower for one request, never broken.
+  void warmIntraday().catch((err: unknown) => {
+    console.error('[intraday] warm-up failed, first request will render cold:', err);
   });
 };
 

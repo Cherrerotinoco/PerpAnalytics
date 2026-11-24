@@ -40,6 +40,29 @@ create table if not exists fomoapi_credit_ledger (
 );
 
 create index if not exists fomoapi_credit_ledger_ts_idx on fomoapi_credit_ledger (ts desc);
+
+-- Intraday pull sequence.
+--
+-- This is the one table written without a browser asking for that specific row:
+-- the SSR page refreshes every 15 minutes, so the series is continuous. That is
+-- the point. It used to live in each visitor's localStorage, which made the
+-- Rule 7 sequence depend on when that person happened to open the page; one
+-- global series at a fixed cadence is a far better input for it.
+--
+-- Columns mirror HistoryRecord in app/src/utils/intraday/types.ts. The column
+-- net_gamma_m is millions of USD of delta per 1% move — deliberately NOT named
+-- net_gamma, because it is not comparable with the old provider's scale.
+create table if not exists intraday_pull (
+  id           bigserial primary key,
+  generated_at timestamptz not null,
+  price        double precision,
+  cvd_spot     double precision,
+  cvd_perp     double precision,
+  gamma_regime text,
+  net_gamma_m  double precision
+);
+
+create index if not exists intraday_pull_generated_at_idx on intraday_pull (generated_at desc);
 `;
 
 /**

@@ -1,6 +1,7 @@
 import { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react';
 import Panel, { Row, SectionHeading } from '../dashboard/Panel';
 import { CACHE_TTL_MS, buildIntradayReport, clearHistory, runIntraday } from '../utils/intraday';
+import { useSsrSnapshot } from '../utils/intraday/ssrData';
 import type {
   CvdAnalysis,
   GammaResult,
@@ -243,8 +244,13 @@ const GammaBody = ({
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 const IntradayPage = () => {
-  const [snap, setSnap] = useState<IntradaySnapshot | null>(null);
-  const [loading, setLoading] = useState(true);
+  // The server renders this route with a live snapshot and caches it for 15 min,
+  // so the page normally arrives complete rather than empty behind a spinner.
+  // `null` means there was no SSR data — the dev server and the SPA fallback both
+  // land there — and the page then fetches on mount exactly as it used to.
+  const ssrSnapshot = useSsrSnapshot();
+  const [snap, setSnap] = useState<IntradaySnapshot | null>(ssrSnapshot);
+  const [loading, setLoading] = useState(ssrSnapshot === null);
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [copied, setCopied] = useState(false);
   // Guards against a slow in-flight pull overwriting a newer one.
@@ -262,8 +268,12 @@ const IntradayPage = () => {
   }, []);
 
   useEffect(() => {
+    // Nothing to do when the server already supplied the pull: re-fetching on
+    // mount would throw away a snapshot that is at most 15 min old and undo the
+    // point of rendering it server-side.
+    if (ssrSnapshot) return;
     void refresh();
-  }, [refresh]);
+  }, [refresh, ssrSnapshot]);
 
   useEffect(() => {
     if (!autoRefresh) return;
