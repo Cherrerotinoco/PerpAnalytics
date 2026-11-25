@@ -23,8 +23,16 @@ export const GAMMA_URL = '/api/options/btc';
 // Spot session CVD (Binance). 5m candles instead of raw trades: each kline already
 // carries the taker-buy volume (buy aggressor) broken out, so the per-candle delta
 // is reconstructed without downloading millions of trades.
+//
+// The host is the market-data mirror, NOT api.binance.com: the spot API restricts US
+// IPs, and the server renders from a US region, so every server pull came back 418 and
+// the whole spot side of the report — session CVD, the divergence, the daily table —
+// silently read "no data" in production while the perp side worked. fapi (below) is not
+// restricted the same way and still points at the main host. The mirror serves the same
+// path with a byte-identical payload and needs no key; it carries market data only, so
+// it cannot absorb fapi too.
 export const BINANCE_KLINES_BASE =
-  'https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=5m';
+  'https://data-api.binance.vision/api/v3/klines?symbol=BTCUSDT&interval=5m';
 
 // Perpetual futures CVD (Binance USDT-M, BTCUSDT). Same kline shape as spot
 // (takerBuyBase at index 9), so the same parser is reused. Reading spot and perp

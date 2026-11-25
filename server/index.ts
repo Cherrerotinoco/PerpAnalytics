@@ -57,7 +57,11 @@ const CONTENT_SECURITY_POLICY = [
   [
     "connect-src 'self' https://perps-api.jup.ag https://api.pacifica.fi",
     'https://api.hyperliquid.xyz',
-    'https://api.binance.com https://fapi.binance.com https://api.bybit.com',
+    // data-api.binance.vision is the spot klines host for /intraday (see
+    // BINANCE_KLINES_BASE); api.binance.com stays for the dashboard trade chart,
+    // which is only ever called from the visitor's own browser.
+    'https://data-api.binance.vision https://api.binance.com',
+    'https://fapi.binance.com https://api.bybit.com',
     // basischarts is NOT listed: it sends no CORS header, so the options chain
     // goes through the same-origin passthrough below and the browser only ever
     // talks to 'self' for it.
