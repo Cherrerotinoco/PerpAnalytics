@@ -167,6 +167,16 @@ export interface GammaByExpiry {
   gamma: number;
 }
 
+/** One price bucket of the gamma profile. */
+export interface GammaByStrike {
+  /** Lower edge of the bucket in USD — the price the axis labels. */
+  strike: number;
+  /** Signed gamma held by that bucket, in M$ of delta per 1% move. */
+  gamma: number;
+  /** true for the single bucket containing the current spot price. */
+  atSpot: boolean;
+}
+
 /**
  * Aggregated gamma exposure, computed in gex.ts from the chain above.
  *
@@ -223,6 +233,10 @@ export interface GammaSnapshot {
   gammaByVenue: Record<string, number | null>;
   /** Signed gamma per expiry, nearest first — the term structure of the profile. */
   gammaByExpiry: GammaByExpiry[];
+  /** Signed gamma per price bucket, highest strike first — the profile on price. */
+  gammaByStrike: GammaByStrike[];
+  /** Width in USD of each `gammaByStrike` bucket, so the UI can label the axis. */
+  strikeBucket: number;
 }
 
 /** `degraded` = well-formed chain but nothing usable in it (no OI, no index price). */

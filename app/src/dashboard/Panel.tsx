@@ -9,8 +9,12 @@ export const Row = ({ children }: { children: ReactNode }) => (
 
 // ─── Section heading ──────────────────────────────────────────────────────────
 // Full-width subheading used to group related rows within a tab.
+//
+// h2, directly under the page h1: these head the data itself. The explanatory
+// boxes on the intraday page are also h2 but are supporting material, so leaving
+// the data at h3 put the page's actual content a level below its own footnotes.
 export const SectionHeading = ({ children }: { children: ReactNode }) => (
-  <h3 className="tc-section-heading">{children}</h3>
+  <h2 className="tc-section-heading">{children}</h2>
 );
 
 // ─── Static panel card ────────────────────────────────────────────────────────
@@ -19,17 +23,27 @@ export const SectionHeading = ({ children }: { children: ReactNode }) => (
 // than its content (because a sibling in the row is taller).
 interface PanelProps {
   title?: string;
+  /** Rendered at the far end of the header — freshness marks, counts, controls. */
+  badge?: ReactNode;
   grow?: number;
   minWidth?: number;
   centered?: boolean;
   children: ReactNode;
 }
 
-const Panel = ({ title, grow = 1, minWidth = 280, centered = false, children }: PanelProps) => (
+const Panel = ({
+  title,
+  badge,
+  grow = 1,
+  minWidth = 280,
+  centered = false,
+  children,
+}: PanelProps) => (
   <div className="tc-panel-card" style={{ flex: `${grow} 1 0`, minWidth }}>
     {title && (
       <div className="tc-panel-header">
         <span className="tc-panel-title">{title}</span>
+        {badge}
       </div>
     )}
     <div className={`tc-panel-body${centered ? ' tc-panel-body--centered' : ''}`}>{children}</div>

@@ -258,3 +258,64 @@ describe('parseGamma / computeGex', () => {
     expect(parseGamma({ foo: 'bar' }).ok).toBe(false);
   });
 });
+
+// ─── gammaByStrike ────────────────────────────────────────────────────────────
+describe('gamma profile by price level', () => {
+  it('buckets the chain onto a round step and runs highest strike first', () => {
+    const r = gex(chain());
+    expect(r.strikeBucket).toBe(1000);
+    // Window is spot ±15% → 51,000…69,000 on a $1,000 grid.
+    expect(r.gammaByStrike[0].strike).toBe(69000);
+    expect(r.gammaByStrike[r.gammaByStrike.length - 1].strike).toBe(51000);
+    const strikes = r.gammaByStrike.map((b) => b.strike);
+    expect(strikes).toEqual([...strikes].sort((a, b) => b - a));
+  });
+
+  it('carries the call wall positive and the put wall negative', () => {
+    const r = gex(chain());
+    const at = (k: number) => r.gammaByStrike.find((b) => b.strike === k)!;
+    expect(at(65000).gamma).toBeGreaterThan(0);
+    expect(at(55000).gamma).toBeLessThan(0);
+  });
+
+  it('flags exactly one bucket as holding spot', () => {
+    const r = gex(chain());
+    const atSpot = r.gammaByStrike.filter((b) => b.atSpot);
+    expect(atSpot).toHaveLength(1);
+    expect(atSpot[0].strike).toBe(60000);
+  });
+
+  it('emits empty buckets rather than leaving gaps in the price axis', () => {
+    const r = gex(chain());
+    const step = r.strikeBucket;
+    for (let i = 1; i < r.gammaByStrike.length; i++) {
+      expect(r.gammaByStrike[i - 1].strike - r.gammaByStrike[i].strike).toBe(step);
+    }
+    expect(r.gammaByStrike.some((b) => b.gamma === 0)).toBe(true);
+  });
+
+  it('drops strikes outside the window instead of flattening the profile', () => {
+    const r = gex(
+      chain({
+        quotes: [
+          quote({ strike: 65000, kind: 'call', openInterest: 500 }),
+          // Far OTM: real in the chain, but 2× spot carries no intraday gamma.
+          quote({ strike: 120000, kind: 'call', openInterest: 9000, forward: 60000 }),
+        ],
+      })
+    );
+    expect(r.gammaByStrike.some((b) => b.strike === 120000)).toBe(false);
+    expect(r.gammaByStrike.find((b) => b.strike === 65000)!.gamma).toBeGreaterThan(0);
+  });
+
+  it('widens the bucket with spot so the row count stays readable', () => {
+    const cheap = gex(
+      chain({ indexPrice: 6000, quotes: [quote({ strike: 6000, forward: 6000 })] })
+    );
+    const rich = gex(
+      chain({ indexPrice: 600000, quotes: [quote({ strike: 600000, forward: 600000 })] })
+    );
+    expect(cheap.strikeBucket).toBeLessThan(rich.strikeBucket);
+    for (const r of [cheap, rich]) expect(r.gammaByStrike.length).toBeLessThanOrEqual(32);
+  });
+});

@@ -12,10 +12,13 @@
 // amplified volatility. NOTE: this is an ASSUMPTION about positioning, not a
 // figure the endpoint reports.
 
-import type { GammaSnapshot, OptionQuote, OptionsChain, VolPoint } from './types';
+import type { GammaByStrike, GammaSnapshot, OptionQuote, OptionsChain, VolPoint } from './types';
 
 const MS_PER_YEAR = 365 * 24 * 60 * 60 * 1000;
 const INV_SQRT_2PI = 0.3989422804014327;
+
+/** Divisor for every gamma figure reported: raw USD of delta → millions. */
+const MM = 1e6;
 
 // Residual-life floor: 10 minutes. Γ ∝ 1/√T, so an ATM strike seconds away from
 // expiry would tend to infinity and dominate the whole profile (netGamma, pin
@@ -251,6 +254,59 @@ const levels = (
   return { support, resistance, pin, pinShare: total > 0 ? pinAbs / total : null };
 };
 
+// ─── Profile by price level ───────────────────────────────────────────────────
+// The chain quotes strikes on a $250–$5,000 grid depending on venue and tenor,
+// which leaves ~200 distinct levels: a faithful but unreadable profile. Bucketing
+// onto a round step preserves the shape (gamma is additive, so summing adjacent
+// strikes loses no signal) while giving an axis a reader can scan.
+
+/** Bucket widths the axis is allowed to use, so labels stay round numbers. */
+const NICE_STEPS = [100, 250, 500, 1000, 2500, 5000, 10_000, 25_000];
+
+/** Half-width of the window around spot, as a fraction. Gamma outside is noise. */
+const PROFILE_SPAN = 0.15;
+
+/** Rows to aim for across the whole window — what `step` is solved against. */
+const PROFILE_ROWS = 24;
+
+/** Narrowest round step that keeps the window under PROFILE_ROWS buckets. */
+const bucketStep = (spot: number): number => {
+  const target = (spot * PROFILE_SPAN * 2) / PROFILE_ROWS;
+  return NICE_STEPS.find((s) => s >= target) ?? NICE_STEPS[NICE_STEPS.length - 1];
+};
+
+/**
+ * Signed gamma per price bucket, highest strike first — the orientation every
+ * options desk draws a GEX profile in, so the price axis reads like a chart.
+ *
+ * Every bucket in the window is emitted, including the empty ones: a gap in the
+ * price axis would read as "no data here" when what it means is "no gamma here",
+ * and the distance between two walls is itself the information.
+ */
+const profileByStrike = (signedByStrike: Map<number, number>, spot: number): GammaByStrike[] => {
+  const step = bucketStep(spot);
+  const edgeOf = (price: number): number => Math.floor(price / step) * step;
+  const lo = edgeOf(spot * (1 - PROFILE_SPAN));
+  const hi = edgeOf(spot * (1 + PROFILE_SPAN));
+  const spotEdge = edgeOf(spot);
+
+  const buckets = new Map<number, number>();
+  for (let edge = lo; edge <= hi; edge += step) buckets.set(edge, 0);
+  for (const [strike, gex] of signedByStrike) {
+    const edge = edgeOf(strike);
+    if (edge < lo || edge > hi) continue;
+    buckets.set(edge, (buckets.get(edge) ?? 0) + gex);
+  }
+
+  return [...buckets]
+    .sort((a, b) => b[0] - a[0])
+    .map(([strike, gex]) => ({
+      strike,
+      gamma: round2(gex / MM) ?? 0,
+      atSpot: strike === spotEdge,
+    }));
+};
+
 interface FlipQuote {
   forward: number;
   strike: number;
@@ -371,7 +427,6 @@ export const computeGex = (data: OptionsChain): GammaSnapshot | null => {
   const agg = aggregate(data.quotes, now);
   if (agg.used === 0 || spot == null) return null;
 
-  const MM = 1e6;
   const callGamma = agg.callGex / MM;
   const putGamma = agg.putGex / MM;
   const netGamma = callGamma + putGamma;
@@ -463,5 +518,10 @@ export const computeGex = (data: OptionsChain): GammaSnapshot | null => {
         daysOut: Math.max(0, Math.round((expiry - now) / 86_400_000)),
         gamma: round2(g / MM) ?? 0,
       })),
+    // Same gamma, projected on the price axis instead of the time axis: where the
+    // walls sit relative to spot, which is the context support/resistance/flip are
+    // reported without.
+    gammaByStrike: profileByStrike(agg.signedByStrike, spot),
+    strikeBucket: bucketStep(spot),
   };
 };

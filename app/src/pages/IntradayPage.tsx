@@ -3,9 +3,13 @@ import Panel, { Row, SectionHeading } from '../dashboard/Panel';
 import { CACHE_TTL_MS, buildIntradayReport, clearHistory, runIntraday } from '../utils/intraday';
 import { useSsrSnapshot } from '../utils/intraday/ssrData';
 import type {
+  Capitulation,
   CvdAnalysis,
+  Divergence,
   FlowAnalysis,
+  GammaRegime,
   GammaByExpiry,
+  GammaByStrike,
   GammaResult,
   GammaSnapshot,
   IntradaySnapshot,
@@ -39,6 +43,14 @@ const millions = (n: number | null | undefined): string => {
   if (abs >= 1e3) return `${s}$${(abs / 1e3).toFixed(1)}K`;
   return `${s}$${abs.toFixed(0)}`;
 };
+
+/**
+ * Fixed-decimal reading of a raw figure. The Vol Lab endpoint serves full float
+ * precision (ρ arrives as -0.4590246638338294), which breaks the grid alignment
+ * and wraps on mobile; nothing downstream reads past the third decimal.
+ */
+const dec = (n: number | null | undefined, digits = 2): string =>
+  n == null || !Number.isFinite(n) ? '—' : n.toFixed(digits);
 
 const signClass = (n: number | null | undefined): string =>
   n == null ? '' : n > 0 ? 'tc-green' : n < 0 ? 'tc-red' : '';
@@ -232,6 +244,92 @@ const SqueezeLevels = ({ gamma }: { gamma: GammaSnapshot }) => (
   </>
 );
 
+/**
+ * Signed gamma per price bucket — the same exposure the expiry chart splits by
+ * time, projected on price instead.
+ *
+ * Rows run highest strike first so the axis reads like a chart, and the bucket
+ * holding spot is marked: where price sits inside the profile is the whole point,
+ * and it turns support/resistance/flip from three numbers into a shape.
+ */
+const GammaByStrikeChart = ({
+  buckets,
+  levels,
+}: {
+  buckets: GammaByStrike[];
+  levels: Pick<GammaSnapshot, 'support' | 'resistance' | 'breakout'>;
+}) => {
+  if (!buckets.length) {
+    return <p className="tc-intraday-note">No strike breakdown in this run.</p>;
+  }
+  const max = Math.max(...buckets.map((b) => Math.abs(b.gamma)), 0.01);
+  // One tag per level, matched to the bucket that contains it, so the walls the
+  // cards name are visible as rows rather than as a separate list of numbers.
+  const step = buckets.length > 1 ? buckets[0].strike - buckets[1].strike : 0;
+  const holds = (level: number | null): ((s: number) => boolean) =>
+    level == null || step <= 0 ? () => false : (s) => level >= s && level < s + step;
+  const isSupport = holds(levels.support);
+  const isResistance = holds(levels.resistance);
+  const isFlip = holds(levels.breakout);
+
+  return (
+    <div className="tc-gex-expiry tc-gex-strike">
+      {buckets.map((b) => {
+        const pctWidth = `${(Math.abs(b.gamma) / max) * 100}%`;
+        const neg = b.gamma < 0;
+        const tag = isFlip(b.strike)
+          ? 'flip'
+          : isResistance(b.strike)
+            ? 'resistance'
+            : isSupport(b.strike)
+              ? 'support'
+              : null;
+        return (
+          <div
+            className={`tc-gex-expiry-row ${b.atSpot ? 'tc-gex-expiry-row--spot' : ''}`}
+            key={b.strike}
+          >
+            {/* At most one tag. The spot row is already marked by its band and
+                bold label, so when a level lands on it the level is the tag
+                worth the space — two of them overflowed the column on a phone. */}
+            <span className="tc-gex-expiry-label">
+              {usd(b.strike)}
+              {tag ? (
+                <span className={`tc-gex-strike-tag tc-gex-strike-tag--${tag}`}>{tag}</span>
+              ) : (
+                b.atSpot && <span className="tc-gex-strike-tag">spot</span>
+              )}
+            </span>
+            <span className="tc-gex-expiry-track">
+              <span className="tc-gex-expiry-half tc-gex-expiry-half--neg">
+                {neg && (
+                  <span
+                    className="tc-gex-expiry-bar tc-gex-expiry-bar--neg"
+                    style={{ width: pctWidth }}
+                  />
+                )}
+              </span>
+              <span className="tc-gex-expiry-half">
+                {!neg && (
+                  <span
+                    className="tc-gex-expiry-bar tc-gex-expiry-bar--pos"
+                    style={{ width: pctWidth }}
+                  />
+                )}
+              </span>
+            </span>
+            <span
+              className={`tc-gex-expiry-value ${b.gamma === 0 ? '' : neg ? 'tc-red' : 'tc-green'}`}
+            >
+              {b.gamma === 0 ? '·' : signed(b.gamma)}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
 /** Signed gamma per expiry, scaled against the largest bucket in the set. */
 const GammaByExpiryChart = ({ buckets }: { buckets: GammaByExpiry[] }) => {
   if (!buckets.length) {
@@ -324,19 +422,16 @@ const VolLabBody = ({ volLab, read }: { volLab: VolLabSnapshot; read: VolLabRead
     <div className="tc-intraday-regime">{read.signalLabel}</div>
     <div className="tc-intraday-kv-grid">
       <KeyValue k="Expiry" v={`${volLab.expiry ?? '—'} (τ ${volLab.tauDays ?? '—'}d)`} />
-      <KeyValue k="Skew RP z-score" v={`${volLab.skewRpZ ?? '—'} (${read.stretch})`} />
-      <KeyValue
-        k="Risk reversal / butterfly"
-        v={`${volLab.avgRr ?? '—'} / ${volLab.avgFly ?? '—'}`}
-      />
+      <KeyValue k="Skew RP z-score" v={`${dec(volLab.skewRpZ)} (${read.stretch})`} />
+      <KeyValue k="Risk reversal / butterfly" v={`${dec(volLab.avgRr)} / ${dec(volLab.avgFly)}`} />
       <KeyValue
         k="Vol-of-vol ν (impl / real)"
-        v={`${volLab.nuImp ?? '—'} / ${volLab.nuR ?? '—'}`}
+        v={`${dec(volLab.nuImp)} / ${dec(volLab.nuR)}`}
         tone={read.vvolUnderpriced ? 'tc-amber' : ''}
       />
       <KeyValue
         k="Spot-vol ρ (impl / real)"
-        v={`${volLab.rhoImp ?? '—'} / ${volLab.rhoR ?? '—'}`}
+        v={`${dec(volLab.rhoImp, 3)} / ${dec(volLab.rhoR, 3)}`}
         tone={read.rhoDivergence ? 'tc-amber' : ''}
       />
     </div>
@@ -367,7 +462,14 @@ const WhaleFlowBody = ({ flows }: { flows: FlowAnalysis }) => {
           label="Net BTC balance"
           tone={tone(flows.netBtc > 0 ? 'bullish' : flows.netBtc < 0 ? 'bearish' : '')}
         />
-        <Hero value={usd(flows.netUsd)} label="Net USD" />
+        {/* Abbreviated, not the full figure: at 24px in a hero column the exact
+            dollar count wraps mid-number on a phone, and the digits past the
+            second decimal of a million carry nothing a reader acts on. */}
+        <Hero
+          value={millions(flows.netUsd)}
+          label="Net USD"
+          tone={tone(flows.netUsd > 0 ? 'bullish' : flows.netUsd < 0 ? 'bearish' : '')}
+        />
         <Hero
           value={flows.netSignal}
           label="Flow signal (BTC count)"
@@ -520,6 +622,126 @@ const GammaBody = ({
   );
 };
 
+// ─── Signal strip ─────────────────────────────────────────────────────────────
+const DIVERGENCE_LABEL: Record<Divergence, string> = {
+  BULLISH: 'Bullish divergence',
+  BEARISH: 'Bearish divergence',
+  CONFIRMS: 'Price confirms',
+  'N/A': 'No read',
+};
+
+/** BEARISH → Bearish, so one strip does not mix shouted and sentence case. */
+const titleCase = (s: string): string => s.charAt(0) + s.slice(1).toLowerCase();
+
+const toneOf = (v: string): string =>
+  /BULLISH|Buying/i.test(v) ? 'tc-green' : /BEARISH|Selling/i.test(v) ? 'tc-red' : '';
+
+const Chip = ({ label, value, tone }: { label: string; value: string; tone?: string }) => (
+  <div className="tc-intraday-chip">
+    <span className="tc-intraday-chip-label">{label}</span>
+    <span className={`tc-intraday-chip-value ${tone ?? ''}`}>{value}</span>
+  </div>
+);
+
+/** The timeframes reading absorption, as the short form a chip can hold. */
+const absorbedChip = (cvd: CvdAnalysis | null): string | null => {
+  const hits = TF_KEYS.map((k) => cvd?.timeframes[k]).filter(
+    (w): w is TimeframeWindow =>
+      w?.flow?.kind === 'ABSORBED_BUYING' || w?.flow?.kind === 'ABSORBED_SELLING'
+  );
+  if (!hits.length) return null;
+  const side = hits[0].flow!.kind === 'ABSORBED_BUYING' ? 'buying' : 'selling';
+  return `${hits.map((w) => w.label).join(', ')} ${side}`;
+};
+
+/**
+ * The readings buried further down, gathered in one line under the headline stats.
+ *
+ * Deliberately NOT a new signal: every chip mirrors a field a panel below renders,
+ * so the strip can never disagree with the page. It also deliberately skips what
+ * the stat cards directly above already show (spot and perp aggression, the gamma
+ * regime) — repeating those would make the strip decoration rather than an answer.
+ * Someone opening this page wants "what is happening" before forty metrics, and
+ * until now that answer only existed by pasting the raw report into an assistant.
+ */
+const SignalStrip = ({
+  cvd,
+  flows,
+  capitulation,
+  divergent,
+}: {
+  cvd: CvdAnalysis | null;
+  flows: FlowAnalysis | null;
+  capitulation: Capitulation | null;
+  divergent: boolean;
+}) => {
+  const chips: { label: string; value: string; tone?: string }[] = [];
+  if (cvd) {
+    chips.push({
+      label: 'Price vs CVD',
+      value: DIVERGENCE_LABEL[cvd.divergence],
+      tone: toneOf(cvd.divergence),
+    });
+  }
+  const absorbed = absorbedChip(cvd);
+  if (absorbed) chips.push({ label: 'Absorption', value: absorbed, tone: 'tc-amber' });
+  if (flows) {
+    chips.push({
+      label: 'Whale flow',
+      value: titleCase(flows.netSignal),
+      tone: toneOf(flows.netSignal),
+    });
+  }
+  if (capitulation) {
+    chips.push({
+      label: 'Capitulation',
+      value: `${capitulation.met}/${capitulation.total} — ${capitulation.verdict}`,
+    });
+  }
+  if (!chips.length) return null;
+
+  return (
+    <div className="tc-intraday-strip">
+      <div className="tc-intraday-chips">
+        {chips.map((c) => (
+          <Chip key={c.label} {...c} />
+        ))}
+      </div>
+      {divergent && (
+        <p className="tc-intraday-note tc-intraday-note--warn">
+          Spot and perp are aggressing in opposite directions — cash and leverage disagree, so treat
+          either read as weaker than it looks on its own.
+        </p>
+      )}
+    </div>
+  );
+};
+
+// ─── Freshness ────────────────────────────────────────────────────────────────
+/** The three panel groups a browser-side pull cannot refresh (all CORS-blocked). */
+type CarriedGroup = 'whale' | 'skew' | 'volLab';
+
+/**
+ * Marks a panel whose values did not come from the latest pull.
+ *
+ * Whale Alert, skew and Vol Lab are CORS-blocked, so pressing Refresh carries
+ * their previous values forward rather than blanking them. The page prints a
+ * single global "Last reading", so without this badge those panels silently
+ * inherit a timestamp they were never fetched at.
+ */
+const StaleBadge = ({ since }: { since: string | null }) => {
+  if (!since) return null;
+  const at = `${since.slice(11, 16)} UTC`;
+  return (
+    <span
+      className="tc-intraday-stale"
+      title={`Fetched at ${at}. The last refresh could not reach this source from the browser, so these values were carried forward.`}
+    >
+      from {at}
+    </span>
+  );
+};
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 const IntradayPage = () => {
   // The server renders this route with a live snapshot and caches it for 15 min,
@@ -531,8 +753,15 @@ const IntradayPage = () => {
   const [loading, setLoading] = useState(ssrSnapshot === null);
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [copied, setCopied] = useState(false);
+  // When each carried-forward group was actually fetched, so the badges can date
+  // them. Keyed by group; absent = the group is as fresh as the global reading.
+  const [carriedAt, setCarriedAt] = useState<Partial<Record<CarriedGroup, string>>>({});
   // Guards against a slow in-flight pull overwriting a newer one.
   const runIdRef = useRef(0);
+  // Mirrors `snap` so refresh() can diff against the previous pull without doing
+  // the merge inside a setState updater (which would have to date the carried
+  // groups as a side effect).
+  const snapRef = useRef<IntradaySnapshot | null>(ssrSnapshot);
 
   // `force` bypasses the 15 min response cache — the manual button always goes to
   // the network, mount and auto-refresh reuse whatever is still fresh.
@@ -542,22 +771,34 @@ const IntradayPage = () => {
     const result = await runIntraday(new Date(), { force });
     if (runIdRef.current !== id) return;
     // Whale Alert, skew and Vol Lab are CORS-blocked, so a browser pull returns
-    // them as null. Carry the server-rendered values forward instead of blanking
-    // three panels every time someone presses refresh — they are labelled with
-    // their own timestamps, so a reader can see they are older than the CVD.
-    setSnap((prev) =>
-      prev
-        ? {
-            ...result,
-            whale: result.whale ?? prev.whale,
-            flows: result.flows ?? prev.flows,
-            skew: result.skew ?? prev.skew,
-            skewRead: result.skewRead ?? prev.skewRead,
-            volLab: result.volLab ?? prev.volLab,
-            volLabRead: result.volLabRead ?? prev.volLabRead,
-          }
-        : result
-    );
+    // them as null. Carry the previous values forward instead of blanking three
+    // panels every time someone presses refresh.
+    const prev = snapRef.current;
+    const merged = prev
+      ? {
+          ...result,
+          whale: result.whale ?? prev.whale,
+          flows: result.flows ?? prev.flows,
+          skew: result.skew ?? prev.skew,
+          skewRead: result.skewRead ?? prev.skewRead,
+          volLab: result.volLab ?? prev.volLab,
+          volLabRead: result.volLabRead ?? prev.volLabRead,
+        }
+      : result;
+
+    if (prev) {
+      // Date each group by when it was FETCHED, not by the previous snapshot's
+      // timestamp: after a second carry-forward that timestamp is itself a
+      // refresh the group never took part in, and the badge would creep
+      // forward until it claimed the data was current.
+      setCarriedAt((at) => ({
+        whale: result.whale ? undefined : (at.whale ?? prev.generatedAt),
+        skew: result.skew ? undefined : (at.skew ?? prev.generatedAt),
+        volLab: result.volLab ? undefined : (at.volLab ?? prev.generatedAt),
+      }));
+    }
+    snapRef.current = merged;
+    setSnap(merged);
     setLoading(false);
   }, []);
 
@@ -613,61 +854,69 @@ const IntradayPage = () => {
         </p>
       </div>
 
-      <div className="tc-intraday-about">
-        <section className="tc-intraday-about-card">
-          <h2 className="tc-intraday-about-title">Where the data comes from</h2>
-          <ul className="tc-intraday-about-list">
-            <li>
-              <strong>Binance spot</strong> — 5m and 1d candles for BTCUSDT. Each candle already
-              reports its taker-buy volume, so the aggressor delta is derived from it directly
-              rather than from individual trades.
-            </li>
-            <li>
-              <strong>Binance USDT-M perpetual</strong> — the same candles for the BTCUSDT perp.
-              Reading it next to spot is what exposes leverage pulling against cash.
-            </li>
-            <li>
-              <strong>BTC options gamma exposure</strong> — the raw options chain of Deribit, OKX,
-              Bybit and Binance via basischarts.com. No aggregated metrics are served: net gamma,
-              support, resistance, the gamma flip and the pin are all computed in the page with
-              Black-76 gamma on each expiry&apos;s forward.
-            </li>
-          </ul>
-          <p className="tc-intraday-about-note">
-            All three are public endpoints and need no API key. Responses are cached for 15 minutes
-            so refreshing does not hammer them; the pull history below is one shared series, the
-            same for every visitor, not a record of your own visits.
-          </p>
-        </section>
+      {/* Collapsed by default: this is read once, while the data below is read
+          daily. Open, it pushed the first number ~500px down on desktop and
+          most of a phone screen on mobile. */}
+      <details className="tc-intraday-about-wrap">
+        <summary className="tc-intraday-about-summary">
+          How this page works — sources, and using the report with your AI
+        </summary>
+        <div className="tc-intraday-about">
+          <section className="tc-intraday-about-card">
+            <h2 className="tc-intraday-about-title">Where the data comes from</h2>
+            <ul className="tc-intraday-about-list">
+              <li>
+                <strong>Binance spot</strong> — 5m and 1d candles for BTCUSDT. Each candle already
+                reports its taker-buy volume, so the aggressor delta is derived from it directly
+                rather than from individual trades.
+              </li>
+              <li>
+                <strong>Binance USDT-M perpetual</strong> — the same candles for the BTCUSDT perp.
+                Reading it next to spot is what exposes leverage pulling against cash.
+              </li>
+              <li>
+                <strong>BTC options gamma exposure</strong> — the raw options chain of Deribit, OKX,
+                Bybit and Binance via basischarts.com. No aggregated metrics are served: net gamma,
+                support, resistance, the gamma flip and the pin are all computed in the page with
+                Black-76 gamma on each expiry&apos;s forward.
+              </li>
+            </ul>
+            <p className="tc-intraday-about-note">
+              All three are public endpoints and need no API key. Responses are cached for 15
+              minutes so refreshing does not hammer them; the pull history below is one shared
+              series, the same for every visitor, not a record of your own visits.
+            </p>
+          </section>
 
-        <section className="tc-intraday-about-card">
-          <h2 className="tc-intraday-about-title">Using the report with your AI</h2>
-          <ol className="tc-intraday-about-list">
-            <li>
-              Open <strong>Raw report</strong> at the bottom of this page and press{' '}
-              <strong>Copy to clipboard</strong>.
-            </li>
-            <li>
-              Paste it into ChatGPT, Claude or any assistant, ideally in a{' '}
-              <strong>fresh chat</strong>. Send it on its own — you do not need to write a question
-              around it.
-            </li>
-            <li>
-              The text already carries the numbers, a full interpretation guide, the weighting rules
-              and the required output format, so the assistant needs no other context.
-            </li>
-            <li>
-              You get back a <strong>scenario table</strong> — bullish, bearish and sideways with
-              probabilities summing to 100% — plus the drivers behind each one and LONG/SHORT setups
-              derived from the gamma levels.
-            </li>
-          </ol>
-          <p className="tc-intraday-about-note">
-            The report is a snapshot of the moment you copied it. For a fresh read, hit Refresh and
-            paste it again. It is automated analysis over public data, not financial advice.
-          </p>
-        </section>
-      </div>
+          <section className="tc-intraday-about-card">
+            <h2 className="tc-intraday-about-title">Using the report with your AI</h2>
+            <ol className="tc-intraday-about-list">
+              <li>
+                Open <strong>Raw report</strong> at the bottom of this page and press{' '}
+                <strong>Copy to clipboard</strong>.
+              </li>
+              <li>
+                Paste it into ChatGPT, Claude or any assistant, ideally in a{' '}
+                <strong>fresh chat</strong>. Send it on its own — you do not need to write a
+                question around it.
+              </li>
+              <li>
+                The text already carries the numbers, a full interpretation guide, the weighting
+                rules and the required output format, so the assistant needs no other context.
+              </li>
+              <li>
+                You get back a <strong>scenario table</strong> — bullish, bearish and sideways with
+                probabilities summing to 100% — plus the drivers behind each one and LONG/SHORT
+                setups derived from the gamma levels.
+              </li>
+            </ol>
+            <p className="tc-intraday-about-note">
+              The report is a snapshot of the moment you copied it. For a fresh read, hit Refresh
+              and paste it again. It is automated analysis over public data, not financial advice.
+            </p>
+          </section>
+        </div>
+      </details>
 
       <div className="tc-intraday-toolbar">
         <button
@@ -757,6 +1006,13 @@ const IntradayPage = () => {
             </Panel>
           </Row>
 
+          <SignalStrip
+            cvd={cvd}
+            flows={snap.flows}
+            capitulation={snap.capitulation}
+            divergent={divergent}
+          />
+
           {/* ─── Order flow ─────────────────────────────────────────────────── */}
           {/* Whale flows lead the page: they carry the highest weight in the model
               (whales and CVD > realised/potential > gamma > skew). Server-rendered
@@ -765,7 +1021,12 @@ const IntradayPage = () => {
             <>
               <SectionHeading>Whale flows</SectionHeading>
               <Row>
-                <Panel title="Transfers and net balance" grow={1} minWidth={320}>
+                <Panel
+                  title="Transfers and net balance"
+                  badge={<StaleBadge since={carriedAt.whale ?? null} />}
+                  grow={1}
+                  minWidth={320}
+                >
                   <WhaleFlowBody flows={snap.flows} />
                 </Panel>
               </Row>
@@ -931,6 +1192,15 @@ const IntradayPage = () => {
                 </Panel>
               </Row>
               <Row>
+                <Panel title="Gamma exposure by price level" grow={1} minWidth={320}>
+                  <GammaByStrikeChart buckets={snap.gamma.gammaByStrike} levels={snap.gamma} />
+                  <p className="tc-intraday-note">
+                    Signed gamma per ${snap.gamma.strikeBucket.toLocaleString('en-US')} price
+                    bucket, spot ±15%, in M$ of delta per 1% move. Red = dealers short gamma at that
+                    level (price accelerates through it), green = long (price sticks). The walls the
+                    cards above name are tagged on their own row.
+                  </p>
+                </Panel>
                 <Panel title="Gamma exposure by expiry" grow={1} minWidth={320}>
                   <GammaByExpiryChart buckets={snap.gamma.gammaByExpiry} />
                   <p className="tc-intraday-note">
@@ -945,12 +1215,22 @@ const IntradayPage = () => {
           {(snap.skew?.ok || snap.volLab?.ok) && (
             <Row>
               {snap.skew?.ok && snap.skewRead && (
-                <Panel title="Market sentiment — 25-delta skew" grow={4} minWidth={300}>
+                <Panel
+                  title="Market sentiment — 25-delta skew"
+                  badge={<StaleBadge since={carriedAt.skew ?? null} />}
+                  grow={4}
+                  minWidth={300}
+                >
                   <MarketSentiment skew={snap.skew} read={snap.skewRead} />
                 </Panel>
               )}
               {snap.volLab?.ok && snap.volLabRead && (
-                <Panel title="Vol Lab — skew risk premium" grow={5} minWidth={320}>
+                <Panel
+                  title="Vol Lab — skew risk premium"
+                  badge={<StaleBadge since={carriedAt.volLab ?? null} />}
+                  grow={5}
+                  minWidth={320}
+                >
                   <VolLabBody volLab={snap.volLab} read={snap.volLabRead} />
                 </Panel>
               )}

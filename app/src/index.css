@@ -66,8 +66,11 @@ body {
   --tc-text-secondary: #374151;
   --tc-muted: #6b7280;
   --tc-text-disabled: #9ca3af;
-  --tc-green: #16a34a;
-  --tc-green-soft: rgba(22, 163, 74, 0.1);
+  /* green-700, not green-600: at 12-13px — which is most of the coloured text on
+     the intraday page — #16a34a sits at 3.3:1 on white and fails WCAG AA. This
+     clears 5:1. Only bars and dots use it as a fill, so darkening is free there. */
+  --tc-green: #15803d;
+  --tc-green-soft: rgba(21, 128, 61, 0.1);
   --tc-red: #dc2626;
   --tc-red-soft: rgba(220, 38, 38, 0.1);
   --tc-amber: #d97706;
@@ -2494,9 +2497,72 @@ body {
 .tc-panel-card .tc-panel-header {
   display: flex;
   align-items: center;
+  gap: 8px;
   padding: 8px 12px;
   border-bottom: 1px solid var(--tc-border);
   background: var(--tc-surface);
+}
+
+/* ─── Signal strip ──────────────────────────────────────────────────────────
+   One line of the readings the panels below already carry, so the page answers
+   "what is happening" before it answers "with which numbers". */
+.tc-intraday-strip {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tc-intraday-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tc-intraday-chip {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 1 1 auto;
+  min-width: 140px;
+  padding: 7px 11px;
+  border: 1px solid var(--tc-border);
+  border-radius: var(--tc-radius);
+  background: var(--tc-surface);
+}
+
+.tc-intraday-chip-label {
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--tc-muted);
+}
+
+.tc-intraday-chip-value {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--tc-text);
+}
+
+/* Freshness badge: this panel's values predate the global "Last reading". Amber
+   rather than red — the data is usable, just older than the rest of the page. */
+.tc-intraday-stale {
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--tc-amber);
+  border: 1px solid color-mix(in srgb, var(--tc-amber) 40%, transparent);
+  border-radius: 999px;
+  padding: 1px 7px;
+  white-space: nowrap;
+  cursor: help;
+}
+
+/* Badge slot: pushed to the far end of the header, never squeezing the title. */
+.tc-panel-card .tc-panel-header > :not(.tc-panel-title) {
+  margin-left: auto;
+  flex: 0 0 auto;
 }
 .tc-panel-card .tc-panel-title {
   font-size: 0.72rem;
@@ -2605,6 +2671,47 @@ body {
 }
 
 /* ─── Intro: data sources + how to use the AI prompt ─────────────────────────── */
+/* ─── Collapsible "how this page works" ─────────────────────────────────────
+   Shut, this is a single row above the data; open, it is the two cards it has
+   always been. */
+.tc-intraday-about-summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border: 1px solid var(--tc-border);
+  border-radius: var(--tc-radius);
+  background: var(--tc-surface);
+  color: var(--tc-text-secondary);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.tc-intraday-about-summary:hover {
+  border-color: var(--tc-border-strong);
+  color: var(--tc-text);
+}
+
+.tc-intraday-about-summary::-webkit-details-marker {
+  display: none;
+}
+
+.tc-intraday-about-summary::before {
+  content: '▸';
+  color: var(--tc-muted);
+  font-size: 0.7rem;
+}
+
+.tc-intraday-about-wrap[open] .tc-intraday-about-summary::before {
+  content: '▾';
+}
+
+.tc-intraday-about-wrap[open] .tc-intraday-about-summary {
+  margin-bottom: 14px;
+}
+
 .tc-intraday-about {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
@@ -3042,6 +3149,65 @@ body {
 .tc-gex-expiry-value {
   text-align: right;
   color: var(--tc-text-secondary);
+}
+
+/* ─── Profile by price level ────────────────────────────────────────────────
+   Same rows as the expiry chart, but the label carries a price plus up to two
+   tags, so it needs a wider column. Rows are tighter: the price axis is twice
+   as long and only reads as a shape when the bars sit close together. */
+.tc-gex-strike {
+  gap: 3px;
+}
+
+/* Fixed, not max-content: each row is its own grid, so an intrinsic width would
+   be measured per row and the bars would stop lining up. Sized for a price plus
+   one tag — the component never renders two (see GammaByStrikeChart). */
+.tc-gex-strike .tc-gex-expiry-row {
+  grid-template-columns: 136px minmax(80px, 1fr) 58px;
+  gap: 8px;
+}
+
+/* The bucket holding spot: the reader's anchor in the profile. A background band
+   rather than a rule across the row — the spot bucket usually carries one of the
+   largest bars, and a hairline drawn over a solid bar disappears into it. */
+.tc-gex-strike .tc-gex-expiry-row--spot {
+  background: color-mix(in srgb, var(--tc-muted) 14%, transparent);
+  box-shadow: inset 2px 0 0 var(--tc-muted);
+  border-radius: 3px;
+  margin-inline: -6px;
+  padding-inline: 6px;
+}
+
+.tc-gex-strike .tc-gex-expiry-row--spot .tc-gex-expiry-label {
+  color: var(--tc-text);
+  font-weight: 600;
+}
+
+.tc-gex-strike-tag {
+  margin-left: 5px;
+  padding: 0 5px;
+  border: 1px solid var(--tc-border);
+  border-radius: 999px;
+  font-size: 0.62rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--tc-muted);
+  vertical-align: middle;
+}
+
+/* Level tags reuse the dot colours of the squeeze-levels card above, so the same
+   level is the same colour in both places. */
+.tc-gex-strike-tag--support {
+  color: var(--tc-red);
+  border-color: color-mix(in srgb, var(--tc-red) 45%, transparent);
+}
+.tc-gex-strike-tag--resistance {
+  color: var(--tc-amber);
+  border-color: color-mix(in srgb, var(--tc-amber) 45%, transparent);
+}
+.tc-gex-strike-tag--flip {
+  color: var(--tc-green);
+  border-color: color-mix(in srgb, var(--tc-green) 45%, transparent);
 }
 
 /* Sentiment callout under the skew figures. */
