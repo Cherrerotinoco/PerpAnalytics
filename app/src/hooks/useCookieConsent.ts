@@ -77,7 +77,7 @@ export const useCookieConsent = () => {
             consentModal: {
               title: 'We use cookies',
               description:
-                'We use analytics cookies to understand how you use PerpsAnalytics and improve the experience. You can choose to accept or decline below.',
+                'We use analytics cookies to understand how you use PerpAnalytics and improve the experience. You can choose to accept or decline below.',
               acceptAllBtn: 'Accept all',
               acceptNecessaryBtn: 'Decline',
               showPreferencesBtn: 'Manage preferences',

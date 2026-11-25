@@ -1,4 +1,4 @@
-# Perps Analytics
+# PerpAnalytics
 
 A client-side dashboard for analysing your perpetual futures trading history on Solana. Enter any wallet address to fetch positions from **Jupiter Perpetuals** and **Pacifica Finance** and explore interactive statistics — no backend required.
 

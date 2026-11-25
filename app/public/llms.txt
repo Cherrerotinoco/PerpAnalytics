@@ -1,8 +1,8 @@
-# PerpsAnalytics
+# PerpAnalytics
 
 > Free, client-side analytics dashboard for Solana perpetuals traders on Jupiter Perpetuals and Pacifica Finance.
 
-PerpsAnalytics is a free web application that lets Solana traders analyse their full trading history by pasting their wallet address. It fetches trade data directly from the Jupiter Perpetuals and Pacifica Finance APIs and displays it in an interactive dashboard. No sign-up, no wallet connection, and no data is stored — everything runs in the browser.
+PerpAnalytics is a free web application that lets Solana traders analyse their full trading history by pasting their wallet address. It fetches trade data directly from the Jupiter Perpetuals and Pacifica Finance APIs and displays it in an interactive dashboard. No sign-up, no wallet connection, and no data is stored — everything runs in the browser.
 
 ## What it does
 

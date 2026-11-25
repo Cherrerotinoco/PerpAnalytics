@@ -63,9 +63,9 @@ const routes: Record<string, RouteMeta> = {
   // current. Its metadata lives in INTRADAY_META below, which the server reuses so
   // the <head> copy stays in one place.
   '/cookie-policy': {
-    title: 'Cookie Policy — PerpsAnalytics',
+    title: 'Cookie Policy — PerpAnalytics',
     description:
-      'How PerpsAnalytics uses cookies: strictly necessary storage, optional analytics, and how to change your consent choices at any time.',
+      'How PerpAnalytics uses cookies: strictly necessary storage, optional analytics, and how to change your consent choices at any time.',
   },
 };
 

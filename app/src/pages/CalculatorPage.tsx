@@ -154,7 +154,7 @@ export default function CalculatorPage() {
 
   useEffect(() => {
     const prev = document.title;
-    document.title = 'Account Growth Calculator — PerpsAnalytics';
+    document.title = 'Account Growth Calculator — PerpAnalytics';
     return () => {
       document.title = prev;
     };
