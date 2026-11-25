@@ -7,6 +7,7 @@ import type {
   CvdAnalysis,
   Divergence,
   FlowAnalysis,
+  FlowBias,
   GammaRegime,
   GammaByExpiry,
   GammaByStrike,
@@ -448,12 +449,34 @@ const VolLabBody = ({ volLab, read }: { volLab: VolLabSnapshot; read: VolLabRead
   </>
 );
 
+/**
+ * Non-colour mark for a transfer's bias.
+ *
+ * The row already carried the direction twice — a coloured dot (🔴/🟢) and red
+ * or green category text — and both are hue. Red-green deficiency affects
+ * roughly 8% of men, which is most of this page's audience, so the direction
+ * was effectively unreadable for them. A shape carries it on a second channel.
+ */
+const BIAS_MARK: Record<FlowBias, string> = {
+  bullish: '▲',
+  bearish: '▼',
+  // Stablecoin arriving as dry powder: bullish only once it is deployed.
+  bullish_latent: '◆',
+  neutral: '–',
+};
+
+/** Transfers shown before the list asks to be expanded. */
+const WHALE_PREVIEW_ROWS = 8;
+
 /** Whale transfers, newest first, with the net balance underneath. */
 const WhaleFlowBody = ({ flows }: { flows: FlowAnalysis }) => {
+  const [expanded, setExpanded] = useState(false);
   if (!flows.classified.length)
     return <p className="tc-intraday-note">No whale alerts in this run.</p>;
   const tone = (bias: string) =>
     bias === 'bullish' ? 'tc-green' : bias === 'bearish' ? 'tc-red' : '';
+  const shown = expanded ? flows.classified : flows.classified.slice(0, WHALE_PREVIEW_ROWS);
+  const hidden = flows.classified.length - shown.length;
   return (
     <>
       <div className="tc-gex-hero">
@@ -512,8 +535,12 @@ const WhaleFlowBody = ({ flows }: { flows: FlowAnalysis }) => {
         <KeyValue k="Stable redemption" v={usd(flows.stable.redemption)} />
         <KeyValue k="Stable to exchange" v={usd(flows.stable.toExchange)} />
       </div>
+      {/* A preview that grows, not a scroll box. The list used to be 420px of
+          overflow holding ~1,500px of rows: it clipped its last row mid-line,
+          gave no sign more existed, and trapped the scroll on a phone inside a
+          page that is already long. */}
       <div className="tc-whale-list">
-        {flows.classified.map((a, i) => (
+        {shown.map((a, i) => (
           <div className="tc-whale-row" key={`${a.timestamp ?? i}-${i}`}>
             <span className="tc-whale-time">
               {a.timestamp != null
@@ -529,12 +556,30 @@ const WhaleFlowBody = ({ flows }: { flows: FlowAnalysis }) => {
               ({usd(a.valueUsd)})
               <br />
               <span className="tc-whale-note">
-                <span className={tone(a.flow.bias)}>{a.flow.category}</span> · {a.flow.note}
+                <span className={tone(a.flow.bias)}>
+                  {/* Hidden from assistive tech: the category text right after
+                      it already says the direction in words. */}
+                  <span className="tc-whale-mark" aria-hidden="true">
+                    {BIAS_MARK[a.flow.bias]}
+                  </span>
+                  {a.flow.category}
+                </span>{' '}
+                · {a.flow.note}
               </span>
             </span>
           </div>
         ))}
       </div>
+      {hidden > 0 && (
+        <button type="button" className="tc-page-btn" onClick={() => setExpanded(true)}>
+          Show {hidden} more {hidden === 1 ? 'transfer' : 'transfers'}
+        </button>
+      )}
+      {expanded && flows.classified.length > WHALE_PREVIEW_ROWS && (
+        <button type="button" className="tc-page-btn" onClick={() => setExpanded(false)}>
+          Show fewer
+        </button>
+      )}
     </>
   );
 };

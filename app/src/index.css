@@ -37,6 +37,7 @@ body {
   --tc-amber: #f4b942;
   --tc-accent: #f4b942; /* primary brand colour */
   --tc-accent-hover: #ffc95c;
+  --tc-focus-ring: #f4b942; /* ~10:1 on this background */
   --tc-accent-soft: rgba(244, 185, 66, 0.12);
   --tc-accent-border: rgba(244, 185, 66, 0.35);
   --tc-info: #60a5fa; /* analytical / informational */
@@ -76,6 +77,9 @@ body {
   --tc-amber: #d97706;
   --tc-accent: #d97706; /* slightly darker for contrast on white */
   --tc-accent-hover: #b45309;
+  /* Not --tc-accent: that lands on exactly 3.00:1 against the light page, the
+     bare minimum of SC 1.4.11 with no margin. amber-700 gives 4.7:1. */
+  --tc-focus-ring: #b45309;
   --tc-accent-soft: rgba(217, 119, 6, 0.12);
   --tc-accent-border: rgba(217, 119, 6, 0.35);
   --tc-info: #2563eb;
@@ -100,6 +104,20 @@ body {
   border: 1px solid var(--tc-border);
   border-radius: var(--tc-radius);
   padding: 0.5rem 0.65rem;
+}
+
+/* ─── Focus ─────────────────────────────────────────────────────────────────
+   One designed ring for every interactive element. The app styles its own
+   buttons, links and <summary>, so until now keyboard users were left with the
+   browser default over dark custom surfaces — and nothing at all on inputs,
+   which cleared the outline outright.
+
+   :focus-visible, not :focus, so the ring answers keyboard and programmatic
+   focus without flashing on every mouse click. */
+:focus-visible {
+  outline: 2px solid var(--tc-focus-ring);
+  outline-offset: 2px;
+  border-radius: 3px;
 }
 
 /* ─── Typography ────────────────────────────────────────────────────────────── */
@@ -182,8 +200,13 @@ body {
   color: var(--tc-muted);
 }
 
-.tc-input:focus {
+/* :not(:focus-visible) so this only drops the ring for pointer focus — a
+   keyboard tab into the field still gets the global :focus-visible outline. */
+.tc-input:focus:not(:focus-visible) {
   outline: none;
+}
+
+.tc-input:focus {
   background-color: var(--tc-surface-3);
   border-color: var(--tc-muted);
   box-shadow: none;
@@ -3237,12 +3260,22 @@ body {
 }
 
 /* Whale flow feed. */
+/* No max-height and no overflow: the list shows a preview and grows on demand
+   (see WhaleFlowBody). A nested scroll area inside an already-long page hid how
+   much was in it and clipped its last row halfway through. */
 .tc-whale-list {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  max-height: 420px;
-  overflow-y: auto;
+}
+
+/* Shape channel for the flow direction, alongside the red/green. Fixed width so
+   the category labels still line up down the column. */
+.tc-whale-mark {
+  display: inline-block;
+  width: 1em;
+  margin-right: 2px;
+  font-size: 0.72em;
 }
 
 .tc-whale-row {
