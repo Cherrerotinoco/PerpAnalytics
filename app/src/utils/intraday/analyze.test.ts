@@ -243,8 +243,7 @@ describe('analyzeGamma', () => {
     venues: ['deribit'],
     gammaByVenue: { deribit: -100 },
     gammaByExpiry: [],
-    gammaByStrike: [],
-    strikeBucket: 1000,
+    gammaGrid: { strikes: [], expiries: [], cells: [], spotRow: -1, bucket: 1000 },
     ...over,
   });
 

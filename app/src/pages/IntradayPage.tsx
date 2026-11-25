@@ -10,7 +10,7 @@ import type {
   FlowBias,
   GammaRegime,
   GammaByExpiry,
-  GammaByStrike,
+  GammaGrid,
   GammaResult,
   GammaSnapshot,
   IntradaySnapshot,
@@ -245,135 +245,165 @@ const SqueezeLevels = ({ gamma }: { gamma: GammaSnapshot }) => (
   </>
 );
 
+// ─── Gamma grid ───────────────────────────────────────────────────────────────
+/** Cell tint: hue carries the sign, alpha the magnitude against the strongest. */
+const cellTint = (gamma: number, max: number): string | undefined => {
+  if (gamma === 0 || max <= 0) return undefined;
+  // Floor at 0.08 so a small-but-real value still reads as filled rather than
+  // blank, and cap below 1 so the printed number keeps its contrast.
+  const a = Math.min(0.75, Math.max(0.08, (Math.abs(gamma) / max) * 0.75));
+  const rgb = gamma < 0 ? '239, 68, 68' : '34, 197, 94';
+  return `rgba(${rgb}, ${a})`;
+};
+
+/** Grid cells are tight, so figures lose a decimal as they grow. */
+const gridNum = (g: number): string => {
+  if (g === 0) return '';
+  const abs = Math.abs(g);
+  if (abs < 0.05) return '·';
+  return g.toFixed(abs >= 10 ? 0 : 1);
+};
+
 /**
- * Signed gamma per price bucket — the same exposure the expiry chart splits by
- * time, projected on price instead.
+ * Signed gamma over price × expiry, with both margins.
  *
- * Rows run highest strike first so the axis reads like a chart, and the bucket
- * holding spot is marked: where price sits inside the profile is the whole point,
- * and it turns support/resistance/flip from three numbers into a shape.
+ * The two one-dimensional charts this replaces each answered half a question:
+ * where the walls sit, and when they expire. Neither said which wall belongs to
+ * which expiry, and that is the intraday question — a wall at spot matters far
+ * more if it burns off tomorrow than if it is a quarterly. The totals column and
+ * row are exactly the two charts that used to be separate panels.
+ *
+ * A real table, not a div grid: the price and day headers are what make 200-odd
+ * numbers navigable with a screen reader. Every cell prints its value, so the
+ * tint is reinforcement rather than the only channel carrying the sign.
  */
-const GammaByStrikeChart = ({
-  buckets,
+const GammaGridTable = ({
+  grid,
+  byExpiry,
   levels,
 }: {
-  buckets: GammaByStrike[];
+  grid: GammaGrid;
+  byExpiry: GammaByExpiry[];
   levels: Pick<GammaSnapshot, 'support' | 'resistance' | 'breakout'>;
 }) => {
-  if (!buckets.length) {
-    return <p className="tc-intraday-note">No strike breakdown in this run.</p>;
+  if (!grid.strikes.length || !grid.expiries.length) {
+    return <p className="tc-intraday-note">No strike/expiry breakdown in this run.</p>;
   }
-  const max = Math.max(...buckets.map((b) => Math.abs(b.gamma)), 0.01);
-  // One tag per level, matched to the bucket that contains it, so the walls the
-  // cards name are visible as rows rather than as a separate list of numbers.
-  const step = buckets.length > 1 ? buckets[0].strike - buckets[1].strike : 0;
+  // One tag per level, on the row whose bucket contains it, so the walls the
+  // cards above name are findable as rows instead of as a separate list.
   const holds = (level: number | null): ((s: number) => boolean) =>
-    level == null || step <= 0 ? () => false : (s) => level >= s && level < s + step;
+    level == null ? () => false : (s) => level >= s && level < s + grid.bucket;
   const isSupport = holds(levels.support);
   const isResistance = holds(levels.resistance);
   const isFlip = holds(levels.breakout);
+  const tagFor = (strike: number): string | null =>
+    isFlip(strike)
+      ? 'flip'
+      : isResistance(strike)
+        ? 'resistance'
+        : isSupport(strike)
+          ? 'support'
+          : null;
+  const max = Math.max(...grid.cells.flat().map(Math.abs), 0.01);
+  const rowTotals = grid.cells.map((r) => r.reduce((s, v) => s + v, 0));
+  const colTotals = grid.expiries.map((_, c) => grid.cells.reduce((s, r) => s + r[c], 0));
+  const total = rowTotals.reduce((s, v) => s + v, 0);
+  // The all-strikes term structure, kept as its own row: the windowed margin is
+  // what the cells add up to, but an expiry's full book is the figure the gamma
+  // regime is actually computed from, and dropping it would have been a silent
+  // regression against the chart this grid replaces.
+  const fullByExpiry = new Map(byExpiry.map((b) => [b.expiry, b.gamma]));
+  const fullTotal = byExpiry.reduce((s, b) => s + b.gamma, 0);
 
   return (
-    <div className="tc-gex-expiry tc-gex-strike">
-      {buckets.map((b) => {
-        const pctWidth = `${(Math.abs(b.gamma) / max) * 100}%`;
-        const neg = b.gamma < 0;
-        const tag = isFlip(b.strike)
-          ? 'flip'
-          : isResistance(b.strike)
-            ? 'resistance'
-            : isSupport(b.strike)
-              ? 'support'
-              : null;
-        return (
-          <div
-            className={`tc-gex-expiry-row ${b.atSpot ? 'tc-gex-expiry-row--spot' : ''}`}
-            key={b.strike}
-          >
-            {/* At most one tag. The spot row is already marked by its band and
-                bold label, so when a level lands on it the level is the tag
-                worth the space — two of them overflowed the column on a phone. */}
-            <span className="tc-gex-expiry-label">
-              {usd(b.strike)}
-              {tag ? (
-                <span className={`tc-gex-strike-tag tc-gex-strike-tag--${tag}`}>{tag}</span>
-              ) : (
-                b.atSpot && <span className="tc-gex-strike-tag">spot</span>
-              )}
-            </span>
-            <span className="tc-gex-expiry-track">
-              <span className="tc-gex-expiry-half tc-gex-expiry-half--neg">
-                {neg && (
-                  <span
-                    className="tc-gex-expiry-bar tc-gex-expiry-bar--neg"
-                    style={{ width: pctWidth }}
-                  />
+    <div className="tc-gex-grid-scroll">
+      <table className="tc-gex-grid">
+        <thead>
+          <tr>
+            <th className="tc-gex-grid-corner" scope="col">
+              Price
+            </th>
+            {grid.expiries.map((e) => (
+              <th key={e.expiry} className="tc-gex-grid-col" scope="col" title={e.label}>
+                {e.daysOut}d
+              </th>
+            ))}
+            <th className="tc-gex-grid-col tc-gex-grid-total" scope="col">
+              All
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {grid.strikes.map((strike, r) => (
+            <tr key={strike} className={r === grid.spotRow ? 'tc-gex-grid-row--spot' : undefined}>
+              {/* At most one tag: the spot row is already marked by its band,
+                  so when a level lands on it the level is the tag worth the
+                  space. */}
+              <th className="tc-gex-grid-rowhead" scope="row">
+                {usd(strike)}
+                {tagFor(strike) ? (
+                  <span className={`tc-gex-strike-tag tc-gex-strike-tag--${tagFor(strike)}`}>
+                    {tagFor(strike)}
+                  </span>
+                ) : (
+                  r === grid.spotRow && <span className="tc-gex-strike-tag">spot</span>
                 )}
-              </span>
-              <span className="tc-gex-expiry-half">
-                {!neg && (
-                  <span
-                    className="tc-gex-expiry-bar tc-gex-expiry-bar--pos"
-                    style={{ width: pctWidth }}
-                  />
-                )}
-              </span>
-            </span>
-            <span
-              className={`tc-gex-expiry-value ${b.gamma === 0 ? '' : neg ? 'tc-red' : 'tc-green'}`}
-            >
-              {b.gamma === 0 ? '·' : signed(b.gamma)}
-            </span>
-          </div>
-        );
-      })}
-    </div>
-  );
-};
-
-/** Signed gamma per expiry, scaled against the largest bucket in the set. */
-const GammaByExpiryChart = ({ buckets }: { buckets: GammaByExpiry[] }) => {
-  if (!buckets.length) {
-    return <p className="tc-intraday-note">No expiry breakdown in this run.</p>;
-  }
-  // Only the nearest expiries matter intraday, and the tail is a long list of
-  // tiny quarterlies that would squash every bar that counts.
-  const shown = buckets.slice(0, 12);
-  const max = Math.max(...shown.map((b) => Math.abs(b.gamma)), 0.01);
-  return (
-    <div className="tc-gex-expiry">
-      {shown.map((b) => {
-        const pctWidth = `${(Math.abs(b.gamma) / max) * 100}%`;
-        const neg = b.gamma < 0;
-        return (
-          <div className="tc-gex-expiry-row" key={b.expiry}>
-            <span className="tc-gex-expiry-label">
-              {b.label} · {b.daysOut}d
-            </span>
-            <span className="tc-gex-expiry-track">
-              <span className="tc-gex-expiry-half tc-gex-expiry-half--neg">
-                {neg && (
-                  <span
-                    className="tc-gex-expiry-bar tc-gex-expiry-bar--neg"
-                    style={{ width: pctWidth }}
-                  />
-                )}
-              </span>
-              <span className="tc-gex-expiry-half">
-                {!neg && (
-                  <span
-                    className="tc-gex-expiry-bar tc-gex-expiry-bar--pos"
-                    style={{ width: pctWidth }}
-                  />
-                )}
-              </span>
-            </span>
-            <span className={`tc-gex-expiry-value ${neg ? 'tc-red' : 'tc-green'}`}>
-              {signed(b.gamma)}
-            </span>
-          </div>
-        );
-      })}
+              </th>
+              {grid.cells[r].map((g, c) => (
+                <td
+                  key={grid.expiries[c].expiry}
+                  className="tc-gex-grid-cell"
+                  style={{ backgroundColor: cellTint(g, max) }}
+                  title={`${usd(strike)} · ${grid.expiries[c].label} (${grid.expiries[c].daysOut}d): ${signed(g)} M$`}
+                >
+                  {gridNum(g)}
+                </td>
+              ))}
+              <td className={`tc-gex-grid-cell tc-gex-grid-total ${signClass(rowTotals[r])}`}>
+                {gridNum(rowTotals[r])}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+        <tfoot>
+          <tr>
+            <th className="tc-gex-grid-rowhead tc-gex-grid-total" scope="row">
+              In window
+            </th>
+            {colTotals.map((t, c) => (
+              <td
+                key={grid.expiries[c].expiry}
+                className={`tc-gex-grid-cell tc-gex-grid-total ${signClass(t)}`}
+              >
+                {gridNum(t)}
+              </td>
+            ))}
+            <td className={`tc-gex-grid-cell tc-gex-grid-total ${signClass(total)}`}>
+              {gridNum(total)}
+            </td>
+          </tr>
+          <tr>
+            <th className="tc-gex-grid-rowhead tc-gex-grid-total" scope="row">
+              All strikes
+            </th>
+            {grid.expiries.map((e) => {
+              const g = fullByExpiry.get(e.expiry);
+              return (
+                <td
+                  key={e.expiry}
+                  className={`tc-gex-grid-cell tc-gex-grid-total ${signClass(g ?? 0)}`}
+                  title={`${e.label}: ${signed(g ?? 0)} M$ across every strike, not just the window`}
+                >
+                  {g == null ? '' : gridNum(g)}
+                </td>
+              );
+            })}
+            <td className={`tc-gex-grid-cell tc-gex-grid-total ${signClass(fullTotal)}`}>
+              {gridNum(fullTotal)}
+            </td>
+          </tr>
+        </tfoot>
+      </table>
     </div>
   );
 };
@@ -1237,20 +1267,19 @@ const IntradayPage = () => {
                 </Panel>
               </Row>
               <Row>
-                <Panel title="Gamma exposure by price level" grow={1} minWidth={320}>
-                  <GammaByStrikeChart buckets={snap.gamma.gammaByStrike} levels={snap.gamma} />
+                <Panel title="Gamma exposure by price level and expiry" grow={1} minWidth={320}>
+                  <GammaGridTable
+                    grid={snap.gamma.gammaGrid}
+                    byExpiry={snap.gamma.gammaByExpiry}
+                    levels={snap.gamma}
+                  />
                   <p className="tc-intraday-note">
-                    Signed gamma per ${snap.gamma.strikeBucket.toLocaleString('en-US')} price
-                    bucket, spot ±15%, in M$ of delta per 1% move. Red = dealers short gamma at that
-                    level (price accelerates through it), green = long (price sticks). The walls the
-                    cards above name are tagged on their own row.
-                  </p>
-                </Panel>
-                <Panel title="Gamma exposure by expiry" grow={1} minWidth={320}>
-                  <GammaByExpiryChart buckets={snap.gamma.gammaByExpiry} />
-                  <p className="tc-intraday-note">
-                    Signed gamma per expiry, nearest first, in M$ of delta per 1% move. Red =
-                    dealers short gamma on that expiry (amplifies moves), green = long (dampens).
+                    Signed gamma in M$ of delta per 1% move, per $
+                    {snap.gamma.gammaGrid.bucket.toLocaleString('en-US')} price bucket (rows, spot
+                    ±15%) and days to expiry (columns). Red = dealers short gamma there (price
+                    accelerates through it), green = long (price sticks). <strong>In window</strong>{' '}
+                    adds up the cells above it; <strong>All strikes</strong> is that expiry&apos;s
+                    whole book, including the strikes too far from spot to be shown.
                   </p>
                 </Panel>
               </Row>

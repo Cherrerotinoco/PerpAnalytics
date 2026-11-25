@@ -3110,100 +3110,81 @@ body {
   font-size: 0.8rem;
 }
 
-/* Gamma by expiry: a horizontal bar per expiry, signed around a centre line. */
-.tc-gex-expiry {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+/* ─── Gamma grid (price × expiry) ───────────────────────────────────────────
+   A heatmap that is a real table: the price and day headers are what make the
+   cells navigable, and every cell prints its figure so the tint reinforces the
+   sign rather than being the only channel carrying it. */
+.tc-gex-grid-scroll {
+  /* The axis headers must not shrink below legibility on a phone, so the grid
+     scrolls inside this box and the page itself never scrolls sideways. */
+  overflow-x: auto;
+  max-width: 100%;
 }
 
-.tc-gex-expiry-row {
-  display: grid;
-  grid-template-columns: 88px 1fr 76px;
-  align-items: center;
-  gap: 10px;
-  font-size: 0.78rem;
+.tc-gex-grid {
+  border-collapse: collapse;
+  font-size: 0.72rem;
   font-variant-numeric: tabular-nums;
-}
-
-.tc-gex-expiry-label {
-  color: var(--tc-muted);
   white-space: nowrap;
 }
 
-/* The track is split in two halves so negative bars grow left from the centre
-   and positive bars grow right, without any JS layout maths. */
-.tc-gex-expiry-track {
-  display: flex;
-  align-items: center;
-  height: 14px;
-  min-width: 0;
-}
-
-.tc-gex-expiry-half {
-  flex: 1 1 50%;
-  display: flex;
-  height: 100%;
-  min-width: 0;
-}
-
-.tc-gex-expiry-half--neg {
-  justify-content: flex-end;
-  border-right: 1px solid var(--tc-border);
-}
-
-/* The width comes from an inline style attribute, so it only paints if the CSP
-   allows style attributes (see style-src in server/index.ts): without that, every
-   bar silently falls back to this min-width and the chart reads as a column of
-   identical hairlines. */
-.tc-gex-expiry-bar {
-  height: 100%;
-  border-radius: 2px;
-  min-width: 1px;
-}
-
-.tc-gex-expiry-bar--neg {
-  background: var(--tc-red);
-}
-.tc-gex-expiry-bar--pos {
-  background: var(--tc-green);
-}
-
-.tc-gex-expiry-value {
+.tc-gex-grid th,
+.tc-gex-grid td {
+  padding: 2px 6px;
   text-align: right;
+  font-weight: 400;
+}
+
+/* Prices stay right-aligned like the cells (inherited from the rule above): it
+   lines the digits up against the first data column. */
+.tc-gex-grid-corner,
+.tc-gex-grid-rowhead {
   color: var(--tc-text-secondary);
+  /* Pinned so the price stays readable while the day columns scroll under it. */
+  position: sticky;
+  left: 0;
+  background: var(--tc-surface-2);
+  z-index: 1;
 }
 
-/* ─── Profile by price level ────────────────────────────────────────────────
-   Same rows as the expiry chart, but the label carries a price plus up to two
-   tags, so it needs a wider column. Rows are tighter: the price axis is twice
-   as long and only reads as a shape when the bars sit close together. */
-.tc-gex-strike {
-  gap: 3px;
-}
-
-/* Fixed, not max-content: each row is its own grid, so an intrinsic width would
-   be measured per row and the bars would stop lining up. Sized for a price plus
-   one tag — the component never renders two (see GammaByStrikeChart). */
-.tc-gex-strike .tc-gex-expiry-row {
-  grid-template-columns: 136px minmax(80px, 1fr) 58px;
-  gap: 8px;
-}
-
-/* The bucket holding spot: the reader's anchor in the profile. A background band
-   rather than a rule across the row — the spot bucket usually carries one of the
-   largest bars, and a hairline drawn over a solid bar disappears into it. */
-.tc-gex-strike .tc-gex-expiry-row--spot {
-  background: color-mix(in srgb, var(--tc-muted) 14%, transparent);
-  box-shadow: inset 2px 0 0 var(--tc-muted);
-  border-radius: 3px;
-  margin-inline: -6px;
-  padding-inline: 6px;
-}
-
-.tc-gex-strike .tc-gex-expiry-row--spot .tc-gex-expiry-label {
-  color: var(--tc-text);
+.tc-gex-grid-col {
+  color: var(--tc-muted);
   font-weight: 600;
+  border-bottom: 1px solid var(--tc-border);
+}
+
+.tc-gex-grid-cell {
+  color: var(--tc-text);
+  min-width: 42px;
+}
+
+/* Margins: set off by a rule rather than a fill, so they read as totals and not
+   as another cell of the heatmap. */
+.tc-gex-grid-total {
+  font-weight: 700;
+  border-left: 1px solid var(--tc-border);
+}
+
+.tc-gex-grid tfoot .tc-gex-grid-total {
+  border-left: none;
+  border-top: 1px solid var(--tc-border);
+}
+
+/* The all-strikes row is context for the windowed one above it, not a peer. */
+.tc-gex-grid tfoot tr:last-child .tc-gex-grid-total {
+  border-top: none;
+  font-weight: 400;
+}
+
+.tc-gex-grid-row--spot .tc-gex-grid-rowhead {
+  color: var(--tc-text);
+  font-weight: 700;
+  box-shadow: inset 2px 0 0 var(--tc-muted);
+}
+
+.tc-gex-grid-row--spot .tc-gex-grid-cell {
+  border-top: 1px solid var(--tc-border-strong);
+  border-bottom: 1px solid var(--tc-border-strong);
 }
 
 .tc-gex-strike-tag {

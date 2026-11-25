@@ -167,14 +167,34 @@ export interface GammaByExpiry {
   gamma: number;
 }
 
-/** One price bucket of the gamma profile. */
-export interface GammaByStrike {
-  /** Lower edge of the bucket in USD — the price the axis labels. */
-  strike: number;
-  /** Signed gamma held by that bucket, in M$ of delta per 1% move. */
-  gamma: number;
-  /** true for the single bucket containing the current spot price. */
-  atSpot: boolean;
+/** One expiry column of the gamma grid. */
+export interface GammaGridExpiry {
+  /** Expiry timestamp in ms. */
+  expiry: number;
+  /** YYYY-MM-DD, for the tooltip. */
+  label: string;
+  /** Whole days to expiry — the axis label. */
+  daysOut: number;
+}
+
+/**
+ * Signed gamma over price × expiry.
+ *
+ * Both axes are windowed to spot ±15%, so a column sums to the gamma that expiry
+ * carries INSIDE the price window, not its all-strikes total — `gammaByExpiry`
+ * keeps the latter.
+ */
+export interface GammaGrid {
+  /** Price bucket lower edges, highest first — the Y axis. */
+  strikes: number[];
+  /** Expiries, nearest first — the X axis. */
+  expiries: GammaGridExpiry[];
+  /** `cells[row][col]` in M$ of delta per 1% move; row indexes `strikes`. */
+  cells: number[][];
+  /** Index into `strikes` of the bucket holding spot; -1 if outside the window. */
+  spotRow: number;
+  /** Bucket width in USD. */
+  bucket: number;
 }
 
 /**
@@ -231,12 +251,14 @@ export interface GammaSnapshot {
   partial: boolean;
   venues: string[];
   gammaByVenue: Record<string, number | null>;
-  /** Signed gamma per expiry, nearest first — the term structure of the profile. */
+  /**
+   * Signed gamma per expiry across EVERY strike, nearest first — the term
+   * structure. `gammaGrid` splits the same exposure by price as well, but only
+   * within its window, so this stays the full-book figure.
+   */
   gammaByExpiry: GammaByExpiry[];
-  /** Signed gamma per price bucket, highest strike first — the profile on price. */
-  gammaByStrike: GammaByStrike[];
-  /** Width in USD of each `gammaByStrike` bucket, so the UI can label the axis. */
-  strikeBucket: number;
+  /** Signed gamma over price × expiry. */
+  gammaGrid: GammaGrid;
 }
 
 /** `degraded` = well-formed chain but nothing usable in it (no OI, no index price). */

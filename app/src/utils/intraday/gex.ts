@@ -12,7 +12,7 @@
 // amplified volatility. NOTE: this is an ASSUMPTION about positioning, not a
 // figure the endpoint reports.
 
-import type { GammaByStrike, GammaSnapshot, OptionQuote, OptionsChain, VolPoint } from './types';
+import type { GammaGrid, GammaSnapshot, OptionQuote, OptionsChain, VolPoint } from './types';
 
 const MS_PER_YEAR = 365 * 24 * 60 * 60 * 1000;
 const INV_SQRT_2PI = 0.3989422804014327;
@@ -113,6 +113,8 @@ interface Aggregate {
   byVenue: Map<string, number>;
   /** Signed gamma per expiry timestamp — the shape of the term structure. */
   byExpiry: Map<number, number>;
+  /** Signed gamma per strike, then per expiry — the joint distribution. */
+  byStrikeExpiry: Map<number, Map<number, number>>;
   callGex: number;
   putGex: number;
   callOi: number;
@@ -137,6 +139,7 @@ const aggregate = (quotes: OptionQuote[], now: number): Aggregate => {
   const absByStrike = new Map<number, number>();
   const byVenue = new Map<string, number>();
   const byExpiry = new Map<number, number>();
+  const byStrikeExpiry = new Map<number, Map<number, number>>();
   let callGex = 0;
   let putGex = 0;
   let callOi = 0;
@@ -186,7 +189,15 @@ const aggregate = (quotes: OptionQuote[], now: number): Aggregate => {
     absByStrike.set(strike, (absByStrike.get(strike) ?? 0) + gex);
     const venue = q.venue ?? 'unknown';
     byVenue.set(venue, (byVenue.get(venue) ?? 0) + signed);
-    if (q.expiry != null) byExpiry.set(q.expiry, (byExpiry.get(q.expiry) ?? 0) + signed);
+    if (q.expiry != null) {
+      byExpiry.set(q.expiry, (byExpiry.get(q.expiry) ?? 0) + signed);
+      let row = byStrikeExpiry.get(strike);
+      if (!row) {
+        row = new Map<number, number>();
+        byStrikeExpiry.set(strike, row);
+      }
+      row.set(q.expiry, (row.get(q.expiry) ?? 0) + signed);
+    }
     used++;
   }
 
@@ -195,6 +206,7 @@ const aggregate = (quotes: OptionQuote[], now: number): Aggregate => {
     absByStrike,
     byVenue,
     byExpiry,
+    byStrikeExpiry,
     callGex,
     putGex,
     callOi,
@@ -276,35 +288,69 @@ const bucketStep = (spot: number): number => {
 };
 
 /**
- * Signed gamma per price bucket, highest strike first — the orientation every
- * options desk draws a GEX profile in, so the price axis reads like a chart.
+ * The joint distribution: signed gamma per price bucket AND per expiry.
  *
- * Every bucket in the window is emitted, including the empty ones: a gap in the
- * price axis would read as "no data here" when what it means is "no gamma here",
- * and the distance between two walls is itself the information.
+ * The two one-dimensional breakdowns each answer half a question — the profile
+ * says where the walls are, the term structure says when they expire — and
+ * neither says which wall belongs to which expiry. That matters intraday: a
+ * -40 M$ bucket at spot reads very differently if it is tomorrow's expiry
+ * rather than a quarterly.
+ *
+ * Rows use the same window and bucket as profileByStrike, so a row of this grid
+ * sums exactly to that profile's bar. Columns span every expiry that carries
+ * gamma inside the window, which means a column sums to LESS than the all-strikes
+ * total for that expiry — the margins of a grid have to be the margins of its
+ * own cells, so both axes are windowed alike.
  */
-const profileByStrike = (signedByStrike: Map<number, number>, spot: number): GammaByStrike[] => {
+const buildGrid = (
+  byStrikeExpiry: Map<number, Map<number, number>>,
+  spot: number,
+  now: number
+): GammaGrid => {
   const step = bucketStep(spot);
   const edgeOf = (price: number): number => Math.floor(price / step) * step;
   const lo = edgeOf(spot * (1 - PROFILE_SPAN));
   const hi = edgeOf(spot * (1 + PROFILE_SPAN));
-  const spotEdge = edgeOf(spot);
 
-  const buckets = new Map<number, number>();
-  for (let edge = lo; edge <= hi; edge += step) buckets.set(edge, 0);
-  for (const [strike, gex] of signedByStrike) {
+  const strikes: number[] = [];
+  for (let edge = hi; edge >= lo; edge -= step) strikes.push(edge);
+  const rowOf = new Map(strikes.map((s, i) => [s, i]));
+
+  // Only expiries that actually carry gamma inside the price window: an expiry
+  // whose whole book sits far OTM would otherwise add an empty column.
+  const live = new Set<number>();
+  for (const [strike, row] of byStrikeExpiry) {
     const edge = edgeOf(strike);
     if (edge < lo || edge > hi) continue;
-    buckets.set(edge, (buckets.get(edge) ?? 0) + gex);
+    for (const expiry of row.keys()) live.add(expiry);
+  }
+  const expiries = [...live]
+    .sort((a, b) => a - b)
+    .map((expiry) => ({
+      expiry,
+      label: new Date(expiry).toISOString().slice(0, 10),
+      daysOut: Math.max(0, Math.round((expiry - now) / 86_400_000)),
+    }));
+  const colOf = new Map(expiries.map((e, i) => [e.expiry, i]));
+
+  const raw = strikes.map(() => expiries.map(() => 0));
+  for (const [strike, row] of byStrikeExpiry) {
+    const ri = rowOf.get(edgeOf(strike));
+    if (ri == null) continue;
+    for (const [expiry, gex] of row) {
+      const ci = colOf.get(expiry);
+      if (ci == null) continue;
+      raw[ri][ci] += gex;
+    }
   }
 
-  return [...buckets]
-    .sort((a, b) => b[0] - a[0])
-    .map(([strike, gex]) => ({
-      strike,
-      gamma: round2(gex / MM) ?? 0,
-      atSpot: strike === spotEdge,
-    }));
+  return {
+    strikes,
+    expiries,
+    cells: raw.map((r) => r.map((gex) => round2(gex / MM) ?? 0)),
+    spotRow: rowOf.get(edgeOf(spot)) ?? -1,
+    bucket: step,
+  };
 };
 
 interface FlipQuote {
@@ -521,7 +567,8 @@ export const computeGex = (data: OptionsChain): GammaSnapshot | null => {
     // Same gamma, projected on the price axis instead of the time axis: where the
     // walls sit relative to spot, which is the context support/resistance/flip are
     // reported without.
-    gammaByStrike: profileByStrike(agg.signedByStrike, spot),
-    strikeBucket: bucketStep(spot),
+    // Price × expiry. The UI derives the in-window margins from these cells, so
+    // the grid can never disagree with itself.
+    gammaGrid: buildGrid(agg.byStrikeExpiry, spot, now),
   };
 };

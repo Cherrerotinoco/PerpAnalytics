@@ -259,42 +259,77 @@ describe('parseGamma / computeGex', () => {
   });
 });
 
-// ─── gammaByStrike ────────────────────────────────────────────────────────────
-describe('gamma profile by price level', () => {
-  it('buckets the chain onto a round step and runs highest strike first', () => {
+// ─── gammaGrid ────────────────────────────────────────────────────────────────
+/** Cell at a given price bucket and expiry, by value rather than by index. */
+const cellAt = (r: GammaSnapshot, strike: number, expiry: number): number => {
+  const row = r.gammaGrid.strikes.indexOf(strike);
+  const col = r.gammaGrid.expiries.findIndex((e) => e.expiry === expiry);
+  return r.gammaGrid.cells[row][col];
+};
+
+/** Row margin — what the old by-price-level profile drew as one bar. */
+const rowTotal = (r: GammaSnapshot, strike: number): number =>
+  r.gammaGrid.cells[r.gammaGrid.strikes.indexOf(strike)].reduce((s, v) => s + v, 0);
+
+describe('gamma grid (price × expiry)', () => {
+  it('buckets price onto a round step and runs highest strike first', () => {
     const r = gex(chain());
-    expect(r.strikeBucket).toBe(1000);
+    expect(r.gammaGrid.bucket).toBe(1000);
     // Window is spot ±15% → 51,000…69,000 on a $1,000 grid.
-    expect(r.gammaByStrike[0].strike).toBe(69000);
-    expect(r.gammaByStrike[r.gammaByStrike.length - 1].strike).toBe(51000);
-    const strikes = r.gammaByStrike.map((b) => b.strike);
-    expect(strikes).toEqual([...strikes].sort((a, b) => b - a));
-  });
-
-  it('carries the call wall positive and the put wall negative', () => {
-    const r = gex(chain());
-    const at = (k: number) => r.gammaByStrike.find((b) => b.strike === k)!;
-    expect(at(65000).gamma).toBeGreaterThan(0);
-    expect(at(55000).gamma).toBeLessThan(0);
-  });
-
-  it('flags exactly one bucket as holding spot', () => {
-    const r = gex(chain());
-    const atSpot = r.gammaByStrike.filter((b) => b.atSpot);
-    expect(atSpot).toHaveLength(1);
-    expect(atSpot[0].strike).toBe(60000);
+    expect(r.gammaGrid.strikes[0]).toBe(69000);
+    expect(r.gammaGrid.strikes.at(-1)).toBe(51000);
+    expect(r.gammaGrid.strikes).toEqual([...r.gammaGrid.strikes].sort((a, b) => b - a));
   });
 
   it('emits empty buckets rather than leaving gaps in the price axis', () => {
     const r = gex(chain());
-    const step = r.strikeBucket;
-    for (let i = 1; i < r.gammaByStrike.length; i++) {
-      expect(r.gammaByStrike[i - 1].strike - r.gammaByStrike[i].strike).toBe(step);
+    const { strikes, bucket, cells } = r.gammaGrid;
+    for (let i = 1; i < strikes.length; i++) {
+      expect(strikes[i - 1] - strikes[i]).toBe(bucket);
     }
-    expect(r.gammaByStrike.some((b) => b.gamma === 0)).toBe(true);
+    expect(cells.some((row) => row.every((v) => v === 0))).toBe(true);
   });
 
-  it('drops strikes outside the window instead of flattening the profile', () => {
+  it('is rectangular: every row carries one cell per expiry column', () => {
+    const r = gex(chain());
+    expect(r.gammaGrid.cells).toHaveLength(r.gammaGrid.strikes.length);
+    for (const row of r.gammaGrid.cells) {
+      expect(row).toHaveLength(r.gammaGrid.expiries.length);
+    }
+  });
+
+  it('places the call wall positive and the put wall negative, on their expiry', () => {
+    const r = gex(chain());
+    expect(cellAt(r, 65000, EXPIRY_30D)).toBeGreaterThan(0);
+    expect(cellAt(r, 55000, EXPIRY_30D)).toBeLessThan(0);
+  });
+
+  it('splits one strike across the expiries that hold it', () => {
+    const EXPIRY_7D = NOW + 7 * 24 * 60 * 60 * 1000;
+    const r = gex(
+      chain({
+        quotes: [
+          quote({ strike: 65000, kind: 'call', openInterest: 500, expiry: EXPIRY_30D }),
+          quote({ strike: 65000, kind: 'put', openInterest: 500, expiry: EXPIRY_7D }),
+        ],
+      })
+    );
+    expect(r.gammaGrid.expiries.map((e) => e.expiry)).toEqual([EXPIRY_7D, EXPIRY_30D]);
+    expect(cellAt(r, 65000, EXPIRY_7D)).toBeLessThan(0);
+    expect(cellAt(r, 65000, EXPIRY_30D)).toBeGreaterThan(0);
+    // The row margin is what the one-dimensional profile used to show.
+    expect(rowTotal(r, 65000)).toBeCloseTo(
+      cellAt(r, 65000, EXPIRY_7D) + cellAt(r, 65000, EXPIRY_30D),
+      6
+    );
+  });
+
+  it('points spotRow at the bucket holding spot', () => {
+    const r = gex(chain());
+    expect(r.gammaGrid.strikes[r.gammaGrid.spotRow]).toBe(60000);
+  });
+
+  it('keeps strikes outside the window out of the grid', () => {
     const r = gex(
       chain({
         quotes: [
@@ -304,8 +339,42 @@ describe('gamma profile by price level', () => {
         ],
       })
     );
-    expect(r.gammaByStrike.some((b) => b.strike === 120000)).toBe(false);
-    expect(r.gammaByStrike.find((b) => b.strike === 65000)!.gamma).toBeGreaterThan(0);
+    expect(r.gammaGrid.strikes).not.toContain(120000);
+    expect(rowTotal(r, 65000)).toBeGreaterThan(0);
+  });
+
+  // The column margin is windowed, gammaByExpiry is not: an expiry carrying
+  // gamma outside the window must still show its full size in the term
+  // structure. $72,000 is 20% above spot — past the window, but near enough
+  // that Black-76 still gives it real gamma, unlike a 2× strike.
+  it('keeps gammaByExpiry on the whole book while the columns stay windowed', () => {
+    const r = gex(
+      chain({
+        quotes: [
+          quote({ strike: 65000, kind: 'call', openInterest: 500 }),
+          quote({ strike: 72000, kind: 'call', openInterest: 500, forward: 60000 }),
+        ],
+      })
+    );
+    expect(r.gammaGrid.strikes).not.toContain(72000);
+    const col = r.gammaGrid.cells.reduce((s, row) => s + row[0], 0);
+    const full = r.gammaByExpiry.find((e) => e.expiry === EXPIRY_30D)!.gamma;
+    expect(full).toBeGreaterThan(col);
+  });
+
+  it('drops an expiry whose gamma all sits outside the price window', () => {
+    const EXPIRY_7D = NOW + 7 * 24 * 60 * 60 * 1000;
+    const r = gex(
+      chain({
+        quotes: [
+          quote({ strike: 60000, kind: 'call', openInterest: 100, expiry: EXPIRY_30D }),
+          quote({ strike: 120000, kind: 'call', openInterest: 900, expiry: EXPIRY_7D }),
+        ],
+      })
+    );
+    expect(r.gammaGrid.expiries.map((e) => e.expiry)).toEqual([EXPIRY_30D]);
+    // It is still part of the term structure, which is not windowed.
+    expect(r.gammaByExpiry.map((e) => e.expiry)).toContain(EXPIRY_7D);
   });
 
   it('widens the bucket with spot so the row count stays readable', () => {
@@ -315,7 +384,7 @@ describe('gamma profile by price level', () => {
     const rich = gex(
       chain({ indexPrice: 600000, quotes: [quote({ strike: 600000, forward: 600000 })] })
     );
-    expect(cheap.strikeBucket).toBeLessThan(rich.strikeBucket);
-    for (const r of [cheap, rich]) expect(r.gammaByStrike.length).toBeLessThanOrEqual(32);
+    expect(cheap.gammaGrid.bucket).toBeLessThan(rich.gammaGrid.bucket);
+    for (const r of [cheap, rich]) expect(r.gammaGrid.strikes.length).toBeLessThanOrEqual(32);
   });
 });
