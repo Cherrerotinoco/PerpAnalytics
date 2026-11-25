@@ -1,26 +1,29 @@
 # PerpAnalytics
 
-> Free, client-side analytics dashboard for Solana perpetuals traders on Jupiter Perpetuals and Pacifica Finance.
+> Free analytics for perpetuals traders: wallet-level performance statistics on Jupiter, Pacifica and Hyperliquid, plus a BTC intraday order-flow report.
 
-PerpAnalytics is a free web application that lets Solana traders analyse their full trading history by pasting their wallet address. It fetches trade data directly from the Jupiter Perpetuals and Pacifica Finance APIs and displays it in an interactive dashboard. No sign-up, no wallet connection, and no data is stored — everything runs in the browser.
+PerpAnalytics is a free web application with two independent sides. The wallet dashboard lets a trader analyse their full trading history by pasting a wallet address — no sign-up and no wallet connection, and the trade data is fetched straight from each platform's public API by the browser rather than stored by us. The intraday page is a BTC order-flow report rendered on the server and refreshed every 15 minutes, the same page for every visitor.
 
 ## What it does
 
-- Fetches complete trade history for any Solana wallet from Jupiter Perpetuals and Pacifica Finance
+- Fetches complete trade history for a wallet from Jupiter Perpetuals, Pacifica Finance (Solana) and Hyperliquid (EVM)
 - Displays an equity curve showing cumulative PnL over time
 - Shows PnL breakdown by traded symbol (SOL, BTC, ETH, etc.)
 - Renders a daily PnL calendar heatmap
 - Calculates key statistics: win rate, average win, average loss, expectancy, largest win/loss, and winning/losing streaks
 - Provides a full sortable and searchable trade list
+- Publishes a BTC intraday report at /intraday: multi-timeframe aggressor delta (CVD) for Binance spot and perpetuals, options gamma exposure computed from the raw Deribit/OKX/Bybit/Binance chain, 25-delta skew and large on-chain transfers, with a copyable text version written to be pasted into an AI assistant
+- Offers an account growth calculator at /calculator
 
 ## Who it is for
 
-Traders who use Jupiter Perpetuals or Pacifica Finance on the Solana blockchain and want quantitative statistics about their trading performance beyond what the platforms natively provide.
+Traders on Jupiter Perpetuals, Pacifica Finance or Hyperliquid who want quantitative statistics about their performance beyond what the platforms natively provide, and anyone reading BTC intraday order flow who wants the raw numbers rather than a chart.
 
 ## Technical details
 
-- Built with React 19, TypeScript, and Vite
-- Fully client-side — no backend, no database
+- Built with React 19, TypeScript and Vite, served by a small Node/Hono backend
+- The wallet dashboard runs in the browser: the trade APIs are called directly from it and no wallet history is stored
+- The intraday page is server-rendered, because its market-data sources cannot be read from a browser; its sequence of pulls is kept in Postgres as a single series shared by every visitor and contains no visitor data
 - Open source: https://github.com/Cherrerotinoco/PerpAnalytics
 - Deployed at: https://perpanalytics.app/
 
@@ -28,3 +31,4 @@ Traders who use Jupiter Perpetuals or Pacifica Finance on the Solana blockchain 
 
 - Jupiter Perpetuals (perps-api.jup.ag)
 - Pacifica Finance (api.pacifica.fi)
+- Hyperliquid (api.hyperliquid.xyz)
