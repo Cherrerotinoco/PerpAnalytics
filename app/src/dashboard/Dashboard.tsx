@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback, useEffect } from 'react';
 import { Trade } from '../types/tradeTypes';
 import { computeTradeStats, MetricLabelContext } from './panels/statistics';
 import { PanelPlaceholder } from './PanelPlaceholder';
-import { TabNav, DASHBOARD_TABS } from './TabNav';
+import { TabNav, DASHBOARD_TABS, panelId, tabId } from './TabNav';
 import type { DashboardTab } from './TabNav';
 import { TimeframeSelector, DATE_RANGES, presetRange } from './TimeframeSelector';
 import type { DateRange } from './TimeframeSelector';
@@ -121,7 +121,13 @@ const Dashboard = ({
   return (
     <div className="tc-dash">
       <div className="tc-dash-toolbar">
-        <TabNav active={activeTab} onChange={onChangeTab} />
+        <TabNav
+          tabs={DASHBOARD_TABS}
+          active={activeTab}
+          onChange={onChangeTab}
+          idPrefix="dash"
+          label="Dashboard sections"
+        />
         <div className="tc-dash-toolbar-right">
           <button
             className="tc-btn-download"
@@ -169,7 +175,17 @@ const Dashboard = ({
         </div>
       </div>
 
-      <MetricLabelContext.Provider value={true}>{renderTab()}</MetricLabelContext.Provider>
+      <MetricLabelContext.Provider value={true}>
+        {/* Only the active tab is rendered here, so one panel wrapper carries the
+            id that the tablist's aria-controls points at. */}
+        <div
+          id={panelId('dash', activeTab)}
+          role="tabpanel"
+          aria-labelledby={tabId('dash', activeTab)}
+        >
+          {renderTab()}
+        </div>
+      </MetricLabelContext.Provider>
     </div>
   );
 };

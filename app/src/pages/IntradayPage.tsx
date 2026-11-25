@@ -1,5 +1,8 @@
 import { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 import Panel, { Row, SectionHeading } from '../dashboard/Panel';
+import { TabNav, panelId, tabId } from '../dashboard/TabNav';
+import type { TabDef } from '../dashboard/TabNav';
 import { CACHE_TTL_MS, buildIntradayReport, clearHistory, runIntraday } from '../utils/intraday';
 import { useSsrSnapshot } from '../utils/intraday/ssrData';
 import type {
@@ -792,6 +795,47 @@ const SignalStrip = ({
   );
 };
 
+// ─── Tabs ─────────────────────────────────────────────────────────────────────
+type IntradayTab = 'whales' | 'flow' | 'options';
+
+// Ordered by the weight the model gives each input (whales and CVD > gamma and
+// skew), which is also the order the page read in before it had tabs.
+const INTRADAY_TABS: TabDef<IntradayTab>[] = [
+  { id: 'whales', label: 'Whale flows' },
+  { id: 'flow', label: 'Order flow (CVD)' },
+  { id: 'options', label: 'Options & gamma' },
+];
+
+const DEFAULT_TAB: IntradayTab = 'whales';
+
+/**
+ * One tab's content.
+ *
+ * Every panel stays mounted and inactive ones are hidden, rather than rendering
+ * the active tab alone. This route is server-rendered per request, so a
+ * conditional render would ship a page whose HTML holds a third of what it
+ * describes — and the data behind all three is already computed, so keeping
+ * them mounted costs a little DOM and no work.
+ */
+const TabPanel = ({
+  tab,
+  active,
+  children,
+}: {
+  tab: IntradayTab;
+  active: IntradayTab;
+  children: ReactNode;
+}) => (
+  <div
+    id={panelId('intraday', tab)}
+    role="tabpanel"
+    aria-labelledby={tabId('intraday', tab)}
+    hidden={tab !== active}
+  >
+    {children}
+  </div>
+);
+
 // ─── Freshness ────────────────────────────────────────────────────────────────
 /** The three panel groups a browser-side pull cannot refresh (all CORS-blocked). */
 type CarriedGroup = 'whale' | 'skew' | 'volLab';
@@ -831,6 +875,7 @@ const IntradayPage = () => {
   // When each carried-forward group was actually fetched, so the badges can date
   // them. Keyed by group; absent = the group is as fresh as the global reading.
   const [carriedAt, setCarriedAt] = useState<Partial<Record<CarriedGroup, string>>>({});
+  const [tab, setTab] = useState<IntradayTab>(DEFAULT_TAB);
   // Guards against a slow in-flight pull overwriting a newer one.
   const runIdRef = useRef(0);
   // Mirrors `snap` so refresh() can diff against the previous pull without doing
@@ -890,6 +935,30 @@ const IntradayPage = () => {
     const t = setInterval(() => void refresh(), AUTO_REFRESH_MS);
     return () => clearInterval(t);
   }, [autoRefresh, refresh]);
+
+  // Read the tab AFTER mount rather than in the state initialiser: this route is
+  // server-rendered, and seeding from the URL on the client only would make the
+  // first client render disagree with the server's HTML.
+  useEffect(() => {
+    const t = new URLSearchParams(window.location.search).get('tab');
+    if (INTRADAY_TABS.some((d) => d.id === t)) setTab(t as IntradayTab);
+  }, []);
+
+  const onChangeTab = useCallback((t: IntradayTab) => {
+    setTab(t);
+    // Switching from the foot of a long tab would otherwise drop the reader into
+    // the middle of the next one. Only pull back when the tablist has scrolled
+    // off the top, so a switch made while it is visible does not jump.
+    const list = document.getElementById(tabId('intraday', t))?.closest('[role=tablist]');
+    if (list && list.getBoundingClientRect().top < 0) {
+      list.scrollIntoView({ block: 'start' });
+    }
+    const params = new URLSearchParams(window.location.search);
+    if (t === DEFAULT_TAB) params.delete('tab');
+    else params.set('tab', t);
+    const qs = params.toString();
+    window.history.replaceState(null, '', qs ? `?${qs}` : window.location.pathname);
+  }, []);
 
   const handleCopy = useCallback(async () => {
     if (!snap) return;
@@ -1092,224 +1161,261 @@ const IntradayPage = () => {
           {/* Whale flows lead the page: they carry the highest weight in the model
               (whales and CVD > realised/potential > gamma > skew). Server-rendered
               only — Whale Alert blocks cross-origin reads. */}
-          {snap.flows && (
-            <>
-              <SectionHeading>Whale flows</SectionHeading>
-              <Row>
-                <Panel
-                  title="Transfers and net balance"
-                  badge={<StaleBadge since={carriedAt.whale ?? null} />}
-                  grow={1}
-                  minWidth={320}
-                >
-                  <WhaleFlowBody flows={snap.flows} />
-                </Panel>
-              </Row>
-            </>
-          )}
+          <TabNav
+            tabs={INTRADAY_TABS}
+            active={tab}
+            onChange={onChangeTab}
+            idPrefix="intraday"
+            label="Intraday analyses"
+          />
 
-          <SectionHeading>Aggressor order flow</SectionHeading>
-
-          <Row>
-            <Panel title="Delta of the in-progress aligned candle" grow={5} minWidth={320}>
-              <table className="tc-intraday-table">
-                <thead>
-                  <tr>
-                    <th className="tc-intraday-th-row" />
-                    <th className="tc-intraday-th">15m</th>
-                    <th className="tc-intraday-th">1H</th>
-                    <th className="tc-intraday-th">4H</th>
-                    <th className="tc-intraday-th">Session</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <TfRow label="Spot" cvd={cvd} />
-                  <TfRow label="Perp" cvd={perp} />
-                </tbody>
-              </table>
+          <TabPanel tab="whales" active={tab}>
+            {snap.flows ? (
+              <>
+                <SectionHeading>Whale flows</SectionHeading>
+                <Row>
+                  <Panel
+                    title="Transfers and net balance"
+                    badge={<StaleBadge since={carriedAt.whale ?? null} />}
+                    grow={1}
+                    minWidth={320}
+                  >
+                    <WhaleFlowBody flows={snap.flows} />
+                  </Panel>
+                </Row>
+              </>
+            ) : (
               <p className="tc-intraday-note">
-                Delta in BTC inside the in-progress candle of each timeframe (Binance clock cut, not
-                a rolling window). Positive = aggressive buying. Session = accumulated since 00:00
-                UTC.
+                No whale data in this pull — Whale Alert blocks cross-origin reads, so it only
+                arrives with the server-rendered page.
               </p>
-              <AbsorptionNotes label="Spot" cvd={cvd} />
-              <AbsorptionNotes label="Perp" cvd={perp} />
-              {divergent && (
-                <p className="tc-intraday-note tc-intraday-note--warn">
-                  Spot↔perp divergence: cash and leverage are aggressing in opposite directions
-                  (possible positioning or hedging).
-                </p>
-              )}
-            </Panel>
+            )}
+          </TabPanel>
 
-            <Panel title="Price ↔ CVD divergence (spot session)" grow={4} minWidth={280}>
-              {cvd ? (
-                <>
-                  <div className={`tc-intraday-regime ${DIVERGENCE_COPY[cvd.divergence].tone}`}>
-                    {DIVERGENCE_COPY[cvd.divergence].text}
-                  </div>
-                  <div className="tc-intraday-kv-grid">
-                    <KeyValue
-                      k="Net session aggression"
-                      v={cvd.ratio != null ? `${(cvd.ratio * 100).toFixed(2)}%` : '—'}
-                      tone={signClass(cvd.ratio)}
-                    />
-                    <KeyValue
-                      k="Buy / Sell"
-                      v={`${cvd.buyBtc.toFixed(0)} / ${cvd.sellBtc.toFixed(0)} BTC`}
-                    />
-                    <KeyValue
-                      k="Last candle"
-                      v={`${sign(cvd.lastDelta, 1)} BTC`}
-                      tone={signClass(cvd.lastDelta)}
-                    />
-                    <KeyValue
-                      k={`Last ${cvd.recentBars * 5} min`}
-                      v={`${sign(cvd.recentDelta, 1)} BTC`}
-                      tone={signClass(cvd.recentDelta)}
-                    />
-                    <KeyValue
-                      k="Session excursion"
-                      v={`${sign(cvd.minCvd)} / ${sign(cvd.maxCvd)} BTC`}
-                    />
-                    <KeyValue k="5m candles" v={String(cvd.bars)} />
-                  </div>
-                  {swingNuance(cvd) && (
-                    <p className="tc-intraday-note tc-intraday-note--warn">{swingNuance(cvd)}</p>
-                  )}
-                </>
-              ) : (
-                <p className="tc-intraday-note">No CVD data in this run.</p>
-              )}
-            </Panel>
-          </Row>
+          <TabPanel tab="flow" active={tab}>
+            <SectionHeading>Aggressor order flow</SectionHeading>
 
-          <Row>
-            <Panel title="Session CVD curve vs price" grow={1} minWidth={320}>
-              {cvd ? (
-                <Suspense fallback={<div className="tc-intraday-chart-fallback" />}>
-                  <CvdSessionChart cvd={cvd} />
-                </Suspense>
-              ) : (
-                <p className="tc-intraday-note">No CVD data in this run.</p>
-              )}
-              <p className="tc-intraday-note">
-                Solid line: cumulative CVD (left axis, BTC). Dashed line: price (right axis). When
-                they separate, someone passive is absorbing the aggression.
-              </p>
-            </Panel>
-          </Row>
-
-          {/* ─── Context ────────────────────────────────────────────────────── */}
-          <SectionHeading>Context</SectionHeading>
-
-          <Row>
-            <Panel title="Daily CVD — previous complete sessions" grow={4} minWidth={280}>
-              {spotDays.length ? (
+            <Row>
+              <Panel title="Delta of the in-progress aligned candle" grow={5} minWidth={320}>
                 <table className="tc-intraday-table">
                   <thead>
                     <tr>
-                      <th className="tc-intraday-th-row">Date</th>
-                      <th className="tc-intraday-th">Spot</th>
-                      <th className="tc-intraday-th">Perp</th>
+                      <th className="tc-intraday-th-row" />
+                      <th className="tc-intraday-th">15m</th>
+                      <th className="tc-intraday-th">1H</th>
+                      <th className="tc-intraday-th">4H</th>
+                      <th className="tc-intraday-th">Session</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {spotDays.map((d) => {
-                      const p = perpByDay.get(d.dayMs);
-                      return (
-                        <tr key={d.dayMs ?? 'na'}>
-                          <th className="tc-intraday-th-row">
-                            {d.dayMs != null ? new Date(d.dayMs).toISOString().slice(0, 10) : '—'}
-                          </th>
-                          <td className="tc-intraday-td">
-                            <span className={signClass(d.delta)}>{sign(d.delta)}</span>
-                          </td>
-                          <td className="tc-intraday-td">
-                            <span className={signClass(p?.delta)}>{sign(p?.delta)}</span>
-                          </td>
-                        </tr>
-                      );
-                    })}
+                    <TfRow label="Spot" cvd={cvd} />
+                    <TfRow label="Perp" cvd={perp} />
                   </tbody>
                 </table>
-              ) : (
-                <p className="tc-intraday-note">No daily CVD in this run.</p>
-              )}
-              <p className="tc-intraday-note">
-                Aggressor delta of each complete session (BTC). Several days of the same sign =
-                sustained pressure; a recent turn against that trend gains relevance.
-              </p>
-            </Panel>
-
-            {/* The venue list comes from the data, not hardcoded: a pull with a venue down
-                must not claim coverage it does not have. */}
-            <Panel
-              title={`Gamma exposure (${snap.gamma?.ok && snap.gamma.venues.length ? snap.gamma.venues.join(' + ') : 'options chain'})`}
-              grow={5}
-              minWidth={300}
-            >
-              <GammaBody gamma={snap.gamma} regime={snap.gammaRegime} />
-            </Panel>
-          </Row>
-
-          {/* Options detail. Rendered only when the server supplied it: all three
-              sources are CORS-blocked, so a browser-only pull has nothing here. */}
-          {snap.gamma?.ok && (
-            <>
-              <SectionHeading>Options positioning</SectionHeading>
-              <Row>
-                <Panel title="Total gamma exposure" grow={5} minWidth={320}>
-                  <TotalGammaExposure gamma={snap.gamma} />
-                </Panel>
-                <Panel title="Squeeze levels" grow={4} minWidth={300} centered>
-                  <SqueezeLevels gamma={snap.gamma} />
-                </Panel>
-              </Row>
-              <Row>
-                <Panel title="Gamma exposure by price level and expiry" grow={1} minWidth={320}>
-                  <GammaGridTable
-                    grid={snap.gamma.gammaGrid}
-                    byExpiry={snap.gamma.gammaByExpiry}
-                    levels={snap.gamma}
-                  />
-                  <p className="tc-intraday-note">
-                    Signed gamma in M$ of delta per 1% move, per $
-                    {snap.gamma.gammaGrid.bucket.toLocaleString('en-US')} price bucket (rows, spot
-                    ±15%) and days to expiry (columns). Red = dealers short gamma there (price
-                    accelerates through it), green = long (price sticks). <strong>In window</strong>{' '}
-                    adds up the cells above it; <strong>All strikes</strong> is that expiry&apos;s
-                    whole book, including the strikes too far from spot to be shown.
+                <p className="tc-intraday-note">
+                  Delta in BTC inside the in-progress candle of each timeframe (Binance clock cut,
+                  not a rolling window). Positive = aggressive buying. Session = accumulated since
+                  00:00 UTC.
+                </p>
+                <AbsorptionNotes label="Spot" cvd={cvd} />
+                <AbsorptionNotes label="Perp" cvd={perp} />
+                {divergent && (
+                  <p className="tc-intraday-note tc-intraday-note--warn">
+                    Spot↔perp divergence: cash and leverage are aggressing in opposite directions
+                    (possible positioning or hedging).
                   </p>
-                </Panel>
-              </Row>
-            </>
-          )}
+                )}
+              </Panel>
 
-          {(snap.skew?.ok || snap.volLab?.ok) && (
-            <Row>
-              {snap.skew?.ok && snap.skewRead && (
-                <Panel
-                  title="Market sentiment — 25-delta skew"
-                  badge={<StaleBadge since={carriedAt.skew ?? null} />}
-                  grow={4}
-                  minWidth={300}
-                >
-                  <MarketSentiment skew={snap.skew} read={snap.skewRead} />
-                </Panel>
-              )}
-              {snap.volLab?.ok && snap.volLabRead && (
-                <Panel
-                  title="Vol Lab — skew risk premium"
-                  badge={<StaleBadge since={carriedAt.volLab ?? null} />}
-                  grow={5}
-                  minWidth={320}
-                >
-                  <VolLabBody volLab={snap.volLab} read={snap.volLabRead} />
-                </Panel>
-              )}
+              <Panel title="Price ↔ CVD divergence (spot session)" grow={4} minWidth={280}>
+                {cvd ? (
+                  <>
+                    <div className={`tc-intraday-regime ${DIVERGENCE_COPY[cvd.divergence].tone}`}>
+                      {DIVERGENCE_COPY[cvd.divergence].text}
+                    </div>
+                    <div className="tc-intraday-kv-grid">
+                      <KeyValue
+                        k="Net session aggression"
+                        v={cvd.ratio != null ? `${(cvd.ratio * 100).toFixed(2)}%` : '—'}
+                        tone={signClass(cvd.ratio)}
+                      />
+                      <KeyValue
+                        k="Buy / Sell"
+                        v={`${cvd.buyBtc.toFixed(0)} / ${cvd.sellBtc.toFixed(0)} BTC`}
+                      />
+                      <KeyValue
+                        k="Last candle"
+                        v={`${sign(cvd.lastDelta, 1)} BTC`}
+                        tone={signClass(cvd.lastDelta)}
+                      />
+                      <KeyValue
+                        k={`Last ${cvd.recentBars * 5} min`}
+                        v={`${sign(cvd.recentDelta, 1)} BTC`}
+                        tone={signClass(cvd.recentDelta)}
+                      />
+                      <KeyValue
+                        k="Session excursion"
+                        v={`${sign(cvd.minCvd)} / ${sign(cvd.maxCvd)} BTC`}
+                      />
+                      <KeyValue k="5m candles" v={String(cvd.bars)} />
+                    </div>
+                    {swingNuance(cvd) && (
+                      <p className="tc-intraday-note tc-intraday-note--warn">{swingNuance(cvd)}</p>
+                    )}
+                  </>
+                ) : (
+                  <p className="tc-intraday-note">No CVD data in this run.</p>
+                )}
+              </Panel>
             </Row>
-          )}
+
+            <Row>
+              <Panel title="Session CVD curve vs price" grow={1} minWidth={320}>
+                {/* The one thing NOT kept mounted while its tab is hidden.
+                    Recharts' ResponsiveContainer measures on mount, and a
+                    display:none parent measures 0x0 — it then never redraws when
+                    the tab is shown, leaving an empty container. Gating on the
+                    active tab mounts it at its real size. Nothing is lost: a
+                    chart is not text a crawler reads. */}
+                {!cvd ? (
+                  <p className="tc-intraday-note">No CVD data in this run.</p>
+                ) : tab === 'flow' ? (
+                  <Suspense fallback={<div className="tc-intraday-chart-fallback" />}>
+                    <CvdSessionChart cvd={cvd} />
+                  </Suspense>
+                ) : (
+                  <div className="tc-intraday-chart-fallback" />
+                )}
+                <p className="tc-intraday-note">
+                  Solid line: cumulative CVD (left axis, BTC). Dashed line: price (right axis). When
+                  they separate, someone passive is absorbing the aggression.
+                </p>
+              </Panel>
+            </Row>
+
+            {/* ─── Context ────────────────────────────────────────────────────── */}
+            <SectionHeading>Context</SectionHeading>
+
+            <Row>
+              <Panel title="Daily CVD — previous complete sessions" grow={1} minWidth={280}>
+                {spotDays.length ? (
+                  <table className="tc-intraday-table">
+                    <thead>
+                      <tr>
+                        <th className="tc-intraday-th-row">Date</th>
+                        <th className="tc-intraday-th">Spot</th>
+                        <th className="tc-intraday-th">Perp</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {spotDays.map((d) => {
+                        const p = perpByDay.get(d.dayMs);
+                        return (
+                          <tr key={d.dayMs ?? 'na'}>
+                            <th className="tc-intraday-th-row">
+                              {d.dayMs != null ? new Date(d.dayMs).toISOString().slice(0, 10) : '—'}
+                            </th>
+                            <td className="tc-intraday-td">
+                              <span className={signClass(d.delta)}>{sign(d.delta)}</span>
+                            </td>
+                            <td className="tc-intraday-td">
+                              <span className={signClass(p?.delta)}>{sign(p?.delta)}</span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                ) : (
+                  <p className="tc-intraday-note">No daily CVD in this run.</p>
+                )}
+                <p className="tc-intraday-note">
+                  Aggressor delta of each complete session (BTC). Several days of the same sign =
+                  sustained pressure; a recent turn against that trend gains relevance.
+                </p>
+              </Panel>
+            </Row>
+          </TabPanel>
+
+          <TabPanel tab="options" active={tab}>
+            <SectionHeading>Gamma regime</SectionHeading>
+
+            <Row>
+              {/* The venue list comes from the data, not hardcoded: a pull with a venue down
+                must not claim coverage it does not have. */}
+              <Panel
+                title={`Gamma exposure (${snap.gamma?.ok && snap.gamma.venues.length ? snap.gamma.venues.join(' + ') : 'options chain'})`}
+                grow={1}
+                minWidth={300}
+              >
+                <GammaBody gamma={snap.gamma} regime={snap.gammaRegime} />
+              </Panel>
+            </Row>
+
+            {/* Options detail. Rendered only when the server supplied it: all three
+              sources are CORS-blocked, so a browser-only pull has nothing here. */}
+            {snap.gamma?.ok && (
+              <>
+                <SectionHeading>Options positioning</SectionHeading>
+                <Row>
+                  <Panel title="Total gamma exposure" grow={5} minWidth={320}>
+                    <TotalGammaExposure gamma={snap.gamma} />
+                  </Panel>
+                  <Panel title="Squeeze levels" grow={4} minWidth={300} centered>
+                    <SqueezeLevels gamma={snap.gamma} />
+                  </Panel>
+                </Row>
+                <Row>
+                  <Panel title="Gamma exposure by price level and expiry" grow={1} minWidth={320}>
+                    <GammaGridTable
+                      grid={snap.gamma.gammaGrid}
+                      byExpiry={snap.gamma.gammaByExpiry}
+                      levels={snap.gamma}
+                    />
+                    <p className="tc-intraday-note">
+                      Signed gamma in M$ of delta per 1% move, per $
+                      {snap.gamma.gammaGrid.bucket.toLocaleString('en-US')} price bucket (rows, spot
+                      ±15%) and days to expiry (columns). Red = dealers short gamma there (price
+                      accelerates through it), green = long (price sticks).{' '}
+                      <strong>In window</strong> adds up the cells above it;{' '}
+                      <strong>All strikes</strong> is that expiry&apos;s whole book, including the
+                      strikes too far from spot to be shown.
+                    </p>
+                  </Panel>
+                </Row>
+              </>
+            )}
+
+            {(snap.skew?.ok || snap.volLab?.ok) && (
+              <Row>
+                {snap.skew?.ok && snap.skewRead && (
+                  <Panel
+                    title="Market sentiment — 25-delta skew"
+                    badge={<StaleBadge since={carriedAt.skew ?? null} />}
+                    grow={4}
+                    minWidth={300}
+                  >
+                    <MarketSentiment skew={snap.skew} read={snap.skewRead} />
+                  </Panel>
+                )}
+                {snap.volLab?.ok && snap.volLabRead && (
+                  <Panel
+                    title="Vol Lab — skew risk premium"
+                    badge={<StaleBadge since={carriedAt.volLab ?? null} />}
+                    grow={5}
+                    minWidth={320}
+                  >
+                    <VolLabBody volLab={snap.volLab} read={snap.volLabRead} />
+                  </Panel>
+                )}
+              </Row>
+            )}
+          </TabPanel>
+
+          {/* Outside the tabs on purpose: the capitulation check reads whales AND
+              CVD AND gamma, and the pull history is one series for the whole page.
+              Filing either under a single tab would hide it from the other two. */}
+          <SectionHeading>Across the page</SectionHeading>
 
           <Row>
             <Panel title="End-of-capitulation check" grow={5} minWidth={300}>
