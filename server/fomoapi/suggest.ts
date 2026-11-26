@@ -43,7 +43,11 @@ export const suggestHandles = async (prefix: string): Promise<HandleSuggestion[]
     return [];
   }
 
-  const rows = await query<{ handle: string; evm_address: string | null; solana_address: string | null }>(
+  const rows = await query<{
+    handle: string;
+    evm_address: string | null;
+    solana_address: string | null;
+  }>(
     `select handle, evm_address, solana_address
        from fomo_wallet
       where found = true

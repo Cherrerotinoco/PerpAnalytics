@@ -1,10 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import {
-  SlidingWindow,
-  clientAddress,
-  hashClient,
-  secondsUntilUtcMidnight,
-} from './rateLimit.js';
+import { SlidingWindow, clientAddress, hashClient, secondsUntilUtcMidnight } from './rateLimit.js';
 
 const headers = (h: Record<string, string>) => ({
   get: (name: string) => h[name.toLowerCase()] ?? null,

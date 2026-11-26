@@ -4,7 +4,9 @@ import prettier from 'eslint-config-prettier';
 
 export default [
   {
-    files: ['app/src/**/*.{ts,tsx}'],
+    // Both halves of the codebase. `server/` was outside this for a long time,
+    // which is how it drifted out of prettier without anyone noticing.
+    files: ['app/src/**/*.{ts,tsx}', 'server/**/*.ts', 'scripts/**/*.ts'],
     languageOptions: {
       parser: tsParser,
       parserOptions: {

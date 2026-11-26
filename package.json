@@ -14,8 +14,8 @@
         "dev:server": "node --env-file=.env --import tsx server/index.ts",
         "build:app": "vite build --config app/vite.config.ts",
         "preview:app": "vite preview --config app/vite.config.ts",
-        "lint": "eslint app/src",
-        "format": "prettier --write app/src",
+        "lint": "eslint app/src server scripts",
+        "format": "prettier --write app/src server scripts",
         "test": "vitest run",
         "test:watch": "vitest",
         "prepare": "git config core.hooksPath .githooks"

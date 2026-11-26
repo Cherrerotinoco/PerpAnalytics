@@ -108,10 +108,7 @@ const envInt = (name: string, fallback: number): number => {
 };
 
 /** Cheap path: cached reads and everything else under /api. */
-export const requestLimiter = new SlidingWindow(
-  envInt('RATE_REQUESTS_PER_MINUTE', 60),
-  60_000
-);
+export const requestLimiter = new SlidingWindow(envInt('RATE_REQUESTS_PER_MINUTE', 60), 60_000);
 
 export const LIMITS = {
   /** New resolutions one client may trigger per day. */

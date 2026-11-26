@@ -38,14 +38,20 @@ export interface WalletResolution {
 }
 
 export class BudgetExceededError extends Error {
-  constructor(readonly spent: number, readonly cap: number) {
+  constructor(
+    readonly spent: number,
+    readonly cap: number
+  ) {
     super(`fomoapi credit cap reached: ${spent}/${cap} this month`);
     this.name = 'BudgetExceededError';
   }
 }
 
 export class UpstreamError extends Error {
-  constructor(readonly status: number, message: string) {
+  constructor(
+    readonly status: number,
+    message: string
+  ) {
     super(message);
     this.name = 'UpstreamError';
   }
@@ -159,10 +165,9 @@ const rowToResolution = (row: WalletRow, cached: boolean): WalletResolution => (
 });
 
 const readCache = async (handleLower: string): Promise<WalletRow | null> => {
-  const rows = await query<WalletRow>(
-    `select * from fomo_wallet where handle_lower = $1`,
-    [handleLower]
-  );
+  const rows = await query<WalletRow>(`select * from fomo_wallet where handle_lower = $1`, [
+    handleLower,
+  ]);
   return rows[0] ?? null;
 };
 
@@ -171,7 +176,9 @@ const isFresh = (row: WalletRow): boolean => {
   return age < (row.found ? HIT_TTL_MS : MISS_TTL_MS);
 };
 
-const writeCache = async (r: Omit<WalletResolution, 'cached' | 'resolvedAt'>): Promise<WalletRow> => {
+const writeCache = async (
+  r: Omit<WalletResolution, 'cached' | 'resolvedAt'>
+): Promise<WalletRow> => {
   const rows = await query<WalletRow>(
     `insert into fomo_wallet
        (handle_lower, handle, user_id, solana_address, evm_address,

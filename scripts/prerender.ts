@@ -81,40 +81,51 @@ const textContent = (s: string) =>
  * every route ended up shipping the homepage metadata. Throw instead, so a template
  * change that breaks one of these rewrites fails the build rather than the SEO.
  */
-function replaceOrThrow(
+const replaceOrThrow = (
   html: string,
   pattern: RegExp,
   replacer: (...args: string[]) => string,
-  what: string,
-): string {
+  what: string
+): string => {
   if (!pattern.test(html)) {
-    throw new Error(`prerender: no ${what} found in dist/index.html — metadata rewrite would silently do nothing`);
+    throw new Error(
+      `prerender: no ${what} found in dist/index.html — metadata rewrite would silently do nothing`
+    );
   }
   return html.replace(pattern, replacer);
-}
+};
 
 /** Rewrite the `content` attribute of the <meta> tag identified by name="…" / property="…". */
-function setMetaContent(html: string, kind: 'name' | 'property', key: string, value: string): string {
+const setMetaContent = (
+  html: string,
+  kind: 'name' | 'property',
+  key: string,
+  value: string
+): string => {
   return replaceOrThrow(
     html,
     new RegExp(`(<meta\\b[^>]*\\b${kind}="${key}"[^>]*\\bcontent=")[^"]*(")`),
     (_match, before, after) => `${before}${attrValue(value)}${after}`,
-    `<meta ${kind}="${key}">`,
+    `<meta ${kind}="${key}">`
   );
-}
+};
 
 /**
  * Warn when copy would be truncated in search results. Not fatal — a slightly long
  * description still renders, it just gets cut off.
  */
-function assertMetaFits(url: string, meta: RouteMeta): void {
+const assertMetaFits = (url: string, meta: RouteMeta): void => {
   if (meta.title.length > 60) {
-    console.warn(`⚠  ${url}: title is ${meta.title.length} chars (>60, may be truncated in search results)`);
+    console.warn(
+      `⚠  ${url}: title is ${meta.title.length} chars (>60, may be truncated in search results)`
+    );
   }
   if (meta.description.length > 160) {
-    console.warn(`⚠  ${url}: description is ${meta.description.length} chars (>160, may be truncated in search results)`);
+    console.warn(
+      `⚠  ${url}: description is ${meta.description.length} chars (>160, may be truncated in search results)`
+    );
   }
-}
+};
 
 /**
  * A page must carry EXACTLY ONE canonical, and it must be its own.
@@ -126,26 +137,26 @@ function assertMetaFits(url: string, meta: RouteMeta): void {
  * duplicate or wrong canonical is invisible in the browser and only shows up as
  * pages quietly dropping out of search results, so it fails the build instead.
  */
-function assertSingleCanonical(html: string, expected: string, label: string): void {
+const assertSingleCanonical = (html: string, expected: string, label: string): void => {
   const found = [...html.matchAll(/<link\b[^>]*\brel="canonical"[^>]*>/g)];
   if (found.length !== 1) {
     throw new Error(
-      `prerender: ${label} has ${found.length} canonical link(s), expected exactly 1`,
+      `prerender: ${label} has ${found.length} canonical link(s), expected exactly 1`
     );
   }
   const href = /\bhref="([^"]*)"/.exec(found[0][0])?.[1];
   if (href !== expected) {
     throw new Error(`prerender: ${label} canonical is "${href ?? ''}", expected "${expected}"`);
   }
-}
+};
 
 /** Apply one route's title/description to every place the template repeats them. */
-function applyRouteMeta(html: string, meta: RouteMeta, canonical: string): string {
+const applyRouteMeta = (html: string, meta: RouteMeta, canonical: string): string => {
   let out = replaceOrThrow(
     html,
     /<title>[\s\S]*?<\/title>/,
     () => `<title>${textContent(meta.title)}</title>`,
-    '<title>',
+    '<title>'
   );
 
   out = setMetaContent(out, 'name', 'description', meta.description);
@@ -161,7 +172,7 @@ function applyRouteMeta(html: string, meta: RouteMeta, canonical: string): strin
     out,
     /(<link\b[^>]*\brel="canonical"[^>]*\bhref=")[^"]*(")/,
     (_match, before, after) => `${before}${attrValue(canonical)}${after}`,
-    '<link rel="canonical">',
+    '<link rel="canonical">'
   );
 
   // JSON-LD "description" and "url" — JSON string literals, so escape them as such.
@@ -169,15 +180,15 @@ function applyRouteMeta(html: string, meta: RouteMeta, canonical: string): strin
     out,
     /("description":\s*)"(?:[^"\\]|\\.)*"/,
     (_match, before) => `${before}${JSON.stringify(meta.description)}`,
-    'JSON-LD "description"',
+    'JSON-LD "description"'
   );
   return replaceOrThrow(
     out,
     /("url":\s*)"(?:[^"\\]|\\.)*"/,
     (_match, before) => `${before}${JSON.stringify(canonical)}`,
-    'JSON-LD "url"',
+    'JSON-LD "url"'
   );
-}
+};
 
 for (const [url, meta] of Object.entries(routes)) {
   const appHtml = render(url);
