@@ -8,35 +8,49 @@ import {
   midnightUtcMs,
   summarizeDailyCvd,
 } from './analyze';
-import { BINANCE_FAPI_KLINES_BASE, BINANCE_KLINES_BASE } from './fetchers';
 import { appendRecord, buildRecord } from './history';
 import { parseCvd, parseGamma, parseSkew, parseVolLab, parseWhaleAlert } from './parse';
 import type { HistoryRecord, IntradaySnapshot } from './types';
 
 /**
- * One full pull of the intraday pipeline, SERVER edition.
+ * The intraday pull. Runs on the server, and only there.
  *
- * The browser version (index.ts) exists alongside it and still powers the manual
- * refresh button. The two differ in three ways, all of them forced by where they
- * run:
+ * It used to have a browser twin in index.ts that powered the refresh button,
+ * but that one could reach two of the five sources at best: Whale Alert and
+ * basischarts send no CORS header, and the skew and Vol Lab need a token that
+ * cannot ship to a client. The button now reads /api/intraday instead, so this
+ * is the single pull and there is no second code path to drift from.
  *
- *   1. Gamma goes straight to its upstream. The browser has to route it through
- *      /api/options/btc because basischarts sends no CORS header; the server has
- *      no such problem, so the passthrough would only add a hop.
- *   2. No response cache. The browser caches each response for 15 min in
- *      localStorage; here the whole rendered page is cached instead, so caching
- *      the parts underneath it as well would only add a second staleness clock.
- *   3. History is passed IN and the new record handed back out, instead of being
- *      read from and written to localStorage. Persistence belongs to the server
- *      (Postgres, see server/intraday/history.ts) and this module stays pure, so
- *      it can live in the SSR bundle without dragging the database in.
+ * It caches nothing of its own: the rendered page is cached around it (see
+ * server/intraday/page.ts), and a second staleness clock underneath that one
+ * would only make "how old is this" harder to answer.
  *
- * Everything else — parse, gex, analyze — is the exact same code path as the
- * browser, so the two cannot drift.
+ * History is passed IN and the new record handed back out rather than persisted
+ * here. Persistence belongs to the server (Postgres, server/intraday/history.ts)
+ * and this module stays pure, so it can live in the SSR bundle without dragging
+ * the database in.
  */
 
-/** No CORS constraint on this side, so the chain comes from its own host. */
 const GAMMA_UPSTREAM = 'https://www.basischarts.com/api/options?venue=all&underlying=BTC';
+
+// Spot CVD (Binance, BTCUSDT, 5m). Each kline carries the taker-buy volume (buy
+// aggressor) broken out, so the per-candle delta is reconstructed without
+// downloading millions of trades.
+//
+// The host is the market-data mirror, NOT api.binance.com: the spot API restricts
+// US IPs and this renders from a US region, so every pull came back 418 and the
+// whole spot side of the report — session CVD, the divergence, the daily table —
+// silently read "no data" in production while the perp side worked. The mirror
+// serves the same path with a byte-identical payload and needs no key.
+export const BINANCE_KLINES_BASE =
+  'https://data-api.binance.vision/api/v3/klines?symbol=BTCUSDT&interval=5m';
+
+// Perpetual futures CVD (Binance USDT-M, BTCUSDT). Same kline shape as spot
+// (takerBuyBase at index 9), so the same parser is reused. fapi is not restricted
+// the way the spot API is, so it still points at the main host. Reading spot and
+// perp together is what shows leverage pulling against cash.
+export const BINANCE_FAPI_KLINES_BASE =
+  'https://fapi.binance.com/fapi/v1/klines?symbol=BTCUSDT&interval=5m';
 
 /**
  * Three sources that exist ONLY here, because all three are CORS-blocked and the
@@ -202,9 +216,6 @@ export const runIntradayServer = async ({
       // pull could never evaluate.
       capitulation: assessCapitulation({ history: nextHistory, cvdFlows, cvdDaily, flows }),
       history: nextHistory,
-      // Nothing underneath this pull is cached — the page above it is. How stale
-      // the page itself is, is the server's to report.
-      cacheAgeMs: null,
     },
     record,
     deduped,

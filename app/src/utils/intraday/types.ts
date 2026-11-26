@@ -526,6 +526,4 @@ export interface IntradaySnapshot {
   cvdDaily: CvdDaily;
   capitulation: Capitulation;
   history: HistoryRecord[];
-  /** Age of the oldest cached response backing this pull; null = all fresh. */
-  cacheAgeMs: number | null;
 }

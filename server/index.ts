@@ -28,8 +28,11 @@ import {
  *
  * It exists for two reasons:
  *   1. the fomoapi key is metered and billed, so it cannot ship to a browser;
- *   2. the BTC options chain host sends no CORS header, so the browser cannot
- *      read it directly and needs a same-origin passthrough.
+ *   2. /intraday is rendered here, because several of its sources cannot be read
+ *      from a browser at all — basischarts and Whale Alert send no CORS header,
+ *      and the skew and Vol Lab need a token that cannot ship to a client. The
+ *      page and its refresh endpoint are both served from the snapshot this
+ *      server pulls (intraday/page.ts).
  *
  * Everything else the app needs — Jupiter, Pacifica, Hyperliquid and Binance —
  * is public AND CORS-enabled, so it is called directly from the client and is
@@ -57,14 +60,12 @@ const CONTENT_SECURITY_POLICY = [
   [
     "connect-src 'self' https://perps-api.jup.ag https://api.pacifica.fi",
     'https://api.hyperliquid.xyz',
-    // data-api.binance.vision is the spot klines host for /intraday (see
-    // BINANCE_KLINES_BASE); api.binance.com stays for the dashboard trade chart,
-    // which is only ever called from the visitor's own browser.
-    'https://data-api.binance.vision https://api.binance.com',
-    'https://fapi.binance.com https://api.bybit.com',
-    // basischarts is NOT listed: it sends no CORS header, so the options chain
-    // goes through the same-origin passthrough below and the browser only ever
-    // talks to 'self' for it.
+    // Both are the dashboard's trade chart (TradeModal), called from the
+    // visitor's own browser. /intraday's own Binance hosts used to be listed
+    // here too; they came out when the page stopped pulling from the browser,
+    // because every source it reads is now fetched server-side and reaches the
+    // page through 'self'.
+    'https://api.binance.com https://api.bybit.com',
     'https://www.google-analytics.com https://analytics.google.com',
   ].join(' '),
   "img-src 'self' data: https://www.google-analytics.com https://www.googletagmanager.com",
@@ -207,78 +208,6 @@ app.get('/api/fomo/wallet', async (c) => {
     }
     console.error('[api] wallet resolve failed:', err);
     return c.json({ error: 'internal_error' }, 500);
-  }
-});
-
-// ─── BTC options chain passthrough ────────────────────────────────────────────
-
-const OPTIONS_CHAIN_URL = 'https://www.basischarts.com/api/options?venue=all&underlying=BTC';
-/** Mirrors the client cache window in app/src/utils/intraday/cache.ts. */
-const CHAIN_TTL_MS = 15 * 60 * 1000;
-/** The chain weighs ~1.3 MB; it needs more headroom than a normal API call. */
-const CHAIN_TIMEOUT_MS = 30_000;
-
-let chainCache: { at: number; body: string } | null = null;
-let chainInFlight: Promise<string> | null = null;
-
-const fetchOptionsChain = async (): Promise<string> => {
-  const res = await fetch(OPTIONS_CHAIN_URL, {
-    signal: AbortSignal.timeout(CHAIN_TIMEOUT_MS),
-  });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.text();
-};
-
-/**
- * Same-origin passthrough for the raw BTC options chain.
- *
- * It exists for one reason: basischarts sends no `Access-Control-Allow-Origin`
- * header, so the browser blocks reading the response even though the request
- * itself succeeds. This is the second reason the server exists, alongside the
- * metered fomoapi key — note the comment at the top of this file.
- *
- * It forwards nothing about the caller and takes no input: one fixed public URL,
- * no query params, no headers passed through. So unlike the wallet endpoints,
- * this one never sees user data — it only moves the transport. The GEX itself is
- * still computed in the browser (app/src/utils/intraday/gex.ts); the server does
- * not aggregate, it only relays bytes.
- *
- * The body is relayed as opaque text rather than parsed and re-serialised: the
- * client parses it anyway, and re-encoding 1.3 MB per request buys nothing.
- *
- * The TTL is not for speed, it is a fan-out guard: without it, N concurrent
- * visitors become N × 1.3 MB against upstream every time the page auto-refreshes.
- */
-app.get('/api/options/btc', async (c) => {
-  const headers = {
-    'Content-Type': 'application/json; charset=utf-8',
-    // Lets a CDN or the browser hold it briefly without going stale across the
-    // 15 min refresh the page itself does.
-    'Cache-Control': 'public, max-age=300',
-  };
-
-  if (chainCache && Date.now() - chainCache.at < CHAIN_TTL_MS) {
-    return c.body(chainCache.body, 200, headers);
-  }
-
-  try {
-    chainInFlight ??= fetchOptionsChain().finally(() => {
-      chainInFlight = null;
-    });
-    const body = await chainInFlight;
-    chainCache = { at: Date.now(), body };
-    return c.body(body, 200, headers);
-  } catch (err) {
-    console.error('[api] options chain failed:', err);
-    // A chain a few minutes past its TTL still describes the same gamma profile,
-    // so stale beats empty — the same trade-off readExpiredCache makes client-side.
-    if (chainCache) {
-      return c.body(chainCache.body, 200, {
-        ...headers,
-        'X-Chain-Stale-Ms': String(Date.now() - chainCache.at),
-      });
-    }
-    return c.json({ error: 'upstream_error' }, 502);
   }
 });
 
