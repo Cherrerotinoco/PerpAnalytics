@@ -2567,21 +2567,6 @@ body {
   color: var(--tc-text);
 }
 
-/* Freshness badge: this panel's values predate the global "Last reading". Amber
-   rather than red — the data is usable, just older than the rest of the page. */
-.tc-intraday-stale {
-  font-size: 0.65rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--tc-amber);
-  border: 1px solid color-mix(in srgb, var(--tc-amber) 40%, transparent);
-  border-radius: 999px;
-  padding: 1px 7px;
-  white-space: nowrap;
-  cursor: help;
-}
-
 /* Badge slot: pushed to the far end of the header, never squeezing the title. */
 .tc-panel-card .tc-panel-header > :not(.tc-panel-title) {
   margin-left: auto;

@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import Panel, { Row, SectionHeading } from '../dashboard/Panel';
 import { TabNav, panelId, tabId } from '../dashboard/TabNav';
 import type { TabDef } from '../dashboard/TabNav';
-import { CACHE_TTL_MS, buildIntradayReport, clearHistory, runIntraday } from '../utils/intraday';
+import { buildIntradayReport, clearHistory } from '../utils/intraday';
 import { useSsrSnapshot } from '../utils/intraday/ssrData';
 import type {
   Capitulation,
@@ -27,9 +27,10 @@ import type {
 
 const CvdSessionChart = lazy(() => import('../dashboard/panels/cvdSessionChart'));
 
-// Auto-refresh cadence, matched to the response cache TTL: ticking faster would
-// just re-read the same cached payload. The manual button forces a network hit.
-const AUTO_REFRESH_MS = CACHE_TTL_MS;
+// Matches the server's own render TTL (server/intraday/page.ts). The tick is
+// scheduled off the server's render time rather than run as a fixed interval, so
+// it lands when there is actually something new to collect.
+const AUTO_REFRESH_MS = 15 * 60 * 1000;
 
 // ─── Formatting ───────────────────────────────────────────────────────────────
 const sign = (n: number | null | undefined, d = 0): string =>
@@ -795,6 +796,24 @@ const SignalStrip = ({
   );
 };
 
+/**
+ * How old the served data is, in words.
+ *
+ * Says "just now" under a minute instead of rounding up to "1 min ago", which
+ * is what the old label did to a pull that had just come off the network.
+ */
+const ageLabel = (renderedAt: number, now: number): string => {
+  const sec = Math.max(0, Math.round((now - renderedAt) / 1000));
+  if (sec < 60) return 'just now';
+  const min = Math.round(sec / 60);
+  return `${min} min ago`;
+};
+
+// ─── Auto-refresh preference ──────────────────────────────────────────────────
+// Read after mount, never in the state initialiser: this route is server-rendered
+// and a stored `true` would make the first client render disagree with the HTML.
+const AUTO_PREF_KEY = 'tc:intraday-auto';
+
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
 type IntradayTab = 'whales' | 'flow' | 'options';
 
@@ -836,31 +855,6 @@ const TabPanel = ({
   </div>
 );
 
-// ─── Freshness ────────────────────────────────────────────────────────────────
-/** The three panel groups a browser-side pull cannot refresh (all CORS-blocked). */
-type CarriedGroup = 'whale' | 'skew' | 'volLab';
-
-/**
- * Marks a panel whose values did not come from the latest pull.
- *
- * Whale Alert, skew and Vol Lab are CORS-blocked, so pressing Refresh carries
- * their previous values forward rather than blanking them. The page prints a
- * single global "Last reading", so without this badge those panels silently
- * inherit a timestamp they were never fetched at.
- */
-const StaleBadge = ({ since }: { since: string | null }) => {
-  if (!since) return null;
-  const at = `${since.slice(11, 16)} UTC`;
-  return (
-    <span
-      className="tc-intraday-stale"
-      title={`Fetched at ${at}. The last refresh could not reach this source from the browser, so these values were carried forward.`}
-    >
-      from {at}
-    </span>
-  );
-};
-
 // ─── Page ─────────────────────────────────────────────────────────────────────
 const IntradayPage = () => {
   // The server renders this route with a live snapshot and caches it for 15 min,
@@ -872,54 +866,59 @@ const IntradayPage = () => {
   const [loading, setLoading] = useState(ssrSnapshot === null);
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [copied, setCopied] = useState(false);
-  // When each carried-forward group was actually fetched, so the badges can date
-  // them. Keyed by group; absent = the group is as fresh as the global reading.
-  const [carriedAt, setCarriedAt] = useState<Partial<Record<CarriedGroup, string>>>({});
   const [tab, setTab] = useState<IntradayTab>(DEFAULT_TAB);
-  // Guards against a slow in-flight pull overwriting a newer one.
+  // When the served data was pulled, per the server. Replaces "now", which is
+  // only when the page asked, not when the numbers were true.
+  // Seeded from the snapshot the server embedded, so the page knows how old its
+  // own data is without asking — and the auto tick can be scheduled off it
+  // instead of spending a request just to learn the time.
+  const [renderedAt, setRenderedAt] = useState<number | null>(
+    ssrSnapshot ? Date.parse(ssrSnapshot.generatedAt) : null
+  );
+  // Set when a refresh could not reach the server, so the page can say the
+  // figures below are the previous ones rather than silently keeping them.
+  const [refreshError, setRefreshError] = useState(false);
+  // Ticks so the age label ages.
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  // The age is the one part of the timestamp that cannot be server-rendered: it
+  // is computed against the clock, so the server's HTML and the first client
+  // render would disagree by however long the page spent in transit.
+  const [mounted, setMounted] = useState(false);
+  // Guards against a slow in-flight request overwriting a newer one.
   const runIdRef = useRef(0);
-  // Mirrors `snap` so refresh() can diff against the previous pull without doing
-  // the merge inside a setState updater (which would have to date the carried
-  // groups as a side effect).
-  const snapRef = useRef<IntradaySnapshot | null>(ssrSnapshot);
 
-  // `force` bypasses the 15 min response cache — the manual button always goes to
-  // the network, mount and auto-refresh reuse whatever is still fresh.
-  const refresh = useCallback(async (force = false) => {
+  /**
+   * Pull the server's snapshot.
+   *
+   * Every source lives on the server — three of them are unreachable from a
+   * browser at all — so refreshing means asking the server what it has, not
+   * re-fetching the two things a client can see. `wait` is what the manual
+   * button sends: it blocks on a refresh already due rather than returning the
+   * stale entry, which is the difference between a button that refreshes and
+   * one that just re-reads.
+   */
+  const refresh = useCallback(async (wait = false) => {
     const id = ++runIdRef.current;
     setLoading(true);
-    const result = await runIntraday(new Date(), { force });
-    if (runIdRef.current !== id) return;
-    // Whale Alert, skew and Vol Lab are CORS-blocked, so a browser pull returns
-    // them as null. Carry the previous values forward instead of blanking three
-    // panels every time someone presses refresh.
-    const prev = snapRef.current;
-    const merged = prev
-      ? {
-          ...result,
-          whale: result.whale ?? prev.whale,
-          flows: result.flows ?? prev.flows,
-          skew: result.skew ?? prev.skew,
-          skewRead: result.skewRead ?? prev.skewRead,
-          volLab: result.volLab ?? prev.volLab,
-          volLabRead: result.volLabRead ?? prev.volLabRead,
-        }
-      : result;
-
-    if (prev) {
-      // Date each group by when it was FETCHED, not by the previous snapshot's
-      // timestamp: after a second carry-forward that timestamp is itself a
-      // refresh the group never took part in, and the badge would creep
-      // forward until it claimed the data was current.
-      setCarriedAt((at) => ({
-        whale: result.whale ? undefined : (at.whale ?? prev.generatedAt),
-        skew: result.skew ? undefined : (at.skew ?? prev.generatedAt),
-        volLab: result.volLab ? undefined : (at.volLab ?? prev.generatedAt),
-      }));
+    try {
+      const res = await fetch(`/api/intraday${wait ? '?wait=1' : ''}`, {
+        headers: { accept: 'application/json' },
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const body = (await res.json()) as { snapshot: IntradaySnapshot; renderedAt: number };
+      if (runIdRef.current !== id) return;
+      setSnap(body.snapshot);
+      setRenderedAt(body.renderedAt);
+      setRefreshError(false);
+    } catch {
+      // Keep whatever is on screen. A failed refresh should cost the reader the
+      // update, not the page they were already reading.
+      if (runIdRef.current === id) setRefreshError(true);
+    } finally {
+      // In `finally` so a throw cannot strand the button disabled on
+      // "Refreshing…" with no way back short of a reload.
+      if (runIdRef.current === id) setLoading(false);
     }
-    snapRef.current = merged;
-    setSnap(merged);
-    setLoading(false);
   }, []);
 
   useEffect(() => {
@@ -930,11 +929,59 @@ const IntradayPage = () => {
     void refresh();
   }, [refresh, ssrSnapshot]);
 
+  // Aligned to the server's clock, not to when the box was ticked. A fixed 15 min
+  // interval starting at an arbitrary offset lands mid-window, reads whatever is
+  // cached and then waits another full 15 — up to ~29 min of real staleness under
+  // a label promising 15. Waking just after the entry is due keeps the two in step.
   useEffect(() => {
     if (!autoRefresh) return;
-    const t = setInterval(() => void refresh(), AUTO_REFRESH_MS);
+    let cancelled = false;
+    let timer: number;
+    const tick = (): void => {
+      const due = renderedAt == null ? 0 : renderedAt + AUTO_REFRESH_MS - Date.now();
+      timer = window.setTimeout(
+        () => {
+          if (cancelled) return;
+          void refresh();
+        },
+        Math.max(1_000, due)
+      );
+    };
+    tick();
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [autoRefresh, refresh, renderedAt]);
+
+  // Restore the stored preference, then start persisting it. The guard matters:
+  // without it the write below fires on mount with the initial `false` and
+  // erases the very preference the read is about to restore.
+  useEffect(() => {
+    setMounted(true);
+    const t = setInterval(() => setNowMs(Date.now()), 30_000);
     return () => clearInterval(t);
-  }, [autoRefresh, refresh]);
+  }, []);
+
+  const autoPrefLoaded = useRef(false);
+
+  useEffect(() => {
+    try {
+      if (localStorage.getItem(AUTO_PREF_KEY) === '1') setAutoRefresh(true);
+    } catch {
+      // Private mode. The toggle still works, it just will not be remembered.
+    }
+    autoPrefLoaded.current = true;
+  }, []);
+
+  useEffect(() => {
+    if (!autoPrefLoaded.current) return;
+    try {
+      localStorage.setItem(AUTO_PREF_KEY, autoRefresh ? '1' : '0');
+    } catch {
+      // Private mode or a full quota.
+    }
+  }, [autoRefresh]);
 
   // Read the tab AFTER mount rather than in the state initialiser: this route is
   // server-rendered, and seeding from the URL on the client only would make the
@@ -1081,9 +1128,17 @@ const IntradayPage = () => {
         </label>
         {snap && (
           <span className="tc-intraday-timestamp">
-            Last reading: {snap.generatedAt.slice(11, 19)} UTC
-            {snap.cacheAgeMs != null &&
-              ` · cached data from ${Math.max(1, Math.round(snap.cacheAgeMs / 60_000))} min ago`}
+            {/* The server's render time, not the moment the page asked. The old
+                label read "cached data from 1 min ago" straight after going to
+                the network, because it floored the age at one minute and called
+                every pull cached. */}
+            Data from{' '}
+            {(renderedAt != null ? new Date(renderedAt).toISOString() : snap.generatedAt).slice(
+              11,
+              19
+            )}{' '}
+            UTC{mounted && renderedAt != null && ` · ${ageLabel(renderedAt, nowMs)}`}
+            {refreshError && <span className="tc-amber"> · could not reach the server</span>}
           </span>
         )}
       </div>
@@ -1174,12 +1229,7 @@ const IntradayPage = () => {
               <>
                 <SectionHeading>Whale flows</SectionHeading>
                 <Row>
-                  <Panel
-                    title="Transfers and net balance"
-                    badge={<StaleBadge since={carriedAt.whale ?? null} />}
-                    grow={1}
-                    minWidth={320}
-                  >
+                  <Panel title="Transfers and net balance" grow={1} minWidth={320}>
                     <WhaleFlowBody flows={snap.flows} />
                   </Panel>
                 </Row>
@@ -1389,22 +1439,12 @@ const IntradayPage = () => {
             {(snap.skew?.ok || snap.volLab?.ok) && (
               <Row>
                 {snap.skew?.ok && snap.skewRead && (
-                  <Panel
-                    title="Market sentiment — 25-delta skew"
-                    badge={<StaleBadge since={carriedAt.skew ?? null} />}
-                    grow={4}
-                    minWidth={300}
-                  >
+                  <Panel title="Market sentiment — 25-delta skew" grow={4} minWidth={300}>
                     <MarketSentiment skew={snap.skew} read={snap.skewRead} />
                   </Panel>
                 )}
                 {snap.volLab?.ok && snap.volLabRead && (
-                  <Panel
-                    title="Vol Lab — skew risk premium"
-                    badge={<StaleBadge since={carriedAt.volLab ?? null} />}
-                    grow={5}
-                    minWidth={320}
-                  >
+                  <Panel title="Vol Lab — skew risk premium" grow={5} minWidth={320}>
                     <VolLabBody volLab={snap.volLab} read={snap.volLabRead} />
                   </Panel>
                 )}

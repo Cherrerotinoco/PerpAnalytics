@@ -14,7 +14,7 @@ import {
   UpstreamError,
 } from './fomoapi/wallets.js';
 import { suggestHandles, isValidQuery } from './fomoapi/suggest.js';
-import { getIntradayPage, warmUp as warmIntraday } from './intraday/page.js';
+import { getIntradayPage, getIntradaySnapshot, warmUp as warmIntraday } from './intraday/page.js';
 import {
   clientAddress,
   hashClient,
@@ -147,10 +147,7 @@ app.get('/api/fomo/suggest', async (c) => {
 /** Operational view of spend and of the caller's remaining daily allowance. */
 app.get('/api/fomo/budget', async (c) => {
   try {
-    const [budget, usage] = await Promise.all([
-      getBudget(),
-      getDailyUsage(clientHashOf(c)),
-    ]);
+    const [budget, usage] = await Promise.all([getBudget(), getDailyUsage(clientHashOf(c))]);
     return c.json({
       ...budget,
       today: {
@@ -188,7 +185,12 @@ app.get('/api/fomo/wallet', async (c) => {
   } catch (err) {
     if (err instanceof RateLimitedError) {
       return c.json(
-        { error: 'rate_limited', scope: err.scope, message: err.message, retryAfterSeconds: err.retryAfterSeconds },
+        {
+          error: 'rate_limited',
+          scope: err.scope,
+          message: err.message,
+          retryAfterSeconds: err.retryAfterSeconds,
+        },
         429,
         { 'Retry-After': String(err.retryAfterSeconds) }
       );
@@ -277,6 +279,38 @@ app.get('/api/options/btc', async (c) => {
       });
     }
     return c.json({ error: 'upstream_error' }, 502);
+  }
+});
+
+/**
+ * The snapshot behind /intraday, for the page's own refresh button.
+ *
+ * `?wait=1` is what the manual button sends: when the entry has gone stale it
+ * waits for the refresh instead of being handed the stale one, so a click that
+ * says "refresh" returns refreshed data. The auto tick omits it and takes
+ * whatever is cached.
+ *
+ * No rate limit here: there is no `force`, so the heaviest thing a caller can
+ * cause is the one render the next page view would have triggered anyway, and
+ * `refresh()` dedupes concurrent ones into a single pull.
+ */
+app.get('/api/intraday', async (c) => {
+  try {
+    const result = await getIntradaySnapshot({ wait: c.req.query('wait') === '1' });
+    return c.json(
+      { snapshot: result.snapshot, renderedAt: result.renderedAt, stale: result.stale },
+      200,
+      {
+        // The caller is asking what the data is right now, and that changes on
+        // the server's schedule, so a browser copy would only ever mislead.
+        'Cache-Control': 'no-store',
+        'X-Page-Age-Ms': String(result.ageMs),
+        'X-Page-Stale': String(result.stale),
+      }
+    );
+  } catch (err) {
+    console.error('[intraday] snapshot request failed:', err);
+    return c.json({ error: 'snapshot unavailable' }, 503);
   }
 });
 

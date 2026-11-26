@@ -42,6 +42,8 @@ interface SsrBundle {
 
 interface CacheEntry {
   html: string;
+  /** The same data the HTML was built from, served to the refresh button. */
+  snapshot: unknown;
   renderedAt: number;
 }
 
@@ -100,7 +102,7 @@ const snapshotScript = (globalName: string, snapshot: unknown): string => {
 };
 
 /** One full render: pull the data, persist the record, build the HTML. */
-const renderPage = async (): Promise<string> => {
+const renderPage = async (): Promise<{ html: string; snapshot: unknown }> => {
   const { render, runIntradayServer, SSR_SNAPSHOT_GLOBAL } = await loadBundle();
 
   let history: PullRecord[] = [];
@@ -133,10 +135,11 @@ const renderPage = async (): Promise<string> => {
   const appHtml = render('/intraday', snapshot);
   // Replacer function, not a string: `$&` sequences in the rendered markup would
   // otherwise be treated as replacement patterns.
-  return loadTemplate().replace(
+  const html = loadTemplate().replace(
     APP_HTML_PLACEHOLDER,
     () => appHtml + snapshotScript(SSR_SNAPSHOT_GLOBAL, snapshot)
   );
+  return { html, snapshot };
 };
 
 /**
@@ -148,8 +151,8 @@ const renderPage = async (): Promise<string> => {
  */
 const refresh = (): Promise<void> => {
   refreshing ??= renderPage()
-    .then((html) => {
-      cache = { html, renderedAt: Date.now() };
+    .then(({ html, snapshot }) => {
+      cache = { html, snapshot, renderedAt: Date.now() };
     })
     .catch((err: unknown) => {
       // The stale entry survives on purpose. The next request retries.
@@ -183,6 +186,60 @@ export const getIntradayPage = async (): Promise<PageResult> => {
   const warm = readCache();
   if (!warm) throw new Error('intraday page could not be rendered');
   return { html: warm.html, ageMs: Date.now() - warm.renderedAt, stale: false };
+};
+
+export interface SnapshotResult {
+  snapshot: unknown;
+  /** When the served data was pulled, as an epoch ms — the page's real "as of". */
+  renderedAt: number;
+  ageMs: number;
+  stale: boolean;
+}
+
+/**
+ * The data behind the page, for the client's refresh button.
+ *
+ * The button used to re-pull from the browser, where Whale Alert, the skew and
+ * Vol Lab are unreachable (CORS, and a token that cannot ship to a client), so
+ * "refresh" quietly meant "update two panels and leave three behind". Reading
+ * the server's own snapshot refreshes all of them or none.
+ *
+ * `wait` makes a caller that finds the entry stale await the refresh rather than
+ * take the stale one. That costs nothing upstream: `refresh()` dedupes, so
+ * concurrent callers share the single render the page would have triggered
+ * anyway.
+ *
+ * There is deliberately no `force`. Bypassing the 15 min cache on demand would
+ * put Whale Alert's quota and a paid cryptogamma token behind a button any
+ * anonymous visitor can hold down.
+ */
+export const getIntradaySnapshot = async ({ wait = false } = {}): Promise<SnapshotResult> => {
+  const hit = readCache();
+  if (hit) {
+    if (Date.now() - hit.renderedAt >= TTL_MS) {
+      const inFlight = refresh();
+      if (wait) await inFlight;
+    }
+    // Re-read: an awaited refresh has replaced the entry by now.
+    const entry = readCache() ?? hit;
+    const ageMs = Date.now() - entry.renderedAt;
+    return {
+      snapshot: entry.snapshot,
+      renderedAt: entry.renderedAt,
+      ageMs,
+      stale: ageMs >= TTL_MS,
+    };
+  }
+
+  await refresh();
+  const warm = readCache();
+  if (!warm) throw new Error('intraday snapshot could not be rendered');
+  return {
+    snapshot: warm.snapshot,
+    renderedAt: warm.renderedAt,
+    ageMs: Date.now() - warm.renderedAt,
+    stale: false,
+  };
 };
 
 /**
