@@ -39,6 +39,9 @@ body {
   --tc-accent-hover: #ffc95c;
   --tc-focus-ring: #f4b942; /* ~10:1 on this background */
   --tc-accent-soft: rgba(244, 185, 66, 0.12);
+  /* Accent text sitting ON --tc-accent-soft. Here the tint lands on a near-black
+     surface, so the plain accent already clears 7:1 and needs no darkening. */
+  --tc-accent-strong: #f4b942;
   --tc-accent-border: rgba(244, 185, 66, 0.35);
   --tc-info: #60a5fa; /* analytical / informational */
   --tc-neutral: #94a3b8; /* neutral state */
@@ -81,6 +84,10 @@ body {
      bare minimum of SC 1.4.11 with no margin. amber-700 gives 4.7:1. */
   --tc-focus-ring: #b45309;
   --tc-accent-soft: rgba(217, 119, 6, 0.12);
+  /* amber-800, not --tc-accent. On the light theme --tc-accent-soft composites
+     to a pale amber (250, 239, 225), and #d97706 on that is 2.8:1 — the accent
+     is readable on the page but not on its own tint. This clears 6:1. */
+  --tc-accent-strong: #92400e;
   --tc-accent-border: rgba(217, 119, 6, 0.35);
   --tc-info: #2563eb;
   --tc-neutral: #64748b;
@@ -2380,6 +2387,55 @@ body {
   background: var(--tc-surface-3);
   color: var(--tc-text);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
+/* ─── Prominent tablist ─────────────────────────────────────────────────────
+   For a tablist that IS the navigation of its page, not one control sharing a
+   toolbar. The compact version above sits next to a date range and an export
+   button in the dashboard, where 29px tall and a muted label are right; given a
+   whole row to itself under a wall of stat cards, the same thing reads as a
+   divider rather than as the control that chooses what is on screen. */
+.tc-tabs--prominent {
+  gap: 4px;
+  padding: 4px;
+  /* Hugs its tabs instead of stretching the row: a 1,300px bar holding 370px of
+     content looks like an empty strip, not like a switch. */
+  width: fit-content;
+  max-width: 100%;
+  border-color: var(--tc-border-strong);
+  flex-wrap: wrap;
+}
+
+.tc-tabs--prominent .tc-tab {
+  /* 44px is the touch-target floor; the compact tabs are 29px. */
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 18px;
+  font-size: 0.92rem;
+  /* Reserve the bold width up front so the label does not nudge its neighbours
+     when it becomes active (the bold text is wider than the regular text). */
+  letter-spacing: 0.01em;
+  /* Raised from --tc-muted: an unselected tab is a destination, not a disabled
+     control, and 4.7:1 is thin for something you are meant to notice. */
+  color: var(--tc-text-secondary);
+}
+
+.tc-tabs--prominent .tc-tab:hover {
+  background: var(--tc-bg-hover);
+  color: var(--tc-text);
+}
+
+/* Selected state on three channels, not one: the accent fill, the heavier
+   weight and the underline. Hue alone would leave the same reader behind as the
+   red/green elsewhere on the page. */
+.tc-tabs--prominent .tc-tab--active {
+  background: var(--tc-accent-soft);
+  color: var(--tc-accent-strong);
+  font-weight: 700;
+  /* The underline keeps the full accent: it is a 3px block, judged as a
+     graphical object against the surface, not as text on the tint. */
+  box-shadow: inset 0 -3px 0 var(--tc-accent);
 }
 
 /* Timeframe selector */

@@ -29,6 +29,11 @@ interface TabNavProps<T extends string> {
   idPrefix: string;
   /** What the tablist is for, since the labels alone do not say. */
   label: string;
+  /**
+   * Bigger targets and a louder selected state, for a tablist that is the main
+   * way through a page rather than one control among several in a toolbar.
+   */
+  prominent?: boolean;
 }
 
 export const TabNav = <T extends string>({
@@ -37,6 +42,7 @@ export const TabNav = <T extends string>({
   onChange,
   idPrefix,
   label,
+  prominent = false,
 }: TabNavProps<T>) => {
   // Arrow keys move between tabs, which is what the tablist role promises. Only
   // the selected tab is tabbable, so Tab leaves the list for the panel instead
@@ -52,7 +58,12 @@ export const TabNav = <T extends string>({
   };
 
   return (
-    <div className="tc-tabs" role="tablist" aria-label={label} onKeyDown={onKeyDown}>
+    <div
+      className={`tc-tabs${prominent ? ' tc-tabs--prominent' : ''}`}
+      role="tablist"
+      aria-label={label}
+      onKeyDown={onKeyDown}
+    >
       {tabs.map(({ id, label: text }) => (
         <button
           key={id}

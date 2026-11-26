@@ -827,15 +827,17 @@ const AUTO_PREF_KEY = 'tc:intraday-auto';
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
 type IntradayTab = 'whales' | 'flow' | 'options';
 
-// Ordered by the weight the model gives each input (whales and CVD > gamma and
-// skew), which is also the order the page read in before it had tabs.
+// Options first because it is the landing view, and a default sitting third in
+// its own tablist reads as a bug. The other two keep their relative order, which
+// is the weight the model gives them (whales and CVD above gamma and skew) and
+// the order the page read in before it had tabs.
 const INTRADAY_TABS: TabDef<IntradayTab>[] = [
+  { id: 'options', label: 'Options & gamma' },
   { id: 'whales', label: 'Whale flows' },
   { id: 'flow', label: 'Order flow (CVD)' },
-  { id: 'options', label: 'Options & gamma' },
 ];
 
-const DEFAULT_TAB: IntradayTab = 'whales';
+const DEFAULT_TAB: IntradayTab = 'options';
 
 /**
  * One tab's content.
@@ -1227,6 +1229,7 @@ const IntradayPage = () => {
               (whales and CVD > realised/potential > gamma > skew). Server-rendered
               only — Whale Alert blocks cross-origin reads. */}
           <TabNav
+            prominent
             tabs={INTRADAY_TABS}
             active={tab}
             onChange={onChangeTab}
