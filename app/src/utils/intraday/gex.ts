@@ -475,8 +475,16 @@ export const computeGex = (data: OptionsChain): GammaSnapshot | null => {
 
   const callGamma = agg.callGex / MM;
   const putGamma = agg.putGex / MM;
-  const netGamma = callGamma + putGamma;
   const absTotal = Math.abs(callGamma) + Math.abs(putGamma);
+
+  // Reported net is the sum of the REPORTED parts, not of the unrounded ones.
+  // Rounding each of the three independently left them not adding up — a panel
+  // headed "Total gamma exposure" showed 196.83 + -284.21 next to -87.37 — and a
+  // sum shown beside its addends is one a reader checks. The cost is at most a
+  // cent of a million against the exact figure.
+  const callGammaR = round2(callGamma) ?? 0;
+  const putGammaR = round2(putGamma) ?? 0;
+  const netGamma = round2(callGammaR + putGammaR);
 
   const lvl = levels(agg.signedByStrike, agg.absByStrike, spot);
   const impliedVol = lastValue(data.dvol);
@@ -517,9 +525,9 @@ export const computeGex = (data: OptionsChain): GammaSnapshot | null => {
     asset: data.underlying ?? null,
     source: data.venue ?? null,
     generatedAt: new Date(now).toISOString(),
-    netGamma: round2(netGamma),
-    callGamma: round2(callGamma),
-    putGamma: round2(putGamma),
+    netGamma,
+    callGamma: callGammaR,
+    putGamma: putGammaR,
     bias,
     gammaAbovePct: round2(gammaAbovePct),
     putCallRatio: round2(putCallRatio),

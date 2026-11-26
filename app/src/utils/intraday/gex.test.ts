@@ -40,6 +40,9 @@ const chain = (overrides: Partial<OptionsChain> = {}): OptionsChain => ({
   ...overrides,
 });
 
+/** The same 2-decimal rounding gex.ts reports with, for reconciliation checks. */
+const round2 = (n: number): number => Math.round(n * 100) / 100;
+
 /** parseGamma with the usable-snapshot branch narrowed, so assertions stay readable. */
 const gex = (data: OptionsChain): GammaSnapshot => {
   const res = parseGamma(data);
@@ -74,6 +77,27 @@ describe('parseGamma / computeGex', () => {
     expect(r.putGamma).toBe(-0.37);
     expect(r.netGamma).toBe(0.47);
     expect(r.callWeighted).toBe(69.33);
+  });
+
+  // The three are shown side by side under "Total gamma exposure", so a reader
+  // adds them. Rounding each from the unrounded figure independently left them
+  // off by a cent (196.83 + -284.21 printed next to -87.37).
+  it('reports a net that is exactly its printed call plus its printed put', () => {
+    for (const c of [
+      chain(),
+      chain({ quotes: [quote({ strike: 65000, kind: 'call', openInterest: 777 })] }),
+      chain({ quotes: [quote({ strike: 55000, kind: 'put', openInterest: 333 })] }),
+      chain({
+        quotes: [
+          quote({ strike: 61000, kind: 'call', openInterest: 137 }),
+          quote({ strike: 59000, kind: 'put', openInterest: 291 }),
+          quote({ strike: 60000, kind: 'call', openInterest: 43 }),
+        ],
+      }),
+    ]) {
+      const r = gex(c);
+      expect(r.netGamma).toBe(round2(r.callGamma! + r.putGamma!));
+    }
   });
 
   it('takes P/C from open interest in BTC (already normalised by the endpoint)', () => {
