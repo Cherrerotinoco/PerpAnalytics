@@ -8,6 +8,11 @@ node_modules/
 # Build output
 dist/
 dist-server/
+dist-ssr/
+# TypeScript's incremental-build cache. Rewritten by every tsc run, so tracking
+# it left `git status` dirty after any build and put a meaningless diff in reach
+# of every commit.
+*.tsbuildinfo
 
 # Generated files
 *.csv
@@ -21,4 +26,3 @@ Thumbs.db
 # Env
 .env
 .env.*
-dist-ssr/

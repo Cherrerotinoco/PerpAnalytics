@@ -458,16 +458,33 @@ body {
   border-color: var(--tc-muted);
 }
 
-/* Mobile — there is no burger menu, so every header item has to fit on one line.
+/* Mobile — there is no burger menu, so every header item has to stay reachable.
    Without this the row runs out of room: the logo butts against the first nav
-   link and "Open app" wraps onto three lines. */
+   link and "Open app" wraps onto three lines.
+
+   These sizes were still not enough. At 360px — an iPhone SE and most small
+   Androids — the row measured 374px against a 360px viewport (logo 124 + links
+   226 + padding 24), so EVERY page scrolled sideways by 10px, not just one.
+   Two changes below: the wordmark shrinks to buy back the 14px, and the header
+   may wrap, which catches the narrower widths where shrinking alone would still
+   not fit. Hiding the nav links was the other option and a worse one — with no
+   burger menu, hidden here means unreachable. */
 @media (max-width: 520px) {
   .tc-header {
-    padding: 0.5rem 0.75rem;
+    padding: 0.5rem 0.625rem;
     gap: 8px;
+    flex-wrap: wrap;
+  }
+  /* Scoped to .tc-header to outrank the base .tc-logo-text rule, which is
+     declared further down the file and would otherwise win on order alone. */
+  .tc-header .tc-logo-text {
+    font-size: 0.8rem;
   }
   .tc-header-right {
-    gap: 8px;
+    gap: 6px;
+    /* Holds the group against the right edge whether it shares the first row
+       with the logo or drops to a second one. */
+    margin-left: auto;
   }
   .tc-header-nav-link,
   .tc-header-app-link {
@@ -2360,6 +2377,10 @@ body {
 /* Tabs */
 .tc-tabs {
   display: flex;
+  /* The dashboard's five tabs measure 417px, so on a 360px phone the row used
+     to push the whole page into a sideways scroll. Wrapping costs a second row
+     only where the tabs genuinely do not fit. */
+  flex-wrap: wrap;
   gap: 2px;
   background: var(--tc-surface-2);
   border: 1px solid var(--tc-border);
@@ -2778,7 +2799,9 @@ body {
 
 .tc-intraday-about {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  /* min(320px, 100%), not a bare 320px: a hard minimum wider than the viewport
+     cannot shrink, so on a 320px phone the card pushed the page sideways. */
+  grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
   gap: 14px;
 }
 

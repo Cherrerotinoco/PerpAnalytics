@@ -39,7 +39,12 @@ const Panel = ({
   centered = false,
   children,
 }: PanelProps) => (
-  <div className="tc-panel-card" style={{ flex: `${grow} 1 0`, minWidth }}>
+  // min(…, 100%) so the floor never exceeds the space available: a bare 280-320px
+  // minimum cannot shrink, and on a 320px phone it pushed the page sideways.
+  <div
+    className="tc-panel-card"
+    style={{ flex: `${grow} 1 0`, minWidth: `min(${minWidth}px, 100%)` }}
+  >
     {title && (
       <div className="tc-panel-header">
         <span className="tc-panel-title">{title}</span>
