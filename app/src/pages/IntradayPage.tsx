@@ -209,9 +209,14 @@ const TotalGammaExposure = ({ gamma }: { gamma: GammaSnapshot }) => (
     />
     <Hero value={signed(gamma.callGamma)} label="Call gamma" />
     <Hero value={gamma.putGamma?.toFixed(2) ?? '—'} label="Put gamma" />
+    {/* Labelled with the figure it is actually derived from. It used to read
+        "N% call weighted", which is a different metric entirely: the bias comes
+        from how much |gamma| sits above spot, not from how much of it is calls.
+        The two can point opposite ways — BULLISH over "41% call weighted" — and
+        the number a reader needs to judge the verdict was nowhere near it. */}
     <Hero
       value={gamma.bias ?? '—'}
-      label={`${gamma.callWeighted?.toFixed(0) ?? '—'}% call weighted`}
+      label={`${gamma.gammaAbovePct?.toFixed(0) ?? '—'}% of gamma above spot`}
       tone={gamma.bias === 'BULLISH' ? 'tc-green' : gamma.bias === 'BEARISH' ? 'tc-red' : ''}
     />
   </div>
@@ -655,9 +660,14 @@ const GammaBody = ({
       <div className="tc-intraday-kv-grid">
         {/* Millions of USD of delta per 1% move — see GammaSnapshot in types.ts. */}
         <KeyValue k="Net gamma (M$ / 1%)" v={gamma.netGamma?.toLocaleString('en-US') ?? '—'} />
+        {/* callWeighted lands here, not on the bias tile where it used to be
+            labelled: it is the composition of the two figures on this very row
+            (|call| over |call| + |put|), and has nothing to do with the bias. */}
         <KeyValue
           k="Call / Put gamma"
-          v={`${gamma.callGamma?.toLocaleString('en-US') ?? '—'} / ${gamma.putGamma?.toLocaleString('en-US') ?? '—'}`}
+          v={`${gamma.callGamma?.toLocaleString('en-US') ?? '—'} / ${gamma.putGamma?.toLocaleString('en-US') ?? '—'}${
+            gamma.callWeighted == null ? '' : ` (${gamma.callWeighted.toFixed(0)}% calls)`
+          }`}
         />
         <KeyValue k="Put/Call ratio" v={`${gamma.putCallRatio ?? '—'} (${pcRead})`} />
         <KeyValue
